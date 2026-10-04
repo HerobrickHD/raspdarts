@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "name": "Raspdarts",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "https://play.autodarts.io/*",
+    "http://raspdarts.local:8743/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://play.autodarts.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "web_accessible_resources": ["modal.html", "modal.css", "icons/*"]
+}

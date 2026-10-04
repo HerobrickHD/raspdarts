@@ -1,0 +1,17 @@
+node_modules/
+dist/
+
+# Zugangsdaten - niemals einchecken
+.env
+
+# Laufzeitdaten des Dienstes: Aufzeichnungen (enthalten Spielernamen) und Layouts
+server/data/
+
+.DS_Store
+*.log
+
+# Playwright-Ausgaben der Entwicklungs-Screenshots
+.playwright-mcp/
+
+# lokale Claude-Code-Berechtigungen (maschinenspezifisch)
+.claude/settings.local.json

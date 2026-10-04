@@ -1,0 +1,294 @@
+/*
+ * Beamer-Anzeige.
+ *
+ * Gestaltungsregel: Schwarz ist "aus". Alles, was nicht leuchten muss, bleibt
+ * schwarz - sonst haengt ein grauer Kasten an der Wand. Keine Flaechen, keine
+ * Rahmen, keine Animation ausser dem weichen Wechsel des aktiven Spielers.
+ *
+ * Jeder Baustein ist frei platzierbar. Grundgroessen stehen in vh, damit das
+ * eingerichtete Layout bei jeder Beamer-Aufloesung passt; der vom Benutzer
+ * gezogene Massstab multipliziert obendrauf.
+ */
+
+:root {
+  --ink: #ffffff;
+  --dim: #6e6e6e;
+  --label: #8a8a8a;
+  --active: #ffb020;
+  --checkout: #3ddc84;
+  --edit: #4a9eff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: #000;
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+
+.board {
+  position: relative;
+  height: 100%;
+}
+
+/* --- Platzierbare Bausteine ------------------------------------------- */
+
+.block {
+  position: absolute;
+  transform-origin: top left;
+  /* Beim Spielen faengt kein Baustein Klicks ab. */
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* --- Kopfzeile: Spielart und Leg -------------------------------------- */
+
+.meta {
+  display: flex;
+  gap: 2em;
+  color: var(--label);
+  font-size: 3.4vh;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* --- Spielerzeilen ----------------------------------------------------- */
+
+.players {
+  /* inline-flex: der Block ist so breit wie seine breiteste Zeile und laesst
+     sich dadurch als Einheit verschieben. */
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4vh;
+}
+
+.player {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3vw;
+  --score-size: 24vh;
+}
+
+.player-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+}
+
+.player-name {
+  color: var(--label);
+  font-size: calc(var(--score-size) * 0.3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.player-legs {
+  color: var(--label);
+  font-size: calc(var(--score-size) * 0.18);
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.player-tally {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+}
+
+/* Bereits geworfene Darts der laufenden Aufnahme - bewusst zurueckhaltend. */
+.player-turn {
+  color: var(--label);
+  font-size: calc(var(--score-size) * 0.22);
+  letter-spacing: 0.08em;
+}
+
+.player-score {
+  font-size: var(--score-size);
+  font-weight: 700;
+  line-height: 0.95;
+  color: var(--dim);
+  /* Feste Breite, damit 40 und 387 buendig untereinander stehen. */
+  min-width: 3ch;
+  text-align: right;
+}
+
+.player.is-active .player-name,
+.player.is-active .player-score {
+  color: var(--active);
+}
+
+/* --- Checkout-Weg ------------------------------------------------------ */
+
+.checkout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+}
+
+/* Ohne Weg bleibt auch das Label aus - ein leeres "CHECKOUT" waere Ballast. */
+.checkout:not(.has-path) .checkout-label {
+  visibility: hidden;
+}
+
+.checkout-label {
+  color: var(--label);
+  font-size: 3.4vh;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.checkout-path {
+  color: var(--checkout);
+  font-size: 10vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* --- Bearbeiten-Modus -------------------------------------------------- */
+
+.edit-toggle {
+  position: absolute;
+  left: 1.5vw;
+  bottom: 1.5vh;
+  padding: 0.5em 1em;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #3a3a3a;
+  font: inherit;
+  font-size: 1.8vh;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.edit-toggle:hover {
+  color: var(--label);
+  border-color: var(--label);
+}
+
+.board.is-editing .edit-toggle {
+  color: var(--edit);
+  border-color: var(--edit);
+}
+
+.edit-hint {
+  display: none;
+  position: absolute;
+  left: 1.5vw;
+  bottom: 6vh;
+  color: var(--label);
+  font-size: 1.8vh;
+  max-width: 28em;
+  line-height: 1.5;
+  /* Bausteine koennen ueberall liegen - der Hinweis braucht eigenen Grund,
+     sonst steht er unlesbar in einer Zahl. */
+  background: rgba(0, 0, 0, 0.88);
+  padding: 0.8em 1em;
+  border-radius: 4px;
+}
+
+.board.is-editing .edit-hint {
+  display: block;
+}
+
+.board.is-editing .block {
+  pointer-events: auto;
+  cursor: grab;
+  outline: 1px dashed #333;
+  outline-offset: 0.6em;
+}
+
+.board.is-editing .block:hover {
+  outline-color: var(--edit);
+}
+
+.block.is-dragging {
+  cursor: grabbing;
+  outline-color: var(--edit) !important;
+}
+
+/* Anfasser zum Skalieren, nur im Bearbeiten-Modus sichtbar. */
+.size-handle {
+  display: none;
+  position: absolute;
+  right: -1.2em;
+  bottom: -1.2em;
+  width: 1.1em;
+  height: 1.1em;
+  background: var(--edit);
+  border-radius: 2px;
+  cursor: nwse-resize;
+  font-size: 2vh;
+}
+
+.board.is-editing .size-handle {
+  display: block;
+}
+
+/* --- Zustaende ---------------------------------------------------------- */
+
+.message {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 7vh;
+  color: var(--label);
+  padding: 0 8vw;
+}
+
+.board[data-phase="idle"] .message,
+.board[data-phase="finished"] .message,
+.board[data-phase="connecting"] .message {
+  display: flex;
+}
+
+.board[data-phase="idle"] .block,
+.board[data-phase="connecting"] .block,
+.board[data-phase="finished"] .block {
+  visibility: hidden;
+}
+
+/* Beim Einrichten sind die Bausteine immer sichtbar - sonst koennte man das
+   Layout nur waehrend eines laufenden Spiels ausrichten. */
+.board.is-editing .block {
+  visibility: visible;
+}
+
+.board.is-editing .message {
+  display: none;
+}
+
+.board[data-phase="finished"] .message {
+  color: var(--active);
+  font-weight: 700;
+}
+
+/* Verbindungsabriss: ein kleiner Punkt in der Ecke, mehr nicht. */
+.link {
+  position: absolute;
+  right: 2vw;
+  bottom: 2vh;
+  width: 1.2vh;
+  height: 1.2vh;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.board.is-offline .link {
+  background: #c0392b;
+}

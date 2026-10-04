@@ -1,0 +1,20 @@
+[Unit]
+Description=Autodarts Beamer - Scoreboard-Projektion
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/autodarts-beamer
+EnvironmentFile=/home/pi/autodarts-beamer/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+# Die Kamera-Erkennung hat Vorrang: dieser Dienst laeuft mit niedrigerer
+# Prioritaet, damit er der Dart-Erkennung keine Rechenzeit wegnimmt.
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+{"t":0,"frame":{"data":{"variant":"X01","player":0,"players":[{"name":"Arnold"},{"name":"Marcus"}],"gameScores":[110,387],"scores":[{"legs":1},{"legs":1}],"leg":4,"turns":[{"throws":[{"segment":{"name":"T20","number":20,"multiplier":3}}]}],"winner":-1}}}
+{"t":6000,"frame":{"data":{"variant":"X01","player":0,"players":[{"name":"Arnold"},{"name":"Marcus"}],"gameScores":[110,387],"scores":[{"legs":1},{"legs":1}],"leg":4,"turns":[{"throws":[{"segment":{"name":"T20","number":20,"multiplier":3}}]}],"winner":0}}}

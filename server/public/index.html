@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Autodarts Beamer</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="board" class="board" data-phase="connecting">
+      <!-- Jeder Baustein ist frei platzierbar. data-block ist der Schluessel,
+           unter dem seine Position beim Dienst gespeichert wird. -->
+      <section class="block" data-block="meta">
+        <header class="meta">
+          <span id="variant" class="meta-item"></span>
+          <span id="leg" class="meta-item"></span>
+        </header>
+        <span class="size-handle" title="Groesse ziehen"></span>
+      </section>
+
+      <section class="block" data-block="players">
+        <div id="players" class="players"></div>
+        <span class="size-handle" title="Groesse ziehen"></span>
+      </section>
+
+      <section class="block" data-block="checkout">
+        <footer class="checkout">
+          <span class="checkout-label">Checkout</span>
+          <span id="checkout-path" class="checkout-path"></span>
+        </footer>
+        <span class="size-handle" title="Groesse ziehen"></span>
+      </section>
+
+      <p id="message" class="message"></p>
+      <span id="link" class="link" aria-hidden="true"></span>
+
+      <button id="edit-toggle" class="edit-toggle" type="button" title="Layout bearbeiten">
+        Layout
+      </button>
+      <p id="edit-hint" class="edit-hint">
+        Bausteine ziehen zum Verschieben, Ecke unten rechts zum Vergroessern.
+        Wird automatisch gespeichert.
+      </p>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
