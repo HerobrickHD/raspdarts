@@ -37,6 +37,20 @@ describe("Ingest", () => {
     expect(ingest.status().last_message_at).toBeNull();
   });
 
+  test("faengt Fehler beim Weiterreichen ab", () => {
+    const ingest = new Ingest(
+      () => {
+        throw new Error("kaputt");
+      },
+      () => new Date("2026-10-04T12:00:00Z"),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(() => ingest.receive("{}")).not.toThrow();
+    expect(warn).toHaveBeenCalled();
+    expect(ingest.status().last_message_at).toBe("2026-10-04T12:00:00.000Z");
+  });
+
   test("meldet verbunden, solange mindestens eine Verbindung offen ist", () => {
     const ingest = new Ingest(() => {});
     expect(ingest.status().ingest_connected).toBe(false);

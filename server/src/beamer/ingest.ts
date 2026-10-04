@@ -44,7 +44,11 @@ export class Ingest {
       return;
     }
     this.#lastMessageAt = this.now();
-    this.onFrame(frame);
+    try {
+      this.onFrame(frame);
+    } catch (error) {
+      console.warn(`Ingest: Nachricht nicht verarbeitet: ${(error as Error).message}`);
+    }
   }
 
   status(): IngestStatus {

@@ -39,6 +39,21 @@ describe("createFramePipeline", () => {
     expect(hub.state.phase).toBe("playing");
   });
 
+  test("aktualisiert die Anzeige auch wenn die Aufzeichnung fehlschlaegt", () => {
+    const hub = new DisplayHub();
+    const recorder = {
+      write: () => {
+        throw new Error("Platte voll");
+      },
+    };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    createFramePipeline(hub, recorder)(MATCH_FRAME);
+
+    expect(warn).toHaveBeenCalled();
+    expect(hub.state.phase).toBe("playing");
+  });
+
   test("bleibt idle ohne Spielstand", () => {
     const hub = new DisplayHub();
     createFramePipeline(hub, null)({ irgendwas: 1 });

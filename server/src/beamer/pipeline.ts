@@ -18,7 +18,11 @@ export function createFramePipeline(
   recorder: FrameSink | null,
 ): (frame: unknown) => void {
   return (frame) => {
-    recorder?.write(frame);
+    try {
+      recorder?.write(frame);
+    } catch (error) {
+      console.warn(`Aufzeichnung fehlgeschlagen: ${(error as Error).message}`);
+    }
 
     let state: ScoreboardState;
     try {
