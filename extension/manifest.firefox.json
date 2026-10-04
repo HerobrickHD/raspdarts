@@ -14,23 +14,23 @@
     "128": "icons/icon128.png"
   },
   "host_permissions": [
-    "https://play.autodarts.io/*",
+    "https://play.autodarts.com/*",
     "http://raspdarts.local:8743/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://play.autodarts.io/*"],
+      "matches": ["https://play.autodarts.com/*"],
       "js": ["forward.js", "page-hook.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://play.autodarts.io/*"],
+      "matches": ["https://play.autodarts.com/*"],
       "js": ["bridge.js"],
       "run_at": "document_start"
     },
     {
-      "matches": ["https://play.autodarts.io/*"],
+      "matches": ["https://play.autodarts.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
@@ -41,7 +41,7 @@
   "web_accessible_resources": [
     {
       "resources": ["modal.html", "modal.css", "icons/*"],
-      "matches": ["https://play.autodarts.io/*"]
+      "matches": ["https://play.autodarts.com/*"]
     }
   ]
 }

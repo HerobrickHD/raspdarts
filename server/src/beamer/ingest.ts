@@ -1,5 +1,5 @@
 /**
- * Nimmt die Autodarts-Nachrichten an, die die Extension auf play.autodarts.io
+ * Nimmt die Autodarts-Nachrichten an, die die Extension auf play.autodarts.com
  * mitliest. Kennt keine Spielregeln - parst nur JSON und reicht weiter.
  */
 

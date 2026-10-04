@@ -2,7 +2,7 @@
 
 Alles rund um die Autodarts-Scheibe am Raspberry Pi – in einem Repo:
 
-- **Pi-Verwaltung** direkt aus play.autodarts.io: CPU, RAM, Temperatur, Autodarts
+- **Pi-Verwaltung** direkt aus play.autodarts.com: CPU, RAM, Temperatur, Autodarts
   installieren und aktualisieren, Pi neu starten oder herunterfahren. Kein SSH nötig.
 - **Beamer-Scoreboard**: Restpunkte, aktiver Spieler und Checkout-Weg groß an der
   Wand neben der Scheibe.
@@ -10,7 +10,7 @@ Alles rund um die Autodarts-Scheibe am Raspberry Pi – in einem Repo:
 ## Aufbau
 
 ```
-play.autodarts.io (Laptop)
+play.autodarts.com (Laptop)
   └─ Raspdarts-Extension ── liest den Spielstand mit ──┐
                           └─ Panel: Status, Updates ───┤
                                                        ▼
@@ -26,10 +26,10 @@ Auf neueren Pi-OS-Versionen heißt der Befehl `chromium` statt `chromium-browser
 | `deploy/`, `install.sh` | Installation auf dem Pi |
 | `docs/` | Projektbeschreibung, Autodarts-Protokoll, Entwürfe |
 
-Die Spieldaten kommen von der Extension: Sie liest auf play.autodarts.io die
+Die Spieldaten kommen von der Extension: Sie liest auf play.autodarts.com die
 WebSocket-Nachrichten der Seite mit und reicht sie an den Pi weiter. Der Pi braucht
 deshalb keine Autodarts-Zugangsdaten. Der Beamer zeigt nur etwas an, solange ein Tab
-mit play.autodarts.io offen ist.
+mit play.autodarts.com offen ist.
 
 ## Installation auf dem Pi
 

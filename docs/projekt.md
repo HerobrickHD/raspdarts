@@ -31,7 +31,7 @@ versucht, wird chaotisch und nie fertig.
 ## Aufbau
 
 ```
-Laptop: play.autodarts.io + Raspdarts-Extension
+Laptop: play.autodarts.com + Raspdarts-Extension
 │   liest den Spielstand der Seite mit
 ▼
 Raspberry Pi 5 (läuft ohnehin durch, hat die Kameras)
@@ -50,7 +50,7 @@ und hält selbst keinen Zustand.
 
 Die Spieldaten kommen nicht vom Pi selbst, sondern von der Extension im Browser,
 in dem ohnehin gespielt wird. Der Pi braucht dadurch keine Autodarts-Anmeldung.
-Der Preis: Der Beamer zeigt nur etwas an, solange ein Tab mit play.autodarts.io
+Der Preis: Der Beamer zeigt nur etwas an, solange ein Tab mit play.autodarts.com
 offen ist.
 
 **Warum diese Trennung wichtig ist:**

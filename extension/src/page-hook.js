@@ -1,4 +1,4 @@
-// Liest die WebSocket-Nachrichten von play.autodarts.io mit. Laeuft im
+// Liest die WebSocket-Nachrichten von play.autodarts.com mit. Laeuft im
 // Seitenkontext ab document_start, damit window.WebSocket ersetzt ist, bevor
 // die Seite ihre Verbindung oeffnet.
 //

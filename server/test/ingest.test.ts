@@ -5,7 +5,7 @@ describe("isExtensionOrigin", () => {
   test.each([
     ["chrome-extension://abcdefghijklmnop", true],
     ["moz-extension://0f1e2d3c-aaaa-bbbb-cccc-112233445566", true],
-    ["https://play.autodarts.io", false],
+    ["https://play.autodarts.com", false],
     ["http://raspdarts.local:8743", false],
     ["chrome-extension://abc/pfad", false],
     ["", false],
