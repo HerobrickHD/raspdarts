@@ -119,7 +119,7 @@ function applyLayout() {
 }
 
 async function loadLayout() {
-  const response = await fetch(`/api/layout/${display}`);
+  const response = await fetch(`/api/layout/${display}`, { headers: { "X-Raspdarts": "1" } });
   layout = await response.json();
   applyLayout();
 }
@@ -132,7 +132,7 @@ function saveLayoutSoon() {
   saveTimer = setTimeout(() => {
     fetch(`/api/layout/${display}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Raspdarts": "1" },
       body: JSON.stringify(layout),
     }).catch((error) => console.error("Layout konnte nicht gespeichert werden", error));
   }, 400);

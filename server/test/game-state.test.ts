@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { IDLE, toScoreboardState } from "../src/game-state.js";
+import { IDLE, toScoreboardState } from "../src/beamer/game-state.js";
 
 /**
  * Nachbau der Match-State-Nachricht laut docs/protocol.md.

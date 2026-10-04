@@ -10,8 +10,9 @@
  */
 import { readFileSync } from "node:fs";
 import { toScoreboardState, IDLE } from "./game-state.js";
-import { ScoreboardServer } from "./server.js";
 import type { RecordedFrame } from "./recorder.js";
+import { buildApp } from "../http.js";
+import { createDeps } from "../runtime.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -29,15 +30,16 @@ async function main(): Promise<void> {
 
   const speed = Number(flagValue("--speed") ?? 1);
   const instant = process.argv.includes("--instant");
-  const port = Number(process.env.PORT ?? 8080);
+  const port = Number(process.env.PORT ?? 8743);
 
   const frames = readFileSync(file, "utf8")
     .split("\n")
     .filter((line) => line.trim().length > 0)
     .map((line) => JSON.parse(line) as RecordedFrame);
 
-  const server = new ScoreboardServer(port);
-  await server.start();
+  const deps = createDeps();
+  const app = await buildApp(deps);
+  await app.listen({ port, host: "0.0.0.0" });
   console.log(`Replay laeuft auf http://localhost:${port}/`);
   console.log(`${frames.length} Frames aus ${file}. Oeffne die Seite, dann startet es.`);
 
@@ -49,7 +51,7 @@ async function main(): Promise<void> {
     previous = recorded.t;
 
     const state = toScoreboardState(recorded.frame);
-    if (state !== IDLE) server.broadcast(state);
+    if (state !== IDLE) deps.hub.broadcast(state);
     process.stdout.write(`\rFrame ${index + 1}/${frames.length}  (${state.phase})   `);
   }
 

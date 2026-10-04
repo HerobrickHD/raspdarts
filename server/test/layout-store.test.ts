@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { DEFAULT_LAYOUT } from "../src/layout.js";
-import { LayoutStore } from "../src/layout-store.js";
+import { DEFAULT_LAYOUT } from "../src/beamer/layout.js";
+import { LayoutStore } from "../src/beamer/layout-store.js";
 
 let dir: string;
 let store: LayoutStore;

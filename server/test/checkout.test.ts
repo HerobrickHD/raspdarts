@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { checkoutPath } from "../src/checkout.js";
+import { checkoutPath } from "../src/beamer/checkout.js";
 
 describe("checkoutPath", () => {
   test("schlaegt D20 fuer 40 vor", () => {
