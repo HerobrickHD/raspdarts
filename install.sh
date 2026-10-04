@@ -31,8 +31,8 @@ main() {
     sudo apt-get install -y git curl
   fi
   if [[ ! -x /usr/bin/node ]] || ! /usr/bin/node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)'; then
-    info "Installiere Node.js 20 ..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+    info "Installiere Node.js 22 ..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
     sudo apt-get install -y nodejs
   fi
 
@@ -59,7 +59,7 @@ main() {
   else
     info "Unvollstaendige Installation gefunden - setze sie fort ..."
   fi
-  (cd "$INSTALL_DIR/server" && npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev)
+  (cd "$INSTALL_DIR/server" && npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev --no-save)
   sudo bash "$INSTALL_DIR/server/scripts/setup-root.sh" --hostname
   sudo systemctl restart raspdarts
 

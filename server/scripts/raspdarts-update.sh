@@ -11,10 +11,12 @@ as_user() { sudo -u "$TARGET_USER" -H "$@"; }
 
 echo "=== Raspdarts aktualisieren ==="
 echo "--- git pull ---"
+# npm kann die Lock-Datei veraendern; sonst scheitert git pull --ff-only.
+as_user git -C "$INSTALL_DIR" checkout -- server/package-lock.json
 as_user git -C "$INSTALL_DIR" pull --ff-only origin main
 
 echo "--- Build ---"
-as_user bash -c "cd '$INSTALL_DIR/server' && npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev"
+as_user bash -c "cd '$INSTALL_DIR/server' && npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev --no-save"
 
 bash "$INSTALL_DIR/server/scripts/setup-root.sh"
 

@@ -215,7 +215,7 @@ ergänzt um `beamer`. Ist Autodarts nicht installiert, ist
 
 ### Installation und Update
 
-- `install.sh` (als normaler Benutzer, nutzt sudo): Node 20 bei Bedarf, Klon
+- `install.sh` (als normaler Benutzer, nutzt sudo): Node 22 bei Bedarf (Node 20 ist seit April 2026 ohne Sicherheitsupdates), Klon
   nach `~/raspdarts`, im Ordner `server/`: `npm ci`, `npm run build`,
   `npm prune --omit=dev`. Danach Root-Skripte, sudoers, Hostname `raspdarts`,
   systemd-Dienst.

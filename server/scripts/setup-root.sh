@@ -44,10 +44,12 @@ if [[ "${1:-}" == "--hostname" ]]; then
   hostnamectl set-hostname raspdarts
   sed -i 's/127\.0\.1\.1.*/127.0.1.1\traspdarts/' /etc/hosts
   systemctl restart avahi-daemon || true
-  sleep 2
-  actual="$(avahi-resolve --name raspdarts.local 2>/dev/null | awk '{print $1}' || true)"
-  if [[ "$actual" != "raspdarts.local" ]]; then
-    echo "WARNUNG: raspdarts.local ist im Netz nicht eindeutig erreichbar (mDNS-Kollision?)."
-    echo "         Die Extension findet den Pi dann eventuell nicht."
+  if command -v avahi-resolve >/dev/null 2>&1; then
+    sleep 2
+    resolved="$(avahi-resolve -4 --name raspdarts.local 2>/dev/null | awk '{print $2}' || true)"
+    if [[ -n "$resolved" ]] && ! hostname -I | tr ' ' '\n' | grep -qx "$resolved"; then
+      echo "WARNUNG: raspdarts.local zeigt auf $resolved - ein anderes Geraet im Netz heisst schon so."
+      echo "         Die Extension findet diesen Pi dann eventuell nicht."
+    fi
   fi
 fi

@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import type { RecordedFrame } from "./recorder.js";
 import { buildApp } from "../http.js";
 import { createDeps } from "../runtime.js";
+import { JobRunner } from "../system/jobs.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -37,6 +38,10 @@ async function main(): Promise<void> {
     .map((line) => JSON.parse(line) as RecordedFrame);
 
   const deps = createDeps({ record: false });
+  // Am Schreibtisch darf kein Reboot-Knopf den Rechner wirklich neu starten.
+  deps.jobs = new JobRunner(() => {
+    throw new Error("Im Replay werden keine Root-Skripte gestartet");
+  });
   const app = await buildApp(deps);
   await app.listen({ port, host: "0.0.0.0" });
   console.log(`Replay laeuft auf http://localhost:${port}/`);

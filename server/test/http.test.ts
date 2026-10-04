@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/http.js";
+import { buildApp, isAllowedHost } from "../src/http.js";
 import { DEFAULT_LAYOUT } from "../src/beamer/layout.js";
 import { testDeps } from "./helpers.js";
 
@@ -69,6 +69,57 @@ describe("Header-Schutz", () => {
 
     expect(response.headers["access-control-allow-origin"]).toBeUndefined();
   });
+});
+
+describe("Host-Pruefung (DNS-Rebinding)", () => {
+  const get = (host: string) =>
+    app.inject({
+      method: "GET",
+      url: "/api/layout/beamer",
+      headers: { "x-raspdarts": "1", host },
+    });
+
+  test("weist einen fremden Host mit 403 ab", async () => {
+    app = await buildApp(testDeps());
+
+    const response = await get("evil.example");
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "Unbekannter Host" });
+  });
+
+  test("laesst raspdarts.local durch", async () => {
+    app = await buildApp(testDeps());
+
+    expect((await get("raspdarts.local:8743")).statusCode).toBe(200);
+  });
+
+  test("laesst eine IP-Adresse durch", async () => {
+    app = await buildApp(testDeps());
+
+    expect((await get("192.168.1.42:8743")).statusCode).toBe(200);
+  });
+});
+
+describe("isAllowedHost", () => {
+  test.each([
+    "raspdarts.local",
+    "RASPDARTS.LOCAL:8743",
+    "raspdarts",
+    "localhost:8743",
+    "127.0.0.1",
+    "192.168.1.42:8743",
+    "[::1]:8743",
+  ])("erlaubt %s", (host) => {
+    expect(isAllowedHost(host)).toBe(true);
+  });
+
+  test.each(["evil.example", "raspdarts.local.evil.example", undefined, ""])(
+    "verweigert %s",
+    (host) => {
+      expect(isAllowedHost(host)).toBe(false);
+    },
+  );
 });
 
 describe("Layout-API", () => {

@@ -6,6 +6,11 @@
  * schickt einen eigenen Header von einer fremden Seite nur nach einer
  * CORS-Freigabe - und die gibt dieser Server nie. Damit kann keine Webseite,
  * die jemand im Heimnetz oeffnet, den Pi steuern.
+ *
+ * Zusaetzlich muss der Host-Header zu /api passen (raspdarts.local, raspdarts,
+ * localhost oder eine IP-Adresse). Sonst koennte eine Webseite ihren eigenen
+ * Namen per DNS-Rebinding auf die Adresse des Pi legen, damit same-origin
+ * werden und den Header selbst setzen.
  */
 import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
@@ -18,6 +23,18 @@ import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
 export const CLIENT_HEADER = "x-raspdarts";
+
+const ALLOWED_HOSTNAMES = new Set(["raspdarts.local", "raspdarts", "localhost"]);
+const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+const IPV6_BRACKETED = /^\[[0-9a-f:.]+\]$/;
+
+/** Erlaubt nur Namen des Pi und IP-Adressen; alles andere ist ein fremder Name. */
+export function isAllowedHost(host: string | undefined): boolean {
+  if (!host) return false;
+  const lower = host.toLowerCase();
+  const name = lower.startsWith("[") ? lower.slice(0, lower.indexOf("]") + 1) : lower.replace(/:\d*$/, "");
+  return ALLOWED_HOSTNAMES.has(name) || IPV4.test(name) || IPV6_BRACKETED.test(name);
+}
 
 const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
 
@@ -48,7 +65,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.addHook("onRequest", async (request, reply) => {
     // Geprueft wird die erkannte Route, nicht die rohe URL (Prozent-Kodierung).
-    if (request.routeOptions.url?.startsWith("/api/") && request.headers[CLIENT_HEADER] !== "1") {
+    if (!request.routeOptions.url?.startsWith("/api/")) return;
+    if (!isAllowedHost(request.headers.host)) {
+      return reply.code(403).send({ error: "Unbekannter Host" });
+    }
+    if (request.headers[CLIENT_HEADER] !== "1") {
       return reply.code(403).send({ error: "X-Raspdarts-Header fehlt" });
     }
   });

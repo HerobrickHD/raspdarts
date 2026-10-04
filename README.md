@@ -17,6 +17,8 @@ play.autodarts.io (Laptop)
 Raspberry Pi 5 ── raspdarts (ein Dienst, Port 8743) ── Beamer: http://raspdarts.local:8743/
 ```
 
+Auf neueren Pi-OS-Versionen heißt der Befehl `chromium` statt `chromium-browser`.
+
 | Ordner | Inhalt |
 |---|---|
 | `server/` | der Dienst auf dem Pi (TypeScript, Fastify) |
@@ -35,7 +37,7 @@ mit play.autodarts.io offen ist.
 curl -fsSL https://raw.githubusercontent.com/HerobrickHD/raspdarts/main/install.sh | bash
 ```
 
-Der Installer richtet Node.js 20 ein, klont nach `~/raspdarts`, baut den Dienst, setzt
+Der Installer richtet Node.js 22 ein, klont nach `~/raspdarts`, baut den Dienst, setzt
 den Hostnamen auf `raspdarts` und startet den systemd-Dienst `raspdarts`. Eine alte
 Installation des Raspdarts-Backends wird erkannt und ersetzt.
 
@@ -65,6 +67,9 @@ cd extension && bash build.sh
 
 - Jede Anfrage an `/api/*` braucht den Header `X-Raspdarts: 1`. Fremde Webseiten
   können ihn nicht senden; eine Seite im Heimnetz kann den Pi also nicht steuern.
+- `/api` nimmt nur Anfragen an `raspdarts.local`, `raspdarts`, `localhost` oder eine
+  IP-Adresse an. Das verhindert, dass eine Webseite den Pi per DNS-Rebinding erreicht.
+  Wer einen eigenen Hostnamen nutzt, muss ihn in `server/src/http.ts` ergänzen.
 - `/ingest` nimmt nur Verbindungen von Browser-Extensions an.
 - Root-Rechte hat der Dienst nur für sechs feste Skripte unter
   `/usr/local/lib/raspdarts/`.
