@@ -3,8 +3,8 @@
  * den einzigen Vertrag zwischen Dienst und Beamer-Anzeige.
  *
  * Diese Datei ist die einzige Stelle, die das Drahtformat von Autodarts kennt.
- * Wenn `npm run discover` zeigt, dass Felder anders heissen, wird nur hier
- * angepasst; Server und Anzeige bleiben unberuehrt.
+ * Zeigt eine echte Aufzeichnung (data/sessions/), dass Felder anders heissen,
+ * wird nur hier angepasst; Server und Anzeige bleiben unberuehrt.
  */
 import { checkoutPath, type Dart } from "./checkout.js";
 

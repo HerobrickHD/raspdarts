@@ -1,6 +1,6 @@
-# Autodarts Beamer — worum es geht
+# Raspdarts — worum es geht
 
-Stand: 20. September 2026
+Stand: 4. Oktober 2026
 
 ## Die Idee
 
@@ -31,11 +31,15 @@ versucht, wird chaotisch und nie fertig.
 ## Aufbau
 
 ```
+Laptop: play.autodarts.io + Raspdarts-Extension
+│   liest den Spielstand der Seite mit
+▼
 Raspberry Pi 5 (läuft ohnehin durch, hat die Kameras)
 │
-├── autodarts-beamer (Node-Dienst)
-│     hält die Verbindung zu Autodarts, rechnet Checkout-Wege aus
-│     und verteilt einen fertigen Spielstand-Schnappschuss
+├── raspdarts (ein Node-Dienst)
+│     nimmt die Spieldaten an, rechnet Checkout-Wege aus,
+│     verteilt einen fertigen Spielstand-Schnappschuss
+│     und verwaltet den Pi (Status, Updates, Neustart)
 │
 └── Beamer ← Browser im Vollbild, zeigt nur an
 ```
@@ -43,6 +47,11 @@ Raspberry Pi 5 (läuft ohnehin durch, hat die Kameras)
 Dazwischen steht genau ein Vertrag: der `ScoreboardState`. Der Dienst schickt
 bei jeder Änderung einen vollständigen Schnappschuss, die Anzeige rendert ihn
 und hält selbst keinen Zustand.
+
+Die Spieldaten kommen nicht vom Pi selbst, sondern von der Extension im Browser,
+in dem ohnehin gespielt wird. Der Pi braucht dadurch keine Autodarts-Anmeldung.
+Der Preis: Der Beamer zeigt nur etwas an, solange ein Tab mit play.autodarts.io
+offen ist.
 
 **Warum diese Trennung wichtig ist:**
 
@@ -52,7 +61,8 @@ und hält selbst keinen Zustand.
 - Mehrere Anzeigen gleichzeitig gehen ohne Zusatzaufwand — Beamer an der Wand,
   Handy in der Hand, beide aktuell.
 - Autodarts hat keine offizielle API. Ändert sich ihr Datenformat, ist genau
-  eine Datei betroffen (`game-state.ts`). Server und Anzeige merken nichts davon.
+  eine Datei betroffen (`server/src/beamer/game-state.ts`). Server und Anzeige
+  merken nichts davon.
 
 ## Ohne Dartscheibe entwickeln
 
@@ -110,25 +120,12 @@ projizieren, statische statt bewegter Flächen, Helligkeit reduzieren.
 Solange das ungeklärt ist, bleibt die Scheibenfläche dunkel. Die Stufen 1 bis 4
 berühren das Problem nicht.
 
-## Wo es gerade hakt
+## Was als Nächstes ansteht
 
-Autodarts hat die Anmeldung im Herbst 2026 von Keycloak auf ein eigenes
-OAuth-2.0-System umgestellt und dabei den Passwort-Login gestrichen. Der alte
-Anmeldeserver ist abgeschaltet.
-
-Für neue Anwendungen heißt das: Man braucht eine bei Autodarts registrierte
-**Client-ID**. Die ist angefragt, aber noch nicht da. Bis dahin lässt sich
-nichts gegen die echte API testen.
-
-Der Rest ist davon unberührt — die Anzeige wird gegen aufgezeichnete Daten
-entwickelt und läuft.
-
-## Was danach ansteht
-
-Sobald die Client-ID vorliegt, ein einziges Leg mit `npm run discover` an der
-Scheibe aufzeichnen. Damit wird geprüft, ob das Datenformat den Annahmen
-entspricht, die aus Community-Quellen rekonstruiert wurden. Danach ist das
-Projekt eigenständig lauffähig.
+Ein einziges Leg an der Scheibe werfen, während die Extension mitliest. Die
+Aufzeichnung unter `server/data/sessions/` zeigt dann zum ersten Mal echten
+Verkehr. Damit wird geprüft, ob das Datenformat den Annahmen in
+`docs/protocol.md` entspricht, die aus Community-Quellen rekonstruiert wurden.
 
 ## Grundsätze
 

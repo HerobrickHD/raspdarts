@@ -5,9 +5,9 @@ import { IDLE, toScoreboardState } from "../src/beamer/game-state.js";
  * Nachbau der Match-State-Nachricht laut docs/protocol.md.
  *
  * ACHTUNG: Diese Struktur ist aus Community-Quellen rekonstruiert und noch
- * nicht gegen eine echte Aufzeichnung geprueft (Schritt 0). Wenn `npm run
- * discover` eine abweichende Struktur zeigt, wird dieses Fixture zusammen mit
- * dem Parser korrigiert - die Erwartungen darunter bleiben gueltig, weil sie
+ * nicht gegen eine echte Aufzeichnung geprueft (Schritt 0). Wenn die
+ * erste echte Aufzeichnung eine abweichende Struktur zeigt, wird dieses Fixture
+ * zusammen mit dem Parser korrigiert - die Erwartungen darunter bleiben gueltig, weil sie
  * das Verhalten der Anzeige beschreiben, nicht das Drahtformat.
  */
 function matchState(overrides: Record<string, unknown> = {}) {
