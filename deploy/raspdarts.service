@@ -1,0 +1,19 @@
+[Unit]
+Description=Raspdarts - Pi-Verwaltung und Beamer-Scoreboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__HOME__/raspdarts/server
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+# Die Kamera-Erkennung hat Vorrang: dieser Dienst laeuft mit niedrigerer
+# Prioritaet, damit er der Dart-Erkennung keine Rechenzeit wegnimmt.
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
