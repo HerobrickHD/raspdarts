@@ -14,6 +14,7 @@ import fastifyWebsocket from "@fastify/websocket";
 import type { DisplayHub } from "./beamer/display-hub.js";
 import { isExtensionOrigin, type Ingest } from "./beamer/ingest.js";
 import type { LayoutStore } from "./beamer/layout-store.js";
+import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
 export const CLIENT_HEADER = "x-raspdarts";
@@ -25,7 +26,22 @@ export interface AppDeps {
   layouts: LayoutStore;
   ingest: Ingest;
   status: () => Promise<SystemStatus>;
+  jobs: JobRunner;
 }
+
+/** Langlaeufer: Ausgabe wird zeilenweise als Server-Sent Events gestreamt. */
+const JOB_ROUTES: Record<string, string> = {
+  "/api/autodarts/install": "autodarts-install.sh",
+  "/api/autodarts/uninstall": "autodarts-uninstall.sh",
+  "/api/system/update": "raspdarts-update.sh",
+  "/api/system/uninstall": "raspdarts-uninstall.sh",
+};
+
+/** Sofort-Aktionen: erst antworten, dann ausfuehren - danach ist der Pi weg. */
+const POWER_ROUTES: Record<string, string> = {
+  "/api/system/reboot": "reboot.sh",
+  "/api/system/shutdown": "shutdown.sh",
+};
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
@@ -74,6 +90,36 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       return reply.code(500).send({ error: (error as Error).message });
     }
   });
+
+  for (const [path, script] of Object.entries(JOB_ROUTES)) {
+    app.post(path, (_request, reply) => {
+      if (deps.jobs.busy) return reply.code(409).send({ error: "Already running" });
+
+      reply.hijack();
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+        Connection: "keep-alive",
+      });
+      // Kopfzeilen sofort senden: der Aufrufer soll den Stream sehen, bevor
+      // das Skript die erste Zeile ausgibt.
+      raw.flushHeaders();
+      deps.jobs.run(script, (event) => {
+        if (raw.writableEnded || raw.destroyed) return;
+        raw.write(`data: ${JSON.stringify(event)}\n\n`);
+        if (event.type === "done") raw.end();
+      });
+    });
+  }
+
+  for (const [path, script] of Object.entries(POWER_ROUTES)) {
+    app.post(path, async () => {
+      setTimeout(() => deps.jobs.fire(script), 500);
+      return { ok: true };
+    });
+  }
 
   return app;
 }

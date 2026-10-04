@@ -8,6 +8,7 @@ import { Ingest } from "../src/beamer/ingest.js";
 import { LayoutStore } from "../src/beamer/layout-store.js";
 import { createFramePipeline } from "../src/beamer/pipeline.js";
 import type { AppDeps } from "../src/http.js";
+import { JobRunner } from "../src/system/jobs.js";
 import type { SystemStatus } from "../src/system/status.js";
 
 /**
@@ -29,6 +30,9 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
       autodarts_version: "unknown",
       ip_address: "192.168.1.42",
       raspdarts_version: "2.0.0",
+    }),
+    jobs: new JobRunner(() => {
+      throw new Error("In Tests werden keine echten Skripte gestartet");
     }),
     ...overrides,
   };
