@@ -97,7 +97,7 @@ Alles außer `<matchId>.state` ergibt IDLE und ändert die Anzeige nicht.
   Segmenten wie in `throws` (52 Rest: `S20`, `D16`). Reichen die übrigen Darts
   der Aufnahme nicht mehr, zeigt er schon den Weg für die nächste Aufnahme
   (112 Rest, ein Dart übrig: `T20 S12 D20`). Raspdarts zeigt ihn an, wenn er
-  in die laufende Aufnahme passt; sonst rechnet `checkout.ts`.
+  in die laufende Aufnahme passt; sonst zeigt der Beamer keinen Weg.
 
 Die `coords` sind normalisierte Einschlagkoordinaten. Sie werden noch nicht
 angezeigt, aber mit aufgezeichnet - sie sind das Material für spätere

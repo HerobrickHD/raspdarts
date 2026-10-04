@@ -37,7 +37,7 @@ Laptop: play.autodarts.com + Raspdarts-Extension
 Raspberry Pi 5 (läuft ohnehin durch, hat die Kameras)
 │
 ├── raspdarts (ein Node-Dienst)
-│     nimmt die Spieldaten an, rechnet Checkout-Wege aus,
+│     nimmt die Spieldaten an, übersetzt sie in den Spielstand,
 │     verteilt einen fertigen Spielstand-Schnappschuss
 │     und verwaltet den Pi (Status, Updates, Neustart)
 │

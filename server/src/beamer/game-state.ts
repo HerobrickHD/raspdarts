@@ -6,7 +6,8 @@
  * Zeigt eine echte Aufzeichnung (data/sessions/), dass Felder anders heissen,
  * wird nur hier angepasst; Server und Anzeige bleiben unberuehrt.
  */
-import { checkoutPath, type Dart } from "./checkout.js";
+/** Segment-Kurzschreibweise, wie sie auf dem Beamer erscheint: "T20", "D8", "BULL". */
+export type Dart = string;
 
 export interface PlayerView {
   name: string;
@@ -51,8 +52,8 @@ function dartLabel(thrown: unknown): Dart {
 
 /**
  * "T20" aus dem Segment lesen - notfalls aus Multiplikator und Nummer bauen.
- * Den Bull bauen wir immer selbst: Autodarts nennt ihn "Bull", der
- * Checkout-Vorschlag aus checkout.ts "BULL".
+ * Den Bull bauen wir immer selbst: Autodarts nennt ihn "Bull", auf dem Beamer
+ * steht er wie die anderen Segmente in Grossbuchstaben.
  */
 function segmentLabel(raw: unknown): Dart {
   const segment = isObject(raw) ? raw : {};
@@ -69,7 +70,8 @@ function segmentLabel(raw: unknown): Dart {
 /**
  * Der Checkout-Weg, den Autodarts selbst mitschickt - aber nur, wenn er mit den
  * restlichen Darts dieser Aufnahme machbar ist. Reichen sie nicht, zeigt
- * Autodarts schon den Weg fuer die naechste Aufnahme; dann rechnen wir selbst.
+ * Autodarts schon den Weg fuer die naechste Aufnahme; dann zeigen wir keinen.
+ * Selbst gerechnet wird nicht: nur Autodarts kennt den Spielmodus sicher.
  */
 function autodartsCheckout(state: Json, dartsLeft: number): Dart[] | null {
   const inner = isObject(state["state"]) ? state["state"] : {};
@@ -121,10 +123,8 @@ export function toScoreboardState(raw: unknown): ScoreboardState {
     return sum + asNumber(segment["number"]) * asNumber(segment["multiplier"]);
   }, 0);
 
-  const remaining = players[activeIndex]?.score ?? 0;
   const variant = typeof state["variant"] === "string" ? state["variant"] : "X01";
   const leg = typeof state["leg"] === "number" ? state["leg"] : null;
-  const dartsLeft = DARTS_PER_TURN - darts.length;
 
   return {
     phase: "playing",
@@ -132,6 +132,6 @@ export function toScoreboardState(raw: unknown): ScoreboardState {
     leg,
     players,
     currentTurn: { darts, turnScore, busted: state["turnBusted"] === true },
-    checkout: autodartsCheckout(state, dartsLeft) ?? checkoutPath(remaining, dartsLeft),
+    checkout: autodartsCheckout(state, DARTS_PER_TURN - darts.length),
   };
 }

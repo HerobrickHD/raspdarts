@@ -42,31 +42,29 @@ describe("toScoreboardState", () => {
     ]);
   });
 
-  test("berechnet den Checkout-Weg des aktiven Spielers", () => {
+  test("zeigt keinen Checkout-Weg, wenn Autodarts keinen schickt", () => {
+    // Nur Autodarts kennt den Spielmodus (Double Out, Straight Out ...) sicher.
     const state = toScoreboardState(matchState({ gameScores: [40, 284] }));
-
-    if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.checkout).toEqual(["D20"]);
-  });
-
-  test("liefert keinen Checkout-Weg bei einer Bogey-Zahl", () => {
-    const state = toScoreboardState(matchState({ gameScores: [169, 284] }));
 
     if (state.phase !== "playing") throw new Error("unerreichbar");
     expect(state.checkout).toBeNull();
   });
 
-  test("beruecksichtigt bereits geworfene Darts beim Checkout-Vorschlag", () => {
+  test("zeigt den Vorschlag, wenn er in die restlichen Darts der Aufnahme passt", () => {
     const state = toScoreboardState(
       matchState({
         gameScores: [110, 284],
         turns: [{ throws: [{ segment: { name: "T20", multiplier: 3, number: 20 } }] }],
+        state: {
+          checkoutGuide: [
+            { bed: "Triple", multiplier: 3, name: "T20", number: 20 },
+            { bed: "Double", multiplier: 2, name: "Bull", number: 25 },
+          ],
+        },
       }),
     );
 
     if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.currentTurn.darts).toEqual(["T20"]);
-    // Nur noch 2 Darts: 110 ist als T20 BULL machbar
     expect(state.checkout).toEqual(["T20", "BULL"]);
   });
 
@@ -87,7 +85,7 @@ describe("toScoreboardState", () => {
     expect(state.checkout).toEqual(["S20", "D16"]);
   });
 
-  test("rechnet selbst, wenn der Vorschlag von Autodarts nicht mehr in die Aufnahme passt", () => {
+  test("zeigt keinen Checkout-Weg, wenn der Vorschlag nicht mehr in die Aufnahme passt", () => {
     // Autodarts zeigt dann schon den Weg fuer die naechste Aufnahme
     const state = toScoreboardState(
       matchState({
@@ -110,7 +108,7 @@ describe("toScoreboardState", () => {
     );
 
     if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.checkout).toEqual(["D20"]);
+    expect(state.checkout).toBeNull();
   });
 
   test("schreibt den Bull einheitlich, egal wie Autodarts ihn nennt", () => {
