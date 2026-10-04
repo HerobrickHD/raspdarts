@@ -1,18 +1,17 @@
+#!/usr/bin/env bash
+# Baut dist/chrome/ und dist/firefox/ aus src/, den gemeinsamen Dateien und dem
+# jeweiligen Manifest.
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC="$SCRIPT_DIR"
 DIST="$SCRIPT_DIR/dist"
-
-FILES=(background.js content.js modal.html modal.css icons)
 
 for BROWSER in chrome firefox; do
   TARGET="$DIST/$BROWSER"
-  rm -rf "$TARGET" && mkdir -p "$TARGET/icons"
-  for f in "${FILES[@]}"; do
-    cp -r "$SRC/$f" "$TARGET/"
-  done
-  cp "$SRC/manifest.$BROWSER.json" "$TARGET/manifest.json"
+  rm -rf "$TARGET" && mkdir -p "$TARGET"
+  cp "$SCRIPT_DIR"/src/*.js "$TARGET/"
+  cp -r "$SCRIPT_DIR/modal.html" "$SCRIPT_DIR/modal.css" "$SCRIPT_DIR/icons" "$TARGET/"
+  cp "$SCRIPT_DIR/manifest.$BROWSER.json" "$TARGET/manifest.json"
   echo "Gebaut: $TARGET"
 done
 
-echo "Fertig! Lade dist/chrome/ in Chrome, dist/firefox/manifest.json in Firefox."
+echo "Fertig! Chrome: dist/chrome/ entpackt laden. Firefox: dist/firefox/manifest.json als temporaeres Add-on laden."

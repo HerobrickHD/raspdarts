@@ -37,6 +37,13 @@ function updateButtonReachability(reachable) {
   }
 }
 
+function updateBeamerIndicator(connected) {
+  const dot = document.getElementById('raspdarts-beamer-dot');
+  if (dot) dot.style.background = connected ? '#ffffff' : 'rgba(0,0,0,0.35)';
+  const label = document.getElementById('raspdarts-beamer-status');
+  if (label) label.textContent = connected ? 'connected' : 'not connected';
+}
+
 // Nav button injection
 
 function injectNavButton() {
@@ -67,6 +74,12 @@ function injectNavButton() {
 
     btn.appendChild(iconImg);
     btn.appendChild(labelSpan);
+
+    // Punkt im Button: hell = Spieldaten-Verbindung zum Pi steht, dunkel = nicht.
+    const beamerDot = document.createElement('span');
+    beamerDot.id = 'raspdarts-beamer-dot';
+    beamerDot.style.cssText = 'width:8px;height:8px;border-radius:50%;flex-shrink:0;background:rgba(0,0,0,0.35);';
+    btn.appendChild(beamerDot);
     btn.addEventListener('click', openModal);
     nav.appendChild(btn);
 
@@ -133,7 +146,7 @@ async function openModal() {
         ? 'Really update Autodarts on the Raspberry Pi?'
         : 'Really install Autodarts on the Raspberry Pi?',
       confirmBtnClass: 'raspdarts-btn-primary',
-      action: { type: 'stream', url: '/autodarts/update' },
+      action: { type: 'stream', url: '/api/autodarts/install' },
     });
   });
   document.getElementById('btn-autodarts-monitor').addEventListener('click', () => {
@@ -144,7 +157,7 @@ async function openModal() {
       title: 'Uninstall Autodarts',
       confirmText: 'Really uninstall Autodarts from the Raspberry Pi?',
       confirmBtnClass: 'raspdarts-btn-danger',
-      action: { type: 'stream', url: '/autodarts/uninstall' },
+      action: { type: 'stream', url: '/api/autodarts/uninstall' },
     });
   });
   document.getElementById('btn-system-update').addEventListener('click', () => {
@@ -152,7 +165,7 @@ async function openModal() {
       title: 'Update Raspdarts',
       confirmText: 'Really update Raspdarts on the Raspberry Pi?',
       confirmBtnClass: 'raspdarts-btn-primary',
-      action: { type: 'stream', url: '/system/update' },
+      action: { type: 'stream', url: '/api/system/update' },
     });
   });
   document.getElementById('btn-system-uninstall').addEventListener('click', () => {
@@ -160,7 +173,7 @@ async function openModal() {
       title: 'Uninstall Raspdarts',
       confirmText: 'Really uninstall Raspdarts from the Raspberry Pi?',
       confirmBtnClass: 'raspdarts-btn-danger',
-      action: { type: 'stream', url: '/system/uninstall' },
+      action: { type: 'stream', url: '/api/system/uninstall' },
     });
   });
   document.getElementById('btn-reboot').addEventListener('click', () => {
@@ -168,7 +181,7 @@ async function openModal() {
       title: 'Restart',
       confirmText: 'Really restart the Raspberry Pi?',
       confirmBtnClass: 'raspdarts-btn-warning',
-      action: { type: 'fetch', url: '/reboot', doneText: 'Restarting Pi\u2026', autoClose: 3000 },
+      action: { type: 'fetch', url: '/api/system/reboot', doneText: 'Restarting Pi\u2026', autoClose: 3000 },
     });
   });
   document.getElementById('btn-shutdown').addEventListener('click', () => {
@@ -176,7 +189,7 @@ async function openModal() {
       title: 'Shut Down',
       confirmText: 'Really shut down the Raspberry Pi?',
       confirmBtnClass: 'raspdarts-btn-danger',
-      action: { type: 'fetch', url: '/shutdown', doneText: 'Shutting down Pi\u2026', autoClose: 3000 },
+      action: { type: 'fetch', url: '/api/system/shutdown', doneText: 'Shutting down Pi\u2026', autoClose: 3000 },
     });
   });
 
@@ -202,11 +215,12 @@ function closeModal() {
 // Status polling
 
 async function fetchStatus() {
-  const result = await sendToBackground({ type: 'fetch', url: '/status' });
+  const result = await sendToBackground({ type: 'fetch', url: '/api/status' });
 
   if (!result || !result.ok) {
     consecutiveFailures++;
     updateButtonReachability(false);
+    updateBeamerIndicator(false);
     if (modalRoot) {
       document.getElementById('raspdarts-error')?.classList.remove('raspdarts-hidden');
       document.getElementById('raspdarts-content')?.classList.add('raspdarts-hidden');
@@ -224,6 +238,7 @@ async function fetchStatus() {
   document.getElementById('raspdarts-content')?.classList.remove('raspdarts-hidden');
 
   const d = result.data;
+  updateBeamerIndicator(Boolean(d.beamer?.ingest_connected));
   const setValue = (id, val) => {
     const el = document.querySelector(`#${id} .raspdarts-card-value`);
     if (el) { el.textContent = val; el.classList.remove('raspdarts-skeleton'); }

@@ -1,17 +1,34 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Raspdarts",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "raspdarts@herobrickhd",
+      "strict_min_version": "128.0"
+    }
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": [
+  "host_permissions": [
     "https://play.autodarts.io/*",
     "http://raspdarts.local:8743/*"
   ],
   "content_scripts": [
+    {
+      "matches": ["https://play.autodarts.io/*"],
+      "js": ["forward.js", "page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://play.autodarts.io/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    },
     {
       "matches": ["https://play.autodarts.io/*"],
       "js": ["content.js"],
@@ -19,8 +36,12 @@
     }
   ],
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "scripts": ["background.js"]
   },
-  "web_accessible_resources": ["modal.html", "modal.css", "icons/*"]
+  "web_accessible_resources": [
+    {
+      "resources": ["modal.html", "modal.css", "icons/*"],
+      "matches": ["https://play.autodarts.io/*"]
+    }
+  ]
 }
