@@ -115,7 +115,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   }
 
   for (const [path, script] of Object.entries(POWER_ROUTES)) {
-    app.post(path, async () => {
+    app.post(path, async (_request, reply) => {
+      // Mitten in einer Installation oder einem Update darf der Pi nicht ausgehen.
+      if (deps.jobs.busy) return reply.code(409).send({ error: "Already running" });
       setTimeout(() => deps.jobs.fire(script), 500);
       return { ok: true };
     });

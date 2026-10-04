@@ -13,7 +13,7 @@ interface FakeChild extends EventEmitter {
 }
 
 /** Ein Kindprozess, der Zeilen ausgibt und dann mit `code` endet - oder haengt. */
-function fakeChild(options: { lines?: string[]; code?: number; hang?: boolean } = {}): FakeChild {
+function fakeChild(options: { lines?: string[]; chunks?: (string | Buffer)[]; code?: number; hang?: boolean } = {}): FakeChild {
   const child = Object.assign(new EventEmitter(), {
     stdout: new PassThrough(),
     stderr: new PassThrough(),
@@ -21,6 +21,7 @@ function fakeChild(options: { lines?: string[]; code?: number; hang?: boolean } 
   if (!options.hang) {
     setImmediate(() => {
       for (const line of options.lines ?? []) child.stdout.write(`${line}\n`);
+      for (const chunk of options.chunks ?? []) child.stdout.write(chunk);
       setImmediate(() => child.emit("close", options.code ?? 0));
     });
   }
@@ -74,6 +75,39 @@ describe("JobRunner", () => {
 
     expect(events).toEqual([{ type: "done", success: false, error: "sudo fehlt" }]);
     expect(runner.busy).toBe(false);
+  });
+
+  test("setzt Zeilen zusammen, die ueber mehrere Bloecke verteilt ankommen", async () => {
+    const runner = new JobRunner(() => asChild(fakeChild({ chunks: ["hal", "lo\nwel", "t\n"] })));
+
+    const events = await collect(runner, "x.sh");
+
+    expect(events).toEqual([
+      { type: "log", line: "hallo" },
+      { type: "log", line: "welt" },
+      { type: "done", success: true },
+    ]);
+  });
+
+  test("gibt einen Rest ohne Zeilenumbruch vor dem Ende aus", async () => {
+    const runner = new JobRunner(() => asChild(fakeChild({ chunks: ["ende"] })));
+
+    const events = await collect(runner, "x.sh");
+
+    expect(events).toEqual([
+      { type: "log", line: "ende" },
+      { type: "done", success: true },
+    ]);
+  });
+
+  test("setzt ein UTF-8-Zeichen zusammen, das auf zwei Bloecke verteilt ist", async () => {
+    const runner = new JobRunner(() =>
+      asChild(fakeChild({ chunks: [Buffer.from([0xc3]), Buffer.from([0xbc, 0x0a])] })),
+    );
+
+    const events = await collect(runner, "x.sh");
+
+    expect(events[0]).toEqual({ type: "log", line: "ü" });
   });
 
   test("laesst keinen zweiten Auftrag zu, solange einer laeuft", async () => {
@@ -150,6 +184,26 @@ describe("Routen", () => {
     expect(second.status).toBe(409);
     child.emit("close", 0);
     await first.text();
+  });
+
+  test("Neustart waehrend eines Auftrags: 409 und kein Start", async () => {
+    const started: string[] = [];
+    const jobs = new JobRunner((name) => {
+      started.push(name);
+      return asChild(fakeChild({ hang: true }));
+    });
+    app = await buildApp(testDeps({ jobs }));
+    jobs.run("raspdarts-update.sh", () => {});
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/system/reboot",
+      headers: { "x-raspdarts": "1" },
+    });
+
+    expect(response.statusCode).toBe(409);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(started).toEqual(["raspdarts-update.sh"]);
   });
 
   test.each([

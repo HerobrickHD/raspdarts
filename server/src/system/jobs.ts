@@ -18,8 +18,12 @@ type DoneEvent = Extract<JobEvent, { type: "done" }>;
 
 export type Spawner = (script: string) => ChildProcess;
 
-/** `sudo -n` bricht ab statt nach einem Passwort zu fragen. */
-export const sudoSpawner: Spawner = (script) => spawn("sudo", ["-n", `${SCRIPT_DIR}/${script}`]);
+/**
+ * `sudo -n` bricht ab statt nach einem Passwort zu fragen. Stdin ist zu: ein
+ * Skript, das etwas lesen will, soll scheitern statt die Sperre ewig zu halten.
+ */
+export const sudoSpawner: Spawner = (script) =>
+  spawn("sudo", ["-n", `${SCRIPT_DIR}/${script}`], { stdio: ["ignore", "pipe", "pipe"] });
 
 export class JobRunner {
   #busy = false;
@@ -51,21 +55,32 @@ export class JobRunner {
       return true;
     }
 
-    const forward = (chunk: Buffer) => {
-      for (const line of chunk.toString().split("\n")) {
-        if (line.trim()) emit({ type: "log", line });
-      }
+    // Pro Datenstrom puffern: eine Zeile kann auf mehrere Bloecke verteilt
+    // ankommen, ein UTF-8-Zeichen auch (setEncoding setzt es richtig zusammen).
+    const rests: string[] = [];
+    for (const stream of [child.stdout, child.stderr]) {
+      if (!stream) continue;
+      const index = rests.push("") - 1;
+      stream.setEncoding("utf8");
+      stream.on("data", (chunk: string) => {
+        const lines = ((rests[index] ?? "") + chunk).split("\n");
+        rests[index] = lines.pop() ?? "";
+        for (const line of lines) if (line.trim()) emit({ type: "log", line });
+      });
+    }
+    const flushRests = () => {
+      for (const rest of rests.splice(0)) if (rest.trim()) emit({ type: "log", line: rest });
     };
-    child.stdout?.on("data", forward);
-    child.stderr?.on("data", forward);
     child.on("error", (error) => finish({ type: "done", success: false, error: error.message }));
-    child.on("close", (code) =>
+    child.on("close", (code) => {
+      if (finished) return;
+      flushRests();
       finish(
         code === 0
           ? { type: "done", success: true }
           : { type: "done", success: false, error: `Exit code ${code}` },
-      ),
-    );
+      );
+    });
     return true;
   }
 
