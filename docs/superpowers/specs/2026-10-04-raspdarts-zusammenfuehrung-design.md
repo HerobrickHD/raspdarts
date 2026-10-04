@@ -10,7 +10,7 @@ Drei getrennte Projekte werden zu einem:
 |---|---|---|
 | `autodarts-beamer` | Scoreboard-Projektion (Stufe 1 fertig) | TypeScript, Fastify, ESM, Vitest |
 | `Raspdarts-backend` | Pi-Verwaltung: Status, Updates, Neustart | JavaScript, Express, CommonJS, Jest |
-| `Raspdarts` | Browser-Extension auf play.autodarts.io | JavaScript, Chrome MV3 / Firefox MV2 |
+| `Raspdarts` | Browser-Extension auf play.autodarts.io | JavaScript, Chrome MV3 / Firefox MV2 (künftig beide MV3) |
 
 Ergebnis ist das Repo `raspdarts` (`C:\Projekte\raspdarts`, GitHub
 `HerobrickHD/raspdarts`) mit **einem** Dienst auf dem Pi. Die Git-Historie der
@@ -64,7 +64,8 @@ raspdarts/
 │   ├── scripts/            Root-Skripte, werden nach /usr/local/lib/raspdarts/ installiert
 │   └── test/
 ├── extension/
-│   ├── src/                content.js, background.js, page-hook.js (neu)
+│   ├── src/                content.js, background.js,
+│   │                       forward.js, page-hook.js, bridge.js (neu)
 │   ├── modal.html, modal.css, icons/
 │   ├── manifest.chrome.json, manifest.firefox.json
 │   └── build.sh
@@ -85,7 +86,7 @@ play.autodarts.io
   └─ page-hook.js   (Seitenkontext, umhüllt window.WebSocket)
        │ window.postMessage, markiert
        ▼
-     content.js     (isolierter Kontext)
+     bridge.js      (isolierter Kontext)
        │ runtime-Port
        ▼
      background.js  ══ WebSocket ══▶  Pi :8743/ingest
@@ -100,22 +101,27 @@ play.autodarts.io
 
 - Läuft im Seitenkontext ab `document_start`, damit `window.WebSocket` umhüllt
   ist, bevor die Seite ihre Verbindung öffnet.
-- Chrome (MV3): eigener Content-Script-Eintrag mit `"world": "MAIN"`,
-  `"run_at": "document_start"`.
-- Firefox (MV2): `content.js` läuft ab `document_start` und fügt
-  `page-hook.js` als `<script>`-Tag ein (dafür in `web_accessible_resources`).
-- Weitergereicht werden nur **eingehende** Nachrichten von Verbindungen, deren
-  Host zu Autodarts gehört. Die Entscheidung trifft eine reine Funktion
-  `shouldForward(url, data)`, die ohne Browser testbar ist.
-- Das Verhalten der Seite bleibt unverändert: Der Wrapper gibt die echte
-  WebSocket-Instanz zurück und hängt nur einen zusätzlichen `message`-Listener an.
+- Beide Browser nutzen Manifest V3 mit einem Content-Script-Eintrag
+  `"world": "MAIN"`, `"run_at": "document_start"`. Firefox kann das ab Version
+  128; die Extension setzt `strict_min_version: "128.0"`. Eine
+  Script-Tag-Injektion unter MV2 wäre nicht zuverlässig: Ein nachgeladenes
+  Script startet asynchron, die Seite könnte ihren WebSocket vorher öffnen.
+- Weitergereicht werden nur **eingehende** Textnachrichten von Verbindungen,
+  deren Host `autodarts.io` oder `autodarts.com` ist (inklusive Subdomains). Die
+  Entscheidung trifft eine reine Funktion `shouldForward(url)` in `forward.js`,
+  die ohne Browser testbar ist.
+- Das Verhalten der Seite bleibt unverändert: Der Wrapper ist eine Unterklasse
+  des echten `WebSocket` und hängt nur einen zusätzlichen `message`-Listener an.
 
 ### Weiterleiten
 
 - `page-hook.js` → `window.postMessage({ source: "raspdarts-hook", … })`.
-  `content.js` nimmt nur Nachrichten mit dieser Markierung und von
-  `event.source === window` an.
-- `content.js` → `background.js` über einen langlebigen Port.
+  Ein eigenes Content-Script `bridge.js` (isolierter Kontext, ab
+  `document_start`) nimmt nur Nachrichten mit dieser Markierung und von
+  `event.source === window` an. `content.js` bleibt reine Oberfläche.
+- `bridge.js` → `background.js` über einen langlebigen Port. `bridge.js`
+  schickt alle 20 s ein Lebenszeichen über den Port, damit der Chrome-Service-Worker
+  und mit ihm die Verbindung zum Pi nicht nach 30 s Leerlauf beendet wird.
 - `background.js` hält die WebSocket-Verbindung zu
   `ws://raspdarts.local:8743/ingest`. Der Umweg über den Hintergrund ist nötig,
   weil eine `ws://`-Verbindung aus einer `https`-Seite als Mixed Content
@@ -128,8 +134,10 @@ play.autodarts.io
 
 ### Oberfläche
 
-- Der Raspdarts-Button bekommt einen kleinen Punkt: grün, wenn Spieldaten zum Pi
-  fließen, sonst grau.
+- Der Raspdarts-Button bekommt einen kleinen Punkt: weiß, wenn die Verbindung
+  zum Pi für Spieldaten steht, sonst abgedunkelt. (Der Button selbst ist grün,
+  ein grüner Punkt wäre darauf unsichtbar.) Aktualisiert wird er mit der
+  vorhandenen Statusabfrage alle 30 s.
 - Das Panel zeigt eine Zeile „Beamer: verbunden / keine Verbindung“, gespeist aus
   `/api/status` (`beamer.ingest_connected`).
 - Alle `fetch`-Aufrufe nutzen die neuen `/api/…`-Pfade und senden
@@ -193,8 +201,17 @@ ergänzt um `beamer`. Ist Autodarts nicht installiert, ist
   ohne Argumente. Kein `bash -c *` mehr.
 - `raspdarts-update.sh` führt `git pull` und den Build als Dienst-Benutzer aus
   (`sudo -u`), damit im Installationsordner keine Dateien root gehören. Danach
-  kopiert es als root die Skripte neu nach `/usr/local/lib/raspdarts/`, damit
-  auch geänderte Skripte root gehören, und startet den Dienst neu.
+  ruft es `setup-root.sh` auf, das die Skripte neu nach
+  `/usr/local/lib/raspdarts/` kopiert (per Umbenennen, damit das gerade laufende
+  Skript nicht überschrieben wird), sudoers und Service-Datei schreibt. Der
+  Dienst-Neustart wird per `systemd-run --on-active=2` verzögert, damit der
+  SSE-Stream sauber zu Ende geht.
+- `setup-root.sh` wird von `install.sh` und `raspdarts-update.sh` gemeinsam
+  genutzt und steht selbst nicht in sudoers.
+- **Grenze dieses Schutzes:** Er verhindert, dass über das Netz beliebige
+  Befehle als root laufen. Wer bereits als Dienst-Benutzer Code ausführt, kann
+  den Klon ändern und über das Update-Skript root werden. Auf Raspberry Pi OS hat
+  der Standardbenutzer ohnehin volle sudo-Rechte; das ist akzeptiert.
 
 ### Installation und Update
 
@@ -217,7 +234,13 @@ ergänzt um `beamer`. Ist Autodarts nicht installiert, ist
 - Liefern mehrere Tabs gleichzeitig, gilt die Verbindung, von der zuletzt eine
   Nachricht kam.
 - Der Recorder schreibt jede eingehende Nachricht als NDJSON nach
-  `data/recordings/`, eine Datei pro Dienststart.
+  `data/sessions/` (wie bisher), eine Datei pro Dienststart.
+- Ein laufendes Root-Skript wird **nicht** abgebrochen, wenn das Panel
+  geschlossen wird. Ein halb installiertes Autodarts oder ein halbes Update wäre
+  schlimmer als ein Lauf ohne Zuschauer. Die Sperre gegen Doppelstart hält, bis
+  das Skript fertig ist.
+- `fetch`-Aufrufe ohne Body senden keinen `Content-Type: application/json`
+  mehr; Fastify lehnt einen leeren JSON-Body sonst mit 400 ab.
 
 ## Tests
 
