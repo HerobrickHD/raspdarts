@@ -17,6 +17,13 @@ es später gebraucht wird: Autodarts hat im Herbst 2026 von Keycloak auf ein
 eigenes OAuth 2.0 unter `api.autodarts.com` umgestellt und den Passwort-Login
 gestrichen.
 
+### Quellen zur OAuth-Umstellung
+
+- Migrationsleitfaden von lloydowen (Autodarts), Gist:
+  https://gist.github.com/lloydowen/960079f2b518f6f5d68e160465298964
+  (gefunden ueber https://github.com/Dennis-Otto/HACSAutodarts)
+- Discovery-Dokument: https://api.autodarts.com/.well-known/openid-configuration
+
 ## REST-Endpunkte der Anwendung
 
 | Zweck | Endpunkt |
