@@ -1,10 +1,13 @@
 /**
  * Startet die festen Root-Skripte unter /usr/local/lib/raspdarts per sudo.
  *
- * Nur diese Skripte stehen in /etc/sudoers.d/raspdarts - der Dienst kann
- * damit nichts anderes als root ausfuehren. Es laeuft immer hoechstens ein
- * Auftrag. Ein Auftrag wird nicht abgebrochen, wenn niemand mehr zusieht:
- * ein halb installiertes Autodarts waere schlimmer als ein Lauf ohne Zuschauer.
+ * Nur diese Skripte stehen in /etc/sudoers.d/raspdarts. Das verhindert, dass
+ * ueber das Netz beliebige Befehle als root laufen. Wer bereits als Dienst-Benutzer
+ * Code ausfuehrt, kommt ueber das Update-Skript an root (es nutzt Dateien aus dem
+ * Klon) - auf Raspberry Pi OS hat der Benutzer ohnehin volle sudo-Rechte.
+ * Es laeuft immer hoechstens ein Auftrag. Ein Auftrag wird nicht abgebrochen, wenn
+ * niemand mehr zusieht: ein halb installiertes Autodarts waere schlimmer als ein
+ * Lauf ohne Zuschauer.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 
