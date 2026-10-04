@@ -41,6 +41,14 @@ describe("Header-Schutz", () => {
     expect(response.json()).toEqual(DEFAULT_LAYOUT);
   });
 
+  test("laesst sich nicht durch Prozent-Kodierung des Pfads umgehen", async () => {
+    app = await buildApp(testDeps());
+
+    const response = await app.inject({ method: "GET", url: "/%61pi/layout/beamer" });
+
+    expect(response.statusCode).toBe(403);
+  });
+
   test("liefert die Anzeige selbst ohne Header aus", async () => {
     app = await buildApp(testDeps());
 

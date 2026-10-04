@@ -27,7 +27,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
   app.addHook("onRequest", async (request, reply) => {
-    if (request.url.startsWith("/api/") && request.headers[CLIENT_HEADER] !== "1") {
+    // Geprueft wird die erkannte Route, nicht die rohe URL (Prozent-Kodierung).
+    if (request.routeOptions.url?.startsWith("/api/") && request.headers[CLIENT_HEADER] !== "1") {
       return reply.code(403).send({ error: "X-Raspdarts-Header fehlt" });
     }
   });
