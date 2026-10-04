@@ -87,3 +87,41 @@ describe("Layout-API", () => {
     expect(response.json().checkout).toEqual({ x: 60, y: 12, scale: 2 });
   });
 });
+
+describe("/api/status", () => {
+  test("liefert Systemwerte und den Beamer-Zustand", async () => {
+    app = await buildApp(testDeps());
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/status",
+      headers: { "x-raspdarts": "1" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      cpu_percent: 12.5,
+      autodarts_version: "unknown",
+      beamer: { ingest_connected: false, last_message_at: null },
+    });
+  });
+
+  test("meldet 500, wenn die Systemwerte nicht lesbar sind", async () => {
+    app = await buildApp(
+      testDeps({
+        status: async () => {
+          throw new Error("/proc fehlt");
+        },
+      }),
+    );
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/status",
+      headers: { "x-raspdarts": "1" },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({ error: "/proc fehlt" });
+  });
+});

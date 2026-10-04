@@ -8,6 +8,7 @@ import { Ingest } from "../src/beamer/ingest.js";
 import { LayoutStore } from "../src/beamer/layout-store.js";
 import { createFramePipeline } from "../src/beamer/pipeline.js";
 import type { AppDeps } from "../src/http.js";
+import type { SystemStatus } from "../src/system/status.js";
 
 /**
  * Abhaengigkeiten fuer Tests: echte Bausteine, Layouts im Temp-Ordner, keine
@@ -19,6 +20,16 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     hub,
     layouts: new LayoutStore(mkdtempSync(join(tmpdir(), "raspdarts-test-"))),
     ingest: new Ingest(createFramePipeline(hub, null)),
+    status: async (): Promise<SystemStatus> => ({
+      cpu_percent: 12.5,
+      ram_total_mb: 4000,
+      ram_used_mb: 1000,
+      temp_celsius: 48.3,
+      uptime_seconds: 3600,
+      autodarts_version: "unknown",
+      ip_address: "192.168.1.42",
+      raspdarts_version: "2.0.0",
+    }),
     ...overrides,
   };
 }

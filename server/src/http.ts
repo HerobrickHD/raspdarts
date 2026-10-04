@@ -14,6 +14,7 @@ import fastifyWebsocket from "@fastify/websocket";
 import type { DisplayHub } from "./beamer/display-hub.js";
 import { isExtensionOrigin, type Ingest } from "./beamer/ingest.js";
 import type { LayoutStore } from "./beamer/layout-store.js";
+import type { SystemStatus } from "./system/status.js";
 
 export const CLIENT_HEADER = "x-raspdarts";
 
@@ -23,6 +24,7 @@ export interface AppDeps {
   hub: DisplayHub;
   layouts: LayoutStore;
   ingest: Ingest;
+  status: () => Promise<SystemStatus>;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -64,6 +66,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.put<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>
     withLayout(reply, () => deps.layouts.write(request.params.display, request.body)),
   );
+
+  app.get("/api/status", async (_request, reply) => {
+    try {
+      return { ...(await deps.status()), beamer: deps.ingest.status() };
+    } catch (error) {
+      return reply.code(500).send({ error: (error as Error).message });
+    }
+  });
 
   return app;
 }

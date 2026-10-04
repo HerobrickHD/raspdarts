@@ -8,6 +8,7 @@ import { LayoutStore } from "./beamer/layout-store.js";
 import { createFramePipeline } from "./beamer/pipeline.js";
 import { Recorder, sessionPath } from "./beamer/recorder.js";
 import type { AppDeps } from "./http.js";
+import { createStatusReader } from "./system/status.js";
 
 export interface Runtime extends AppDeps {
   recorder: Recorder | null;
@@ -23,5 +24,6 @@ export function createDeps(options: { record: boolean }): Runtime {
     recorder,
     layouts: new LayoutStore("data/layouts"),
     ingest: new Ingest(createFramePipeline(hub, recorder)),
+    status: createStatusReader(),
   };
 }

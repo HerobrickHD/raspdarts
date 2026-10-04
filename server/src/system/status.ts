@@ -1,0 +1,138 @@
+/**
+ * Systemwerte des Pi fuer das Panel der Extension. Feldnamen wie im
+ * bisherigen Raspdarts-Backend, damit die Anzeige im Panel gleich bleibt.
+ *
+ * Alle Zugriffe auf Dateien, Befehle und Netzwerk laufen ueber StatusDeps,
+ * damit die Auswertung ohne Pi testbar ist.
+ */
+import { exec } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { homedir, networkInterfaces } from "node:os";
+
+export interface SystemStatus {
+  cpu_percent: number;
+  ram_total_mb: number;
+  ram_used_mb: number;
+  temp_celsius: number;
+  uptime_seconds: number;
+  autodarts_version: string;
+  ip_address: string | null;
+  raspdarts_version: string;
+}
+
+type Interfaces = ReturnType<typeof networkInterfaces>;
+
+export interface StatusDeps {
+  readFile: (path: string) => Promise<string>;
+  /** Fuehrt einen Befehl aus und liefert stdout; wirft bei Fehler. */
+  run: (command: string) => Promise<string>;
+  sleep: (ms: number) => Promise<void>;
+  interfaces: () => Interfaces;
+  home: string;
+  version: string;
+}
+
+interface CpuSample {
+  total: number;
+  idle: number;
+}
+
+export function parseCpuSample(procStat: string): CpuSample {
+  const fields = (procStat.split("\n")[0] ?? "").trim().split(/\s+/).slice(1).map(Number);
+  return { total: fields.reduce((sum, value) => sum + value, 0), idle: fields[3] ?? 0 };
+}
+
+export function cpuPercent(first: CpuSample, second: CpuSample): number {
+  const total = second.total - first.total;
+  const idle = second.idle - first.idle;
+  return total === 0 ? 0 : Math.round((1 - idle / total) * 1000) / 10;
+}
+
+export function parseMeminfo(meminfo: string): { ram_total_mb: number; ram_used_mb: number } {
+  const megabytes = (key: string) =>
+    Math.round(Number(new RegExp(`${key}:\\s+(\\d+)`).exec(meminfo)?.[1] ?? 0) / 1024);
+  const total = megabytes("MemTotal");
+  return { ram_total_mb: total, ram_used_mb: total - megabytes("MemAvailable") };
+}
+
+export function parseVersion(output: string): string | null {
+  return /(\d+\.\d+[\d.]*)/.exec(output)?.[1] ?? null;
+}
+
+export function firstIPv4(interfaces: Interfaces): string | null {
+  for (const list of Object.values(interfaces)) {
+    for (const iface of list ?? []) {
+      if (iface.family === "IPv4" && !iface.internal) return iface.address;
+    }
+  }
+  return null;
+}
+
+/** Wo der Autodarts-Installer das Programm je nach Version ablegt. */
+function autodartsCandidates(home: string): string[] {
+  return [
+    "/usr/local/bin/autodarts",
+    "autodarts",
+    `${home}/.local/bin/autodarts`,
+    `${home}/.local/opt/autodarts/autodarts`,
+    `${home}/.autodarts/autodarts`,
+  ];
+}
+
+export function defaultStatusDeps(): StatusDeps {
+  const pkg = JSON.parse(
+    readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+  ) as { version: string };
+  return {
+    readFile: (path) => readFile(path, "utf8"),
+    run: (command) =>
+      new Promise((resolve, reject) =>
+        exec(command, { timeout: 5000 }, (error, stdout) => (error ? reject(error) : resolve(stdout))),
+      ),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    interfaces: networkInterfaces,
+    home: homedir(),
+    version: pkg.version,
+  };
+}
+
+export function createStatusReader(deps: StatusDeps = defaultStatusDeps()): () => Promise<SystemStatus> {
+  async function cpu(): Promise<number> {
+    const first = parseCpuSample(await deps.readFile("/proc/stat"));
+    await deps.sleep(500);
+    const second = parseCpuSample(await deps.readFile("/proc/stat"));
+    return cpuPercent(first, second);
+  }
+
+  async function autodartsVersion(): Promise<string> {
+    for (const binary of autodartsCandidates(deps.home)) {
+      try {
+        const version = parseVersion(await deps.run(`${binary} --version`));
+        if (version) return version;
+      } catch {
+        // naechster Kandidat
+      }
+    }
+    return "unknown";
+  }
+
+  return async () => {
+    const [cpu_percent, meminfo, temp, uptime, autodarts_version] = await Promise.all([
+      cpu(),
+      deps.readFile("/proc/meminfo"),
+      deps.readFile("/sys/class/thermal/thermal_zone0/temp"),
+      deps.readFile("/proc/uptime"),
+      autodartsVersion(),
+    ]);
+    return {
+      cpu_percent,
+      ...parseMeminfo(meminfo),
+      temp_celsius: Number.parseInt(temp.trim(), 10) / 1000,
+      uptime_seconds: Number.parseFloat(uptime.split(" ")[0] ?? "0"),
+      autodarts_version,
+      ip_address: firstIPv4(deps.interfaces()),
+      raspdarts_version: deps.version,
+    };
+  };
+}
