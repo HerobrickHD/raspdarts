@@ -27,7 +27,7 @@ const SAMPLE_STATE = {
     { name: "Arnold", score: 110, legs: 2, isActive: true },
     { name: "Marcus", score: 284, legs: 1, isActive: false },
   ],
-  currentTurn: { darts: ["T20"], turnScore: 60 },
+  currentTurn: { darts: ["T20"], turnScore: 60, busted: false },
   checkout: ["T20", "BULL"],
 };
 
@@ -86,7 +86,14 @@ function renderPlayer(player, currentTurn) {
   const tally = document.createElement("span");
   tally.className = "player-tally";
 
-  if (player.isActive && currentTurn.darts.length > 0) {
+  // Ueberworfen: Autodarts setzt den Punktestand schon zurueck, das hier sagt
+  // warum. Steht anstelle der Darts, damit die Zeile nicht breiter wird.
+  if (player.isActive && currentTurn.busted) {
+    const bust = document.createElement("span");
+    bust.className = "player-bust";
+    bust.textContent = "BUST";
+    tally.append(bust);
+  } else if (player.isActive && currentTurn.darts.length > 0) {
     const turn = document.createElement("span");
     turn.className = "player-turn";
     turn.textContent = currentTurn.darts.join(" ");

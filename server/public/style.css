@@ -16,6 +16,7 @@
   --label: #8a8a8a;
   --active: #ffb020;
   --checkout: #3ddc84;
+  --bust: #ff4d4d;
   --edit: #4a9eff;
 }
 
@@ -109,6 +110,13 @@ body {
 .player-turn {
   color: var(--label);
   font-size: calc(var(--score-size) * 0.22);
+  letter-spacing: 0.08em;
+}
+
+.player-bust {
+  color: var(--bust);
+  font-size: calc(var(--score-size) * 0.22);
+  font-weight: 700;
   letter-spacing: 0.08em;
 }
 

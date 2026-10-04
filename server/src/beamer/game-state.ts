@@ -22,7 +22,7 @@ export type ScoreboardState =
       variant: string;
       leg: number | null;
       players: PlayerView[];
-      currentTurn: { darts: Dart[]; turnScore: number };
+      currentTurn: { darts: Dart[]; turnScore: number; busted: boolean };
       checkout: Dart[] | null;
     }
   | { phase: "finished"; winner: string };
@@ -43,18 +43,39 @@ function unwrap(raw: unknown): unknown {
   return raw;
 }
 
-/** "T20" aus dem Segment lesen - notfalls aus Multiplikator und Nummer bauen. */
+/** "T20" aus einem Wurf lesen. */
 function dartLabel(thrown: unknown): Dart {
   if (!isObject(thrown)) return "?";
-  const segment = isObject(thrown["segment"]) ? thrown["segment"] : {};
-  const name = segment["name"];
-  if (typeof name === "string" && name.length > 0) return name;
+  return segmentLabel(thrown["segment"]);
+}
 
+/**
+ * "T20" aus dem Segment lesen - notfalls aus Multiplikator und Nummer bauen.
+ * Den Bull bauen wir immer selbst: Autodarts nennt ihn "Bull", der
+ * Checkout-Vorschlag aus checkout.ts "BULL".
+ */
+function segmentLabel(raw: unknown): Dart {
+  const segment = isObject(raw) ? raw : {};
   const multiplier = asNumber(segment["multiplier"]);
   const number = asNumber(segment["number"]);
   if (number === 25) return multiplier === 2 ? "BULL" : "25";
+
+  const name = segment["name"];
+  if (typeof name === "string" && name.length > 0) return name;
   const prefix = multiplier === 3 ? "T" : multiplier === 2 ? "D" : "S";
   return `${prefix}${number}`;
+}
+
+/**
+ * Der Checkout-Weg, den Autodarts selbst mitschickt - aber nur, wenn er mit den
+ * restlichen Darts dieser Aufnahme machbar ist. Reichen sie nicht, zeigt
+ * Autodarts schon den Weg fuer die naechste Aufnahme; dann rechnen wir selbst.
+ */
+function autodartsCheckout(state: Json, dartsLeft: number): Dart[] | null {
+  const inner = isObject(state["state"]) ? state["state"] : {};
+  const guide = asArray(inner["checkoutGuide"]);
+  if (guide.length === 0 || guide.length > dartsLeft) return null;
+  return guide.map(segmentLabel);
 }
 
 function currentThrows(state: Json): unknown[] {
@@ -103,13 +124,14 @@ export function toScoreboardState(raw: unknown): ScoreboardState {
   const remaining = players[activeIndex]?.score ?? 0;
   const variant = typeof state["variant"] === "string" ? state["variant"] : "X01";
   const leg = typeof state["leg"] === "number" ? state["leg"] : null;
+  const dartsLeft = DARTS_PER_TURN - darts.length;
 
   return {
     phase: "playing",
     variant,
     leg,
     players,
-    currentTurn: { darts, turnScore },
-    checkout: checkoutPath(remaining, DARTS_PER_TURN - darts.length),
+    currentTurn: { darts, turnScore, busted: state["turnBusted"] === true },
+    checkout: autodartsCheckout(state, dartsLeft) ?? checkoutPath(remaining, dartsLeft),
   };
 }
