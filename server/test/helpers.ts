@@ -4,15 +4,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { DisplayHub } from "../src/beamer/display-hub.js";
+import { Ingest } from "../src/beamer/ingest.js";
 import { LayoutStore } from "../src/beamer/layout-store.js";
+import { createFramePipeline } from "../src/beamer/pipeline.js";
 import type { AppDeps } from "../src/http.js";
 
-/** Abhaengigkeiten fuer Tests: echte Bausteine, Layouts im Temp-Ordner. */
+/**
+ * Abhaengigkeiten fuer Tests: echte Bausteine, Layouts im Temp-Ordner, keine
+ * Aufzeichnung. Wer `hub` ueberschreibt, muss auch `ingest` passend mitgeben.
+ */
 export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
   const hub = new DisplayHub();
   return {
     hub,
     layouts: new LayoutStore(mkdtempSync(join(tmpdir(), "raspdarts-test-"))),
+    ingest: new Ingest(createFramePipeline(hub, null)),
     ...overrides,
   };
 }

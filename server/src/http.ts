@@ -12,6 +12,7 @@ import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
 import type { DisplayHub } from "./beamer/display-hub.js";
+import { isExtensionOrigin, type Ingest } from "./beamer/ingest.js";
 import type { LayoutStore } from "./beamer/layout-store.js";
 
 export const CLIENT_HEADER = "x-raspdarts";
@@ -21,6 +22,7 @@ const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
 export interface AppDeps {
   hub: DisplayHub;
   layouts: LayoutStore;
+  ingest: Ingest;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -37,6 +39,23 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(fastifyStatic, { root: PUBLIC_DIR });
 
   app.get("/ws", { websocket: true }, (socket) => deps.hub.attach(socket));
+
+  app.get(
+    "/ingest",
+    {
+      websocket: true,
+      preValidation: async (request, reply) => {
+        if (!isExtensionOrigin(request.headers.origin)) {
+          return reply.code(403).send({ error: "Nur fuer die Raspdarts-Extension" });
+        }
+      },
+    },
+    (socket) => {
+      deps.ingest.open();
+      socket.on("message", (data) => deps.ingest.receive(data.toString()));
+      socket.on("close", () => deps.ingest.close());
+    },
+  );
 
   // Layout je Anzeige: der Beamer richtet sich anders aus als das Handy.
   app.get<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>

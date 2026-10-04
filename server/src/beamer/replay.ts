@@ -9,7 +9,6 @@
  * ohne an der Scheibe zu stehen.
  */
 import { readFileSync } from "node:fs";
-import { toScoreboardState, IDLE } from "./game-state.js";
 import type { RecordedFrame } from "./recorder.js";
 import { buildApp } from "../http.js";
 import { createDeps } from "../runtime.js";
@@ -37,7 +36,7 @@ async function main(): Promise<void> {
     .filter((line) => line.trim().length > 0)
     .map((line) => JSON.parse(line) as RecordedFrame);
 
-  const deps = createDeps();
+  const deps = createDeps({ record: false });
   const app = await buildApp(deps);
   await app.listen({ port, host: "0.0.0.0" });
   console.log(`Replay laeuft auf http://localhost:${port}/`);
@@ -50,9 +49,8 @@ async function main(): Promise<void> {
     if (!instant) await sleep(Math.max(0, (recorded.t - previous) / speed));
     previous = recorded.t;
 
-    const state = toScoreboardState(recorded.frame);
-    if (state !== IDLE) deps.hub.broadcast(state);
-    process.stdout.write(`\rFrame ${index + 1}/${frames.length}  (${state.phase})   `);
+    deps.ingest.receive(JSON.stringify(recorded.frame));
+    process.stdout.write(`\rFrame ${index + 1}/${frames.length}  (${deps.hub.state.phase})   `);
   }
 
   console.log("\nReplay beendet. Die letzte Anzeige bleibt stehen - Strg+C zum Beenden.");

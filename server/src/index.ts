@@ -10,13 +10,14 @@ import { createDeps } from "./runtime.js";
 
 async function main(): Promise<void> {
   const { port } = loadConfig();
-  const deps = createDeps();
+  const deps = createDeps({ record: true });
   const app = await buildApp(deps);
   await app.listen({ port, host: "0.0.0.0" });
   console.log(`Raspdarts laeuft auf http://localhost:${port}/`);
 
   const shutdown = async () => {
     await app.close();
+    await deps.recorder?.close();
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());
