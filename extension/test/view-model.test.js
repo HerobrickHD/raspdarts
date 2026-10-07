@@ -116,6 +116,12 @@ describe('buildView', () => {
     expect(view.showHint).toBe(true);
   });
 
+  test('Temperatur auf ganze Grad gerundet (der Pi liefert Tausendstel)', () => {
+    const at = (temp_celsius) => vm.buildView({ status: { ...STATUS, temp_celsius }, reachable: true, busy: false }, t).stats.temperature;
+    expect(at(48.312)).toBe('48°C');
+    expect(at(48.5)).toBe('49°C');
+  });
+
   test('Wert 0 wird angezeigt, nicht als leer', () => {
     const view = vm.buildView({ status: { ...STATUS, cpu_percent: 0, uptime_seconds: 0, temp_celsius: 0 }, reachable: true, busy: false }, t);
     expect(view.stats.cpu).toBe('0%');
@@ -143,6 +149,25 @@ describe('buildView', () => {
     const view = vm.buildView({ status: STATUS, reachable: true, busy: false }, en);
     expect(view.autodarts.mainLabel).toBe('Update Autodarts');
     expect(view.pi.beamerText).toBe('Connected');
+  });
+});
+
+describe('errorMessage', () => {
+  test.each([
+    ['Unreachable', 'Fehler: Pi nicht erreichbar'],
+    ['Stream error', 'Fehler: Übertragung abgebrochen'],
+    ['HTTP 500', 'Fehler: HTTP 500'],
+    ['Skript beendet mit Code 1', 'Fehler: Skript beendet mit Code 1'],
+    [undefined, 'Fehler: Anfrage fehlgeschlagen.'],
+    ['', 'Fehler: Anfrage fehlgeschlagen.'],
+  ])('%s -> %s', (error, expected) => {
+    expect(vm.errorMessage(error, t)).toBe(expected);
+  });
+
+  test('englisch', () => {
+    const en = globalThis.raspdartsTexts.getTexts('en');
+    expect(vm.errorMessage('Unreachable', en)).toBe('Error: Pi unreachable');
+    expect(vm.errorMessage('Stream error', en)).toBe('Error: Transfer interrupted');
   });
 });
 

@@ -4,7 +4,7 @@
 // Klick die Raspdarts-Seite im Inhaltsbereich. Siehe
 // docs/superpowers/specs/2026-10-07-raspdarts-seite-design.md.
 
-const { ACTIONS, buildView } = globalThis.raspdartsViewModel;
+const { ACTIONS, buildView, errorMessage } = globalThis.raspdartsViewModel;
 const { detectLanguage, getTexts } = globalThis.raspdartsTexts;
 
 const STATUS_INTERVAL_MS = 10_000;
@@ -135,13 +135,20 @@ function getPage() {
 
 async function showPage() {
   if (pageVisible) return;
-  const created = await getPage();
-  const main = document.querySelector('main');
-  if (pageVisible || !main) return;
+  const hrefAtClick = location.href;
+  let created;
+  try {
+    created = await getPage();
+  } catch (error) {
+    // getPage setzt sich zurueck, der naechste Klick versucht es erneut.
+    console.error('Raspdarts: Seite konnte nicht geladen werden', error);
+    return;
+  }
+  // Waehrend des ersten Ladens weggeklickt: nicht ueber der neuen Seite oeffnen.
+  if (pageVisible || location.href !== hrefAtClick) return;
+  if (!attachPage(created.host)) return;
 
   ensureDocumentStyle();
-  // Autodarts baut <main> bei Seitenwechseln neu auf; dann wieder einhaengen.
-  if (created.host.parentElement !== main) main.appendChild(created.host);
   document.documentElement.setAttribute(PAGE_ATTR, '');
   pageVisible = true;
   lastHref = location.href;
@@ -149,6 +156,14 @@ async function showPage() {
   renderPage();
   fetchStatus();
   startPolling();
+}
+
+// Autodarts baut <main> bei Seitenwechseln neu auf; dann wieder einhaengen.
+function attachPage(host) {
+  const main = document.querySelector('main');
+  if (!main) return false;
+  if (host.parentElement !== main) main.appendChild(host);
+  return true;
 }
 
 // Die Seite wird nur versteckt: Eine laufende Aktion samt Protokoll laeuft weiter.
@@ -193,6 +208,9 @@ function onDomChange() {
   if (location.href !== lastHref) {
     lastHref = location.href;
     hidePage();
+  } else if (pageVisible && !page.host.isConnected) {
+    // <main> wurde ohne Adresswechsel ersetzt; sonst bliebe der Bereich leer.
+    attachPage(page.host);
   }
 }
 
@@ -217,10 +235,6 @@ function finishAction(success, message) {
   renderPage();
 }
 
-function errorText(error) {
-  return texts.errorPrefix + (error || texts.requestFailed);
-}
-
 function runStream(action) {
   globalThis.raspdartsStream.runStream({
     connect: () => chrome.runtime.connect({ name: 'raspdarts-stream' }),
@@ -229,7 +243,7 @@ function runStream(action) {
     onEnd: (result) => {
       if (result.kind === 'conflict') finishAction(false, texts.alreadyRunning);
       else if (result.kind === 'disconnected') finishAction(false, texts.disconnected);
-      else finishAction(result.success, result.success ? texts.success : errorText(result.error));
+      else finishAction(result.success, result.success ? texts.success : errorMessage(result.error, texts));
     },
   });
 }
@@ -243,7 +257,7 @@ async function runPower(action) {
   } else if (result?.status === 409) {
     finishAction(false, texts.alreadyRunning);
   } else {
-    finishAction(false, errorText(result?.data?.error || result?.error));
+    finishAction(false, errorMessage(result?.data?.error || result?.error, texts));
   }
 }
 

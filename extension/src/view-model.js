@@ -34,6 +34,13 @@
     return `${gb(usedMb)} / ${gb(totalMb)} GB`;
   }
 
+  // background.js meldet Fehler als feste englische Kennungen; die bekannten
+  // werden uebersetzt, alles andere (z. B. Meldungen der Pi-Skripte) bleibt.
+  function errorMessage(error, t) {
+    const known = { Unreachable: t.piUnreachable, 'Stream error': t.streamError };
+    return t.errorPrefix + (known[error] ?? (isText(error) ? error : t.requestFailed));
+  }
+
   function pillFor(online, reachable, ip, t) {
     if (online) return { tone: 'ok', text: ip ? `${t.piOnline} · ${ip}` : t.piOnline };
     if (reachable === false) return { tone: 'error', text: t.piUnreachable };
@@ -55,7 +62,7 @@
       stats: {
         cpu: withUnit(s.cpu_percent, '%'),
         ram: formatRam(s.ram_used_mb, s.ram_total_mb),
-        temperature: withUnit(s.temp_celsius, '°C'),
+        temperature: withUnit(isNumber(s.temp_celsius) ? Math.round(s.temp_celsius) : null, '°C'),
         uptime: formatUptime(s.uptime_seconds),
       },
       showCards: reachable !== false,
@@ -79,5 +86,5 @@
     };
   }
 
-  root.raspdartsViewModel = { ACTIONS, EMPTY, buildView, formatRam, formatUptime };
+  root.raspdartsViewModel = { ACTIONS, EMPTY, buildView, errorMessage, formatRam, formatUptime };
 })(globalThis);

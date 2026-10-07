@@ -106,9 +106,11 @@
       else if (button === field('dialogCancel')) answerDialog(false);
       else if (button === field('dialogConfirm')) answerDialog(true);
     });
-    // Klick neben den Dialog oder Escape bricht ab.
+    // Klick neben den Dialog oder Escape bricht ab. Der zweite Klick eines
+    // Doppelklicks auf den Aktionsknopf landet auf dem gerade geoeffneten
+    // Hintergrund und darf den Dialog nicht gleich wieder schliessen.
     field('dialog').addEventListener('click', (event) => {
-      if (event.target === field('dialog')) answerDialog(false);
+      if (event.target === field('dialog') && event.detail <= 1) answerDialog(false);
     });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && resolveDialog) answerDialog(false);
