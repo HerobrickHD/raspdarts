@@ -97,7 +97,8 @@ Zwei Zeilen wie bisher, die zweite heißt jetzt **Zustand**:
 | Fall | Version | Zustand |
 |---|---|---|
 | Pi nicht erreichbar oder lädt | `--` | `--` (Karten wie bisher ausgeblendet bzw. leer) |
-| Autodarts nicht installiert (`autodarts_version === "unknown"`) | `--` | ⚪ Nicht installiert, dazu der Installationskasten |
+| Autodarts nicht installiert (`autodarts_version === "unknown"` und `autodarts_board === null`) | `--` | ⚪ Nicht installiert, dazu der Installationskasten |
+| Version unbekannt, Scheibe antwortet (z. B. für einen anderen Benutzer installiert) | `--` | Zustand wie unten, kein Installationskasten |
 | installiert, `autodarts_board === null` | Version | ⚪ Keine Antwort |
 | `running && connected` | Version | 🟢 Läuft |
 | `running && !connected` | Version | 🔴 Nicht mit Autodarts verbunden |
