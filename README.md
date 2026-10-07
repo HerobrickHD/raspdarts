@@ -12,7 +12,7 @@ Alles rund um die Autodarts-Scheibe am Raspberry Pi – in einem Repo:
 ```
 play.autodarts.com (Laptop)
   └─ Raspdarts-Extension ── liest den Spielstand mit ──┐
-                          └─ Panel: Status, Updates ───┤
+                          └─ Seite: Status, Updates ───┤
                                                        ▼
 Raspberry Pi 5 ── raspdarts (ein Dienst, Port 8743) ── Beamer: http://raspdarts.local:8743/
 ```
@@ -61,7 +61,7 @@ cd extension && bash build.sh
 
 - **Chrome:** `chrome://extensions` → Entwicklermodus → „Entpackte Erweiterung laden“ → `extension/dist/chrome`
 - **Firefox (≥ 128):** `about:debugging#/runtime/this-firefox` → „Temporäres Add-on laden“ → `extension/dist/firefox/manifest.json`.
-  Falls das Panel den Pi nicht erreicht: unter `about:addons` → Raspdarts → Berechtigungen den Zugriff auf `raspdarts.local` erlauben.
+  Falls die Raspdarts-Seite den Pi nicht erreicht: unter `about:addons` → Raspdarts → Berechtigungen den Zugriff auf `raspdarts.local` erlauben.
 
 ## Sicherheit
 
