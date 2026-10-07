@@ -15,7 +15,8 @@ const STATUS = {
   ram_total_mb: 3789,
   temp_celsius: 48,
   uptime_seconds: 11520,
-  autodarts_version: '0.27.4',
+  autodarts_version: '2.0.2',
+  autodarts_board: { running: true, connected: true, status: 'Throw' },
   raspdarts_version: '2.0.0',
   ip_address: '192.168.178.42',
   beamer: { ingest_connected: true },
@@ -55,9 +56,7 @@ describe('buildView', () => {
     expect(view.showCards).toBe(true);
     expect(view.showHint).toBe(false);
     expect(view.disabled).toBe(true);
-    expect(view.autodarts).toMatchObject({
-      version: '--', statusText: '--', mainAction: 'updateAutodarts', showMonitor: false, canUninstall: false,
-    });
+    expect(view.autodarts).toEqual({ version: '--', stateText: '--', stateTone: 'off', showInstall: false });
     expect(view.pi).toEqual({ raspdartsVersion: '--', beamerText: '--', beamerTone: 'off' });
   });
 
@@ -68,31 +67,33 @@ describe('buildView', () => {
     expect(view.showCards).toBe(true);
     expect(view.showHint).toBe(false);
     expect(view.disabled).toBe(false);
-    expect(view.autodarts).toEqual({
-      version: '0.27.4',
-      statusText: 'Installiert',
-      statusTone: 'ok',
-      mainAction: 'updateAutodarts',
-      mainLabel: 'Autodarts aktualisieren',
-      canUninstall: true,
-      showMonitor: true,
-      monitorUrl: 'http://192.168.178.42:3180/monitor',
-    });
+    expect(view.autodarts).toEqual({ version: '2.0.2', stateText: 'Läuft', stateTone: 'ok', showInstall: false });
     expect(view.pi).toEqual({ raspdartsVersion: 'v2.0.0', beamerText: 'Verbunden', beamerTone: 'ok' });
   });
 
-  test('Autodarts nicht installiert: installieren statt aktualisieren', () => {
-    const view = vm.buildView({ status: { ...STATUS, autodarts_version: 'unknown' }, reachable: true, busy: false }, t);
-    expect(view.autodarts).toEqual({
-      version: '--',
-      statusText: 'Nicht installiert',
-      statusTone: 'off',
-      mainAction: 'installAutodarts',
-      mainLabel: 'Autodarts installieren',
-      canUninstall: false,
-      showMonitor: false,
-      monitorUrl: null,
-    });
+  test('Autodarts nicht installiert: Installationskasten', () => {
+    const view = vm.buildView({ status: { ...STATUS, autodarts_version: 'unknown', autodarts_board: null }, reachable: true, busy: false }, t);
+    expect(view.autodarts).toEqual({ version: '--', stateText: 'Nicht installiert', stateTone: 'off', showInstall: true });
+  });
+
+  test.each([
+    ['Scheibe antwortet nicht', null, 'Keine Antwort', 'off'],
+    ['laeuft ohne Verbindung', { running: true, connected: false, status: 'Throw' }, 'Nicht mit Autodarts verbunden', 'error'],
+    ['gestoppt', { running: false, connected: true, status: 'Stopped' }, 'Gestoppt', 'off'],
+  ])('Zustand: %s', (_name, board, text, tone) => {
+    const view = vm.buildView({ status: { ...STATUS, autodarts_board: board }, reachable: true, busy: false }, t);
+    expect(view.autodarts).toEqual({ version: '2.0.2', stateText: text, stateTone: tone, showInstall: false });
+  });
+
+  test('Pi ohne autodarts_board (aelterer Raspdarts-Dienst): Keine Antwort', () => {
+    const { autodarts_board, ...rest } = STATUS;
+    const view = vm.buildView({ status: rest, reachable: true, busy: false }, t);
+    expect(view.autodarts.stateText).toBe('Keine Antwort');
+  });
+
+  test('nicht erreichbar: kein Installationskasten', () => {
+    const view = vm.buildView({ status: { ...STATUS, autodarts_version: 'unknown' }, reachable: false, busy: false }, t);
+    expect(view.autodarts.showInstall).toBe(false);
   });
 
   test('Aktion laeuft: Knoepfe gesperrt, Werte bleiben', () => {
@@ -130,24 +131,23 @@ describe('buildView', () => {
   });
 
   test('unvollstaendige Antwort: fehlende Felder als --', () => {
-    const view = vm.buildView({ status: { autodarts_version: '0.27.4', temp_celsius: null }, reachable: true, busy: false }, t);
+    const view = vm.buildView({ status: { autodarts_version: '2.0.2', temp_celsius: null }, reachable: true, busy: false }, t);
     expect(view.pill).toEqual({ tone: 'ok', text: 'Pi online' });
     expect(view.stats).toEqual({ cpu: '--', ram: '--', temperature: '--', uptime: '--' });
-    expect(view.autodarts.showMonitor).toBe(false);
-    expect(view.autodarts.monitorUrl).toBe(null);
+    expect(view.autodarts).toEqual({ version: '2.0.2', stateText: 'Keine Antwort', stateTone: 'off', showInstall: false });
     expect(view.pi).toEqual({ raspdartsVersion: '--', beamerText: 'Nicht verbunden', beamerTone: 'off' });
   });
 
   test('fehlende Autodarts-Version gilt als nicht installiert', () => {
     const { autodarts_version, ...rest } = STATUS;
     const view = vm.buildView({ status: rest, reachable: true, busy: false }, t);
-    expect(view.autodarts.mainAction).toBe('installAutodarts');
+    expect(view.autodarts.showInstall).toBe(true);
   });
 
   test('englische Texte', () => {
     const en = globalThis.raspdartsTexts.getTexts('en');
     const view = vm.buildView({ status: STATUS, reachable: true, busy: false }, en);
-    expect(view.autodarts.mainLabel).toBe('Update Autodarts');
+    expect(view.autodarts.stateText).toBe('Running');
     expect(view.pi.beamerText).toBe('Connected');
   });
 });
@@ -172,6 +172,10 @@ describe('errorMessage', () => {
 });
 
 describe('ACTIONS', () => {
+  test('keine Autodarts-Aktionen mehr', () => {
+    expect(Object.keys(vm.ACTIONS).sort()).toEqual(['restart', 'shutdown', 'uninstallRaspdarts', 'updateRaspdarts']);
+  });
+
   test('jede Aktion hat Dialogtexte', () => {
     for (const key of Object.keys(vm.ACTIONS)) {
       expect(t.dialogs[key], key).toBeDefined();

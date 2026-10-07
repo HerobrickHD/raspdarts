@@ -48,8 +48,7 @@ describe('getTexts', () => {
   });
 
   test('jede Aktion hat Titel, Text und Bestaetigung', () => {
-    const actions = ['installAutodarts', 'updateAutodarts', 'uninstallAutodarts',
-      'updateRaspdarts', 'uninstallRaspdarts', 'restart', 'shutdown'];
+    const actions = ['updateRaspdarts', 'uninstallRaspdarts', 'restart', 'shutdown'];
     for (const language of ['de', 'en']) {
       expect(Object.keys(texts.getTexts(language).dialogs).sort()).toEqual([...actions].sort());
     }

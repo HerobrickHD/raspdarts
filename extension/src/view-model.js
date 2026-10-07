@@ -8,9 +8,6 @@
   // Was jeder Knopf auf dem Pi ausloest. "stream" liefert ein Protokoll,
   // "power" nur eine kurze Bestaetigung (doneText ist ein Schluessel der Texttabelle).
   const ACTIONS = {
-    installAutodarts: { kind: 'stream', url: '/api/autodarts/install', danger: false },
-    updateAutodarts: { kind: 'stream', url: '/api/autodarts/install', danger: false },
-    uninstallAutodarts: { kind: 'stream', url: '/api/autodarts/uninstall', danger: true },
     updateRaspdarts: { kind: 'stream', url: '/api/system/update', danger: false },
     uninstallRaspdarts: { kind: 'stream', url: '/api/system/uninstall', danger: true },
     restart: { kind: 'power', url: '/api/system/reboot', danger: false, doneText: 'restarting' },
@@ -41,6 +38,20 @@
     return t.errorPrefix + (known[error] ?? (isText(error) ? error : t.requestFailed));
   }
 
+  // Version und Zustand der Scheibe. autodarts_board kommt vom Pi (GET /api/state
+  // der Scheibe); fehlt es oder ist es null, antwortet die Scheibe nicht.
+  function autodartsView(online, installed, s, t) {
+    if (!online) return { version: EMPTY, stateText: EMPTY, stateTone: 'off', showInstall: false };
+    if (!installed) return { version: EMPTY, stateText: t.notInstalled, stateTone: 'off', showInstall: true };
+    const board = s.autodarts_board;
+    let state;
+    if (!board || typeof board !== 'object') state = { text: t.boardNoAnswer, tone: 'off' };
+    else if (!board.running) state = { text: t.boardStopped, tone: 'off' };
+    else if (!board.connected) state = { text: t.boardDisconnected, tone: 'error' };
+    else state = { text: t.boardRunning, tone: 'ok' };
+    return { version: s.autodarts_version, stateText: state.text, stateTone: state.tone, showInstall: false };
+  }
+
   function pillFor(online, reachable, ip, t) {
     if (online) return { tone: 'ok', text: ip ? `${t.piOnline} · ${ip}` : t.piOnline };
     if (reachable === false) return { tone: 'error', text: t.piUnreachable };
@@ -55,7 +66,6 @@
     const ip = isText(s.ip_address) ? s.ip_address : null;
     const installed = isText(s.autodarts_version) && s.autodarts_version !== 'unknown';
     const beamerConnected = Boolean(s.beamer?.ingest_connected);
-    const mainAction = online && !installed ? 'installAutodarts' : 'updateAutodarts';
 
     return {
       pill: pillFor(online, reachable, ip, t),
@@ -68,16 +78,7 @@
       showCards: reachable !== false,
       showHint: reachable === false,
       disabled: !online || Boolean(busy),
-      autodarts: {
-        version: installed ? s.autodarts_version : EMPTY,
-        statusText: online ? (installed ? t.installed : t.notInstalled) : EMPTY,
-        statusTone: installed ? 'ok' : 'off',
-        mainAction,
-        mainLabel: t[mainAction],
-        canUninstall: installed,
-        showMonitor: installed && ip !== null,
-        monitorUrl: installed && ip ? `http://${ip}:3180/monitor` : null,
-      },
+      autodarts: autodartsView(online, installed, s, t),
       pi: {
         raspdartsVersion: isText(s.raspdarts_version) ? `v${s.raspdarts_version}` : EMPTY,
         beamerText: online ? (beamerConnected ? t.beamerConnected : t.beamerDisconnected) : EMPTY,
