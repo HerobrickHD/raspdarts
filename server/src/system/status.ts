@@ -10,6 +10,13 @@ import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { homedir, networkInterfaces } from "node:os";
 
+/** Zustand der Autodarts-Scheibe (v2) aus ihrer eigenen Schnittstelle. */
+export interface AutodartsBoard {
+  running: boolean;
+  connected: boolean;
+  status: string;
+}
+
 export interface SystemStatus {
   cpu_percent: number;
   ram_total_mb: number;
@@ -17,6 +24,7 @@ export interface SystemStatus {
   temp_celsius: number;
   uptime_seconds: number;
   autodarts_version: string;
+  autodarts_board: AutodartsBoard | null;
   ip_address: string | null;
   raspdarts_version: string;
 }
@@ -27,6 +35,8 @@ export interface StatusDeps {
   readFile: (path: string) => Promise<string>;
   /** Fuehrt einen Befehl aus und liefert stdout; wirft bei Fehler. */
   run: (command: string) => Promise<string>;
+  /** GET mit Zeitlimit, liefert das JSON; wirft bei Fehler, Zeitlimit oder HTTP-Fehler. */
+  fetchJson: (url: string, timeoutMs: number) => Promise<unknown>;
   sleep: (ms: number) => Promise<void>;
   interfaces: () => Interfaces;
   home: string;
@@ -69,15 +79,24 @@ export function firstIPv4(interfaces: Interfaces): string | null {
   return null;
 }
 
-/** Wo der Autodarts-Installer das Programm je nach Version ablegt. */
-function autodartsCandidates(home: string): string[] {
-  return [
-    "/usr/local/bin/autodarts",
-    "autodarts",
-    `${home}/.local/bin/autodarts`,
-    `${home}/.local/opt/autodarts/autodarts`,
-    `${home}/.autodarts/autodarts`,
-  ];
+/** Autodarts v2 legt seinen Befehl immer hierhin (Symlink ins Programmverzeichnis). */
+function autodartsBinary(home: string): string {
+  return `${home}/.local/bin/autodarts`;
+}
+
+// GET /api/state der Scheibe; laeuft sie nicht, soll /api/status nicht lange warten.
+const BOARD_STATE_URL = "http://127.0.0.1:3180/api/state";
+const BOARD_TIMEOUT_MS = 1500;
+
+/**
+ * Liest running/connected/status aus der Antwort der Scheibe. Alles
+ * Unerwartete (anderes Format einer kuenftigen Version) gilt als keine Antwort.
+ */
+export function parseBoardState(body: unknown): AutodartsBoard | null {
+  if (typeof body !== "object" || body === null) return null;
+  const { running, connected, status } = body as Record<string, unknown>;
+  if (typeof running !== "boolean" || typeof connected !== "boolean") return null;
+  return { running, connected, status: typeof status === "string" ? status : "" };
 }
 
 export function defaultStatusDeps(): StatusDeps {
@@ -90,6 +109,11 @@ export function defaultStatusDeps(): StatusDeps {
       new Promise((resolve, reject) =>
         exec(command, { timeout: 5000 }, (error, stdout) => (error ? reject(error) : resolve(stdout))),
       ),
+    fetchJson: async (url, timeoutMs) => {
+      const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    },
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     interfaces: networkInterfaces,
     home: homedir(),
@@ -106,24 +130,29 @@ export function createStatusReader(deps: StatusDeps = defaultStatusDeps()): () =
   }
 
   async function autodartsVersion(): Promise<string> {
-    for (const binary of autodartsCandidates(deps.home)) {
-      try {
-        const version = parseVersion(await deps.run(`${binary} --version`));
-        if (version) return version;
-      } catch {
-        // naechster Kandidat
-      }
+    try {
+      return parseVersion(await deps.run(`${autodartsBinary(deps.home)} --version`)) ?? "unknown";
+    } catch {
+      return "unknown";
     }
-    return "unknown";
+  }
+
+  async function autodartsBoard(): Promise<AutodartsBoard | null> {
+    try {
+      return parseBoardState(await deps.fetchJson(BOARD_STATE_URL, BOARD_TIMEOUT_MS));
+    } catch {
+      return null;
+    }
   }
 
   return async () => {
-    const [cpu_percent, meminfo, temp, uptime, autodarts_version] = await Promise.all([
+    const [cpu_percent, meminfo, temp, uptime, autodarts_version, autodarts_board] = await Promise.all([
       cpu(),
       deps.readFile("/proc/meminfo"),
       deps.readFile("/sys/class/thermal/thermal_zone0/temp"),
       deps.readFile("/proc/uptime"),
       autodartsVersion(),
+      autodartsBoard(),
     ]);
     return {
       cpu_percent,
@@ -131,6 +160,7 @@ export function createStatusReader(deps: StatusDeps = defaultStatusDeps()): () =
       temp_celsius: Number.parseInt(temp.trim(), 10) / 1000,
       uptime_seconds: Number.parseFloat(uptime.split(" ")[0] ?? "0"),
       autodarts_version,
+      autodarts_board,
       ip_address: firstIPv4(deps.interfaces()),
       raspdarts_version: deps.version,
     };

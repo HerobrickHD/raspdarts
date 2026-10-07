@@ -5,6 +5,7 @@ import {
   firstIPv4,
   parseCpuSample,
   parseMeminfo,
+  parseBoardState,
   parseVersion,
   type StatusDeps,
 } from "../src/system/status.js";
@@ -28,6 +29,9 @@ function fakeDeps(overrides: Partial<StatusDeps> = {}): StatusDeps {
     },
     run: async () => {
       throw new Error("not found");
+    },
+    fetchJson: async () => {
+      throw new Error("ECONNREFUSED");
     },
     sleep: async () => {},
     interfaces: () => ({
@@ -81,26 +85,62 @@ describe("createStatusReader", () => {
       temp_celsius: 52,
       uptime_seconds: 12060.5,
       autodarts_version: "unknown",
+      autodarts_board: null,
       ip_address: "192.168.1.42",
       raspdarts_version: "2.0.0",
     });
   });
 
-  test("erkennt die Autodarts-Version ueber den ersten antwortenden Pfad", async () => {
+  test("liest die Autodarts-Version nur am v2-Ort", async () => {
     const tried: string[] = [];
     const run = async (command: string) => {
       tried.push(command);
-      if (command === "/home/pi/.local/bin/autodarts --version") return "autodarts 0.27.1";
+      if (command === "/home/pi/.local/bin/autodarts --version") return "autodarts v2.0.2 (vision 2.0.0)";
       throw new Error("not found");
     };
 
     const status = await createStatusReader(fakeDeps({ run }))();
 
-    expect(status.autodarts_version).toBe("0.27.1");
-    expect(tried).toEqual([
-      "/usr/local/bin/autodarts --version",
-      "autodarts --version",
-      "/home/pi/.local/bin/autodarts --version",
-    ]);
+    expect(status.autodarts_version).toBe("2.0.2");
+    expect(tried).toEqual(["/home/pi/.local/bin/autodarts --version"]);
+  });
+});
+
+describe("Zustand der Scheibe", () => {
+  test("fragt /api/state der Scheibe mit Zeitlimit", async () => {
+    const calls: [string, number][] = [];
+    const fetchJson = async (url: string, timeoutMs: number) => {
+      calls.push([url, timeoutMs]);
+      return { connected: true, event: "Started", numThrows: 0, running: true, status: "Throw" };
+    };
+
+    const status = await createStatusReader(fakeDeps({ fetchJson }))();
+
+    expect(calls).toEqual([["http://127.0.0.1:3180/api/state", 1500]]);
+    expect(status.autodarts_board).toEqual({ running: true, connected: true, status: "Throw" });
+  });
+
+  test("Scheibe antwortet nicht oder zu spaet: null", async () => {
+    const fetchJson = async () => {
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    };
+
+    const status = await createStatusReader(fakeDeps({ fetchJson }))();
+
+    expect(status.autodarts_board).toBeNull();
+  });
+
+  test.each([
+    ["kein Objekt", "kein json"],
+    ["null", null],
+    ["running fehlt", { connected: true, status: "Throw" }],
+    ["connected kein Boolean", { running: true, connected: "ja", status: "Throw" }],
+  ])("unerwartete Antwort (%s): null", (_name, body) => {
+    expect(parseBoardState(body)).toBeNull();
+  });
+
+  test("fehlender oder falscher status wird zu leerem Text", () => {
+    expect(parseBoardState({ running: false, connected: true })).toEqual({ running: false, connected: true, status: "" });
+    expect(parseBoardState({ running: true, connected: false, status: 3 })).toEqual({ running: true, connected: false, status: "" });
   });
 });

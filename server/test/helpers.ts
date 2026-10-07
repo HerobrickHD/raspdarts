@@ -28,6 +28,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
       temp_celsius: 48.3,
       uptime_seconds: 3600,
       autodarts_version: "unknown",
+      autodarts_board: null,
       ip_address: "192.168.1.42",
       raspdarts_version: "2.0.0",
     }),
