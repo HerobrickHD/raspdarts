@@ -1,0 +1,227 @@
+/* Stil der Raspdarts-Seite. Liegt im Shadow DOM; Farben und Schriften kommen
+   von Autodarts (CSS-Variablen und @font-face greifen ins Shadow DOM durch).
+   Jede Variable hat einen festen Ersatzwert, falls Autodarts sie umbenennt. */
+
+:host {
+  all: initial;
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+  font-family: "Manrope Variable", "Manrope", sans-serif;
+  color: var(--color-mono-white, #fff);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+.wrap {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 40px 24px 32px;
+  display: grid;
+  gap: 24px;
+}
+
+.card {
+  background: var(--color-black-80, #16181c);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-family: "Bebas Neue", "Manrope Variable", sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+p {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-black-20, #cacfd9);
+}
+
+/* Banner nach Vorbild von Autodarts' Spieler-Banner */
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 32px;
+  padding: 16px 24px;
+  border: 1px solid color-mix(in srgb, var(--color-blue-60, #0b55df) 40%, transparent);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--color-blue-60, #0b55df) 25%, var(--color-black-80, #16181c)),
+    var(--color-black-80, #16181c) 60%);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-blue-60, #0b55df);
+}
+.logo img { width: 28px; height: 28px; }
+.name {
+  margin-bottom: 4px;
+  font-family: "Bebas Neue", "Manrope Variable", sans-serif;
+  font-size: 28px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgb(255 255 255 / 0.08);
+}
+.pill[data-tone="error"] { color: var(--color-red-50, #e24e67); }
+.stats { display: flex; flex-wrap: wrap; gap: 32px; }
+.stat { padding-left: 12px; border-left: 3px solid var(--color-blue-60, #0b55df); }
+.stat-label { margin-bottom: 4px; font-size: 14px; color: var(--color-black-20, #cacfd9); }
+.stat-value {
+  font-family: "League Spartan Variable", "Manrope Variable", sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Statuspunkte: data-tone sitzt auf dem Punkt selbst oder auf der Pille */
+.dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-black-50, #707580);
+}
+.dot[data-tone="ok"], [data-tone="ok"] > .dot { background: var(--color-green-50, #12cf81); }
+.dot[data-tone="error"], [data-tone="error"] > .dot { background: var(--color-red-50, #e24e67); }
+
+/* Karten */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.rows { display: grid; gap: 8px; margin: 16px 0 20px; }
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  background: rgb(27 31 41);
+}
+.key { color: var(--color-black-20, #cacfd9); }
+.val { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Knoepfe wie Autodarts: 14 px fett, Radius 8 px */
+button {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 8px;
+  font-family: "Manrope Variable", "Manrope", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  color: var(--color-mono-white, #fff);
+  background: rgb(255 255 255 / 0.08);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: rgb(255 255 255 / 0.14); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { color: rgb(240 245 253); background: var(--color-blue-60, #0b55df); }
+button.primary:hover:not(:disabled) { background: var(--color-blue-50, #4a89ff); }
+button.danger {
+  color: var(--color-red-50, #e24e67);
+  background: color-mix(in srgb, var(--color-red-60, #da3954) 20%, transparent);
+}
+button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-red-60, #da3954) 32%, transparent);
+}
+button.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--color-black-30, #b8bcc5);
+  background: none;
+}
+button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); background: none; }
+
+/* Protokoll-Karte */
+.running {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Manrope Variable", "Manrope", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--color-blue-30, #9dbbf2);
+}
+.spin {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.log {
+  height: 220px;
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  overflow: auto;
+  border-radius: 10px;
+  font: 12px/1.6 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-black-30, #b8bcc5);
+  background: var(--color-black-90, #01040b);
+}
+.result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.result [data-tone="ok"] { color: var(--color-green-50, #12cf81); }
+.result [data-tone="error"] { color: var(--color-red-50, #e24e67); }
+
+/* Bestaetigungsdialog ueber der ganzen Seite */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgb(1 4 11 / 0.6);
+  backdrop-filter: blur(4px);
+}
+.dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 18px;
+  background: var(--color-black-80, #16181c);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+}
+.dialog .btns { justify-content: flex-end; margin-top: 24px; }

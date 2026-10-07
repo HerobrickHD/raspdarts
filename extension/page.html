@@ -1,0 +1,84 @@
+<div class="wrap">
+  <section class="card hero">
+    <div class="brand">
+      <div class="logo"><img data-asset="icons/button.png" alt=""></div>
+      <div>
+        <div class="name">Raspdarts</div>
+        <span class="pill" data-field="pill"><span class="dot"></span><span data-field="pillText"></span></span>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label" data-text="cpu"></div><div class="stat-value" data-field="cpu">--</div></div>
+      <div class="stat"><div class="stat-label" data-text="ram"></div><div class="stat-value" data-field="ram">--</div></div>
+      <div class="stat"><div class="stat-label" data-text="temperature"></div><div class="stat-value" data-field="temperature">--</div></div>
+      <div class="stat"><div class="stat-label" data-text="uptime"></div><div class="stat-value" data-field="uptime">--</div></div>
+    </div>
+  </section>
+
+  <section class="card" data-field="hint" hidden>
+    <h2 data-text="piUnreachable"></h2>
+    <p data-text="unreachableHint"></p>
+  </section>
+
+  <div class="grid" data-field="cards">
+    <section class="card">
+      <h2>
+        <span data-text="autodarts"></span>
+        <button class="ghost" data-action="uninstallAutodarts" data-field="uninstallAutodarts">
+          <svg viewBox="0 0 448 512" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
+          <span data-text="uninstallAutodarts"></span>
+        </button>
+      </h2>
+      <div class="rows">
+        <div class="row"><span class="key" data-text="version"></span><span class="val" data-field="autodartsVersion">--</span></div>
+        <div class="row"><span class="key" data-text="status"></span><span class="val"><span class="dot" data-field="autodartsDot"></span><span data-field="autodartsStatus">--</span></span></div>
+      </div>
+      <div class="btns">
+        <button class="primary" data-field="autodartsMain"></button>
+        <button data-field="monitor" hidden><span data-text="openMonitor"></span> ↗</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        <span data-text="raspberryPi"></span>
+        <button class="ghost" data-action="uninstallRaspdarts">
+          <svg viewBox="0 0 448 512" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
+          <span data-text="uninstallRaspdarts"></span>
+        </button>
+      </h2>
+      <div class="rows">
+        <div class="row"><span class="key" data-text="raspdarts"></span><span class="val" data-field="raspdartsVersion">--</span></div>
+        <div class="row"><span class="key" data-text="beamer"></span><span class="val"><span class="dot" data-field="beamerDot"></span><span data-field="beamerStatus">--</span></span></div>
+      </div>
+      <div class="btns">
+        <button class="primary" data-action="updateRaspdarts" data-text="updateRaspdarts"></button>
+        <button data-action="restart" data-text="restart"></button>
+        <button class="danger" data-action="shutdown" data-text="shutdown"></button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" data-field="activity" hidden>
+    <h2>
+      <span data-field="activityTitle"></span>
+      <span class="running" data-field="activityRunning"><span class="spin"></span><span data-text="running"></span></span>
+    </h2>
+    <pre class="log" data-field="log" hidden></pre>
+    <div class="result" data-field="activityResult" hidden>
+      <span data-field="activityMessage"></span>
+      <button data-field="activityClose" data-text="close"></button>
+    </div>
+  </section>
+</div>
+
+<div class="backdrop" data-field="dialog" hidden>
+  <div class="dialog" role="dialog" aria-modal="true">
+    <h2 data-field="dialogTitle"></h2>
+    <p data-field="dialogText"></p>
+    <div class="btns">
+      <button data-field="dialogCancel" data-text="cancel"></button>
+      <button data-field="dialogConfirm"></button>
+    </div>
+  </div>
+</div>
