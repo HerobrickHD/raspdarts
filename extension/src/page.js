@@ -20,7 +20,6 @@
     shadow.querySelectorAll('[data-asset]').forEach((el) => { el.src = chrome.runtime.getURL(el.dataset.asset); });
 
     const field = (name) => shadow.querySelector(`[data-field="${name}"]`);
-    let monitorUrl = null;
     let resolveDialog = null;
 
     function render(view) {
@@ -32,20 +31,26 @@
 
       const autodarts = view.autodarts;
       field('autodartsVersion').textContent = autodarts.version;
-      field('autodartsStatus').textContent = autodarts.statusText;
-      field('autodartsDot').dataset.tone = autodarts.statusTone;
-      const mainButton = field('autodartsMain');
-      mainButton.dataset.action = autodarts.mainAction;
-      mainButton.textContent = autodarts.mainLabel;
-      field('monitor').hidden = !autodarts.showMonitor;
-      monitorUrl = autodarts.monitorUrl;
+      field('autodartsStatus').textContent = autodarts.stateText;
+      field('autodartsDot').dataset.tone = autodarts.stateTone;
+      field('install').hidden = !autodarts.showInstall;
 
       field('raspdartsVersion').textContent = view.pi.raspdartsVersion;
       field('beamerStatus').textContent = view.pi.beamerText;
       field('beamerDot').dataset.tone = view.pi.beamerTone;
 
       shadow.querySelectorAll('[data-action]').forEach((button) => { button.disabled = view.disabled; });
-      field('uninstallAutodarts').disabled = view.disabled || !autodarts.canUninstall;
+    }
+
+    // Klappt das Kopieren nicht (keine Berechtigung), bleibt der Befehl markierbar.
+    async function copyCommand(button) {
+      try {
+        await navigator.clipboard.writeText(field('installCommand').textContent);
+      } catch {
+        return;
+      }
+      button.textContent = t.copied;
+      setTimeout(() => { button.textContent = t.copy; }, 2000);
     }
 
     function confirm(actionKey, danger) {
@@ -101,7 +106,7 @@
       const button = event.target.closest('button');
       if (!button || button.disabled) return;
       if (button.dataset.action) onAction(button.dataset.action);
-      else if (button === field('monitor') && monitorUrl) window.open(monitorUrl, '_blank', 'noopener');
+      else if (button === field('copyCommand')) copyCommand(button);
       else if (button === field('activityClose')) { closeActivity(); onActivityClosed(); }
       else if (button === field('dialogCancel')) answerDialog(false);
       else if (button === field('dialogConfirm')) answerDialog(true);

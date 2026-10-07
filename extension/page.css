@@ -225,3 +225,21 @@ button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); backgro
   box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
 }
 .dialog .btns { justify-content: flex-end; margin-top: 24px; }
+
+/* Installationsbefehl, wenn Autodarts auf dem Pi fehlt */
+.install p { margin: 0 0 12px; }
+.command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-black-90, #01040b);
+}
+.command code {
+  flex: 1;
+  font: 13px/1.5 ui-monospace, Consolas, monospace;
+  color: var(--color-black-20, #cacfd9);
+  overflow-wrap: anywhere;
+  user-select: all;
+}

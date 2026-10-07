@@ -22,20 +22,17 @@
 
   <div class="grid" data-field="cards">
     <section class="card">
-      <h2>
-        <span data-text="autodarts"></span>
-        <button class="ghost" data-action="uninstallAutodarts" data-field="uninstallAutodarts">
-          <svg viewBox="0 0 448 512" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
-          <span data-text="uninstallAutodarts"></span>
-        </button>
-      </h2>
+      <h2><span data-text="autodarts"></span></h2>
       <div class="rows">
         <div class="row"><span class="key" data-text="version"></span><span class="val" data-field="autodartsVersion">--</span></div>
         <div class="row"><span class="key" data-text="status"></span><span class="val"><span class="dot" data-field="autodartsDot"></span><span data-field="autodartsStatus">--</span></span></div>
       </div>
-      <div class="btns">
-        <button class="primary" data-field="autodartsMain"></button>
-        <button data-field="monitor" hidden><span data-text="openMonitor"></span> ↗</button>
+      <div class="install" data-field="install" hidden>
+        <p data-text="installHint"></p>
+        <div class="command">
+          <code data-field="installCommand">curl -fsSL autodarts.sh | bash -s -- --headless</code>
+          <button data-field="copyCommand" data-text="copy"></button>
+        </div>
       </div>
     </section>
 
