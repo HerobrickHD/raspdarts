@@ -8,7 +8,7 @@ TARGET_USER="${SUDO_USER:?Dieses Skript muss per sudo gestartet werden}"
 TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIB_DIR=/usr/local/lib/raspdarts
-SUDO_SCRIPTS=(autodarts-install.sh autodarts-uninstall.sh raspdarts-update.sh raspdarts-uninstall.sh reboot.sh shutdown.sh)
+SUDO_SCRIPTS=(raspdarts-update.sh raspdarts-uninstall.sh reboot.sh shutdown.sh)
 
 echo "--- Root-Skripte nach $LIB_DIR ---"
 install -d -m 755 -o root -g root "$LIB_DIR"

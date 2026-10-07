@@ -2,8 +2,8 @@
 
 Alles rund um die Autodarts-Scheibe am Raspberry Pi – in einem Repo:
 
-- **Pi-Verwaltung** direkt aus play.autodarts.com: CPU, RAM, Temperatur, Autodarts
-  installieren und aktualisieren, Pi neu starten oder herunterfahren. Kein SSH nötig.
+- **Pi-Verwaltung** direkt aus play.autodarts.com: CPU, RAM, Temperatur, Version und
+  Zustand von Autodarts, Raspdarts aktualisieren, Pi neu starten oder herunterfahren.
 - **Beamer-Scoreboard**: Restpunkte, aktiver Spieler und Checkout-Weg groß an der
   Wand neben der Scheibe.
 
@@ -32,6 +32,16 @@ deshalb keine Autodarts-Zugangsdaten. Der Beamer zeigt nur etwas an, solange ein
 mit play.autodarts.com offen ist.
 
 ## Installation auf dem Pi
+
+Voraussetzung ist Autodarts headless v2. Falls noch nicht vorhanden, auf dem Pi:
+
+```bash
+curl -fsSL autodarts.sh | bash -s -- --headless
+```
+
+Danach `ad` starten und unter „Service“ den Dienst einschalten, damit die Scheibe
+nach einem Neustart von selbst läuft. Raspdarts installiert und aktualisiert
+Autodarts nicht; v2 aktualisiert sich selbst.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/HerobrickHD/raspdarts/main/install.sh | bash
@@ -83,8 +93,7 @@ cd extension && bash build.sh
 | GET | `/` | Beamer-Anzeige (`?display=handy` für ein eigenes Layout) |
 | WS | `/ws` | Spielstand für Anzeigen |
 | WS | `/ingest` | Spieldaten von der Extension |
-| GET | `/api/status` | Systemwerte und Beamer-Verbindung |
-| POST | `/api/autodarts/install`, `/api/autodarts/uninstall` | SSE-Stream |
+| GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
 | GET/PUT | `/api/layout/:display` | Layout einer Anzeige |

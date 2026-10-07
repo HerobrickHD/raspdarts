@@ -48,9 +48,9 @@ describe("JobRunner", () => {
       return asChild(fakeChild({ lines: ["eins", "zwei"] }));
     });
 
-    const events = await collect(runner, "autodarts-install.sh");
+    const events = await collect(runner, "raspdarts-update.sh");
 
-    expect(started).toEqual(["autodarts-install.sh"]);
+    expect(started).toEqual(["raspdarts-update.sh"]);
     expect(events).toEqual([
       { type: "log", line: "eins" },
       { type: "log", line: "zwei" },
@@ -137,7 +137,7 @@ describe("Routen", () => {
     app = await buildApp(testDeps({ jobs }));
     const host = await listen(app);
 
-    const response = await fetch(`http://${host}/api/autodarts/install`, {
+    const response = await fetch(`http://${host}/api/system/update`, {
       method: "POST",
       headers: { "X-Raspdarts": "1" },
     });
@@ -146,11 +146,10 @@ describe("Routen", () => {
     expect(response.headers.get("content-type")).toContain("text/event-stream");
     expect(body).toContain('data: {"type":"log","line":"fertig"}\n\n');
     expect(body).toContain('data: {"type":"done","success":true}\n\n');
-    expect(started).toEqual(["autodarts-install.sh"]);
+    expect(started).toEqual(["raspdarts-update.sh"]);
   });
 
   test.each([
-    ["/api/autodarts/uninstall", "autodarts-uninstall.sh"],
     ["/api/system/update", "raspdarts-update.sh"],
     ["/api/system/uninstall", "raspdarts-uninstall.sh"],
   ])("%s startet %s", async (path, script) => {
@@ -171,6 +170,28 @@ describe("Routen", () => {
     expect(started).toEqual([script]);
   });
 
+  test.each(["/api/autodarts/install", "/api/autodarts/uninstall"])(
+    "%s gibt es nicht mehr",
+    async (path) => {
+      const started: string[] = [];
+      const jobs = new JobRunner((name) => {
+        started.push(name);
+        return asChild(fakeChild());
+      });
+      app = await buildApp(testDeps({ jobs }));
+      const host = await listen(app);
+
+      const response = await fetch(`http://${host}${path}`, {
+        method: "POST",
+        headers: { "X-Raspdarts": "1" },
+      });
+      await response.text();
+
+      expect(response.status).toBe(404);
+      expect(started).toEqual([]);
+    },
+  );
+
   test("antwortet mit 409, solange ein Auftrag laeuft", async () => {
     const child = fakeChild({ hang: true });
     const jobs = new JobRunner(() => asChild(child));
@@ -179,7 +200,7 @@ describe("Routen", () => {
     const headers = { "X-Raspdarts": "1" };
 
     const first = await fetch(`http://${host}/api/system/update`, { method: "POST", headers });
-    const second = await fetch(`http://${host}/api/autodarts/install`, { method: "POST", headers });
+    const second = await fetch(`http://${host}/api/system/uninstall`, { method: "POST", headers });
 
     expect(second.status).toBe(409);
     child.emit("close", 0);

@@ -48,8 +48,6 @@ export interface AppDeps {
 
 /** Langlaeufer: Ausgabe wird zeilenweise als Server-Sent Events gestreamt. */
 const JOB_ROUTES: Record<string, string> = {
-  "/api/autodarts/install": "autodarts-install.sh",
-  "/api/autodarts/uninstall": "autodarts-uninstall.sh",
   "/api/system/update": "raspdarts-update.sh",
   "/api/system/uninstall": "raspdarts-uninstall.sh",
 };
