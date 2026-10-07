@@ -204,6 +204,7 @@ lassen sich in Vitest importieren.
 |---|---|
 | `src/texts.js` (neu) | `globalThis.raspdartsTexts`: Tabellen `de`/`en`, `detectLanguage(navLabel)` |
 | `src/view-model.js` (neu) | `globalThis.raspdartsViewModel`: reine Funktionen ohne DOM. `buildView({ status, reachable, loading, busy }, t)` liefert alles, was die Seite anzeigt: formatierte Werte (Laufzeit, RAM, Temperatur), Pillen, Knopfbeschriftungen, welche Knöpfe gesperrt bzw. sichtbar sind, ob die Hinweiskarte erscheint |
+| `src/stream.js` (neu, nach dem Review) | `globalThis.raspdartsStream.runStream(...)`: Stream-Aktion über den Port zu `background.js`, mit Ping alle 20 s, damit Chrome den Service Worker bei stillen Phasen (z. B. `npm ci`) nicht beendet |
 | `src/page.js` (neu) | `globalThis.raspdartsPage`: baut die Seite im Shadow DOM aus `page.html`/`page.css`, `render(view)`, Dialog öffnen, Protokoll-Karte steuern |
 | `page.html`, `page.css` (neu) | Aufbau und Stil der Seite; ersetzen `modal.html` und `modal.css` (werden gelöscht) |
 | `src/content.js` | Navigationseintrag, Seite zeigen/verstecken, Unterstrich, Adresswechsel, Abfragen, Aktionen über `background.js`. Das Popup samt `openModal`/`closeModal`/`openDialog` entfällt |

@@ -222,21 +222,16 @@ function errorText(error) {
 }
 
 function runStream(action) {
-  const port = chrome.runtime.connect({ name: 'raspdarts-stream' });
-  let finished = false;
-  const end = (success, message) => {
-    if (finished) return;
-    finished = true;
-    finishAction(success, message);
-  };
-
-  port.onMessage.addListener((msg) => {
-    if (msg.type === 'log') page.appendLog(msg.line);
-    else if (msg.type === 'conflict') end(false, texts.alreadyRunning);
-    else if (msg.type === 'done') end(msg.success, msg.success ? texts.success : errorText(msg.error));
+  globalThis.raspdartsStream.runStream({
+    connect: () => chrome.runtime.connect({ name: 'raspdarts-stream' }),
+    url: action.url,
+    onLog: (line) => page.appendLog(line),
+    onEnd: (result) => {
+      if (result.kind === 'conflict') finishAction(false, texts.alreadyRunning);
+      else if (result.kind === 'disconnected') finishAction(false, texts.disconnected);
+      else finishAction(result.success, result.success ? texts.success : errorText(result.error));
+    },
   });
-  port.onDisconnect.addListener(() => end(false, texts.disconnected));
-  port.postMessage({ type: 'stream-start', url: action.url });
 }
 
 async function runPower(action) {
