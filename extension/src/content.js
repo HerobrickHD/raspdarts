@@ -1,424 +1,271 @@
 'use strict';
 
-let modalRoot = null;
-let pollInterval = null;
-let streamActive = false;
-let activePort = null; // reference to open stream port for cancellation
-let piReachable = true;
-let beamerConnected = false;
-let consecutiveFailures = 0;
-let bgPollInterval = null;
-let autodartsInstalled = true;
-let piIP = null;
+// Haengt den Eintrag "Raspdarts" in Autodarts' Hauptnavigation und zeigt bei
+// Klick die Raspdarts-Seite im Inhaltsbereich. Siehe
+// docs/superpowers/specs/2026-10-07-raspdarts-seite-design.md.
 
-// Helpers 
+const { ACTIONS, buildView } = globalThis.raspdartsViewModel;
+const { detectLanguage, getTexts } = globalThis.raspdartsTexts;
+
+const STATUS_INTERVAL_MS = 10_000;
+const BACKGROUND_INTERVAL_MS = 30_000;
+const POWER_CLOSE_MS = 3_000;
+const PAGE_ATTR = 'data-raspdarts-page';
+// Klassen der Autodarts-Hauptnavigation, damit der Eintrag wie Start, Spielen usw. aussieht.
+const AUTODARTS_NAV_ITEM_CLASSES = 'font-bold flex items-center relative hover:text-mono-white text-black-20';
+
+// Solange unsere Seite offen ist: Autodarts' Inhalt ausblenden, den aktiven
+// Autodarts-Eintrag grau und unseren weiss zeigen. Autodarts' Elemente
+// behalten dabei ihre Klassen.
+const DOCUMENT_STYLE = `
+  html:not([${PAGE_ATTR}]) #raspdarts-page { display: none !important; }
+  html[${PAGE_ATTR}] main > :not(#raspdarts-page) { display: none !important; }
+  html[${PAGE_ATTR}] header nav > a[aria-current="page"] { color: var(--color-black-20, #cacfd9) !important; }
+  html[${PAGE_ATTR}] #raspdarts-nav-btn { color: var(--color-mono-white, #fff) !important; }
+`;
+
+let status = null;      // letzte erfolgreiche Antwort von /api/status
+let reachable = null;   // null = noch keine Antwort
+let busy = false;       // eine Aktion laeuft
+let texts = null;
+let pagePromise = null;
+let page = null;
+let pageVisible = false;
+let pollTimer = null;
+let lastHref = location.href;
+let underline = null;   // { bar, savedLeft, savedWidth, ourLeft }
 
 function sendToBackground(msg) {
   return new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 }
-
-function formatUptime(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function updateButtonReachability(reachable) {
-  piReachable = reachable;
-  const btn = document.getElementById('raspdarts-nav-btn');
-  if (!btn) return;
-  btn.style.opacity = reachable ? '' : '0.5';
-  btn.style.cursor = reachable ? '' : 'not-allowed';
-  btn.title = reachable ? '' : 'Raspberry Pi unreachable';
-}
-
-function updateBeamerIndicator(connected) {
-  beamerConnected = connected;
-  const dot = document.getElementById('raspdarts-beamer-dot');
-  if (dot) dot.style.background = connected ? 'var(--color-green-50, #22c55e)' : 'rgba(255,255,255,0.25)';
-  const label = document.getElementById('raspdarts-beamer-status');
-  if (label) label.textContent = connected ? 'connected' : 'not connected';
-}
-
-// Nav button injection
-
-// Klassen der Autodarts-Hauptnavigation, damit der Eintrag wie Start, Spielen usw. aussieht.
-const AUTODARTS_NAV_ITEM_CLASSES = 'font-bold flex items-center relative hover:text-mono-white text-black-20';
 
 function findMainNav() {
   return document.querySelector('nav[aria-label="Hauptnavigation"]')
     || document.querySelector('header nav');
 }
 
-function injectNavButton() {
-  const tryInject = () => {
-    if (document.getElementById('raspdarts-nav-btn')) return;
-    const nav = findMainNav();
-    if (!nav) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'raspdarts-nav-btn';
-    btn.type = 'button';
-    btn.className = AUTODARTS_NAV_ITEM_CLASSES;
-    btn.style.gap = '6px';
-    btn.append('Raspdarts');
-
-    // Punkt hinter dem Text: gruen = Spieldaten-Verbindung zum Pi steht, grau = nicht.
-    const beamerDot = document.createElement('span');
-    beamerDot.id = 'raspdarts-beamer-dot';
-    beamerDot.style.cssText = 'width:8px;height:8px;border-radius:50%;flex-shrink:0;';
-    btn.appendChild(beamerDot);
-    btn.addEventListener('click', openModal);
-
-    // Vor dem Unterstrich-Balken einfuegen, der als letztes Kind in der Navigation steckt.
-    const lastItem = [...nav.children].filter((el) => el.matches('a, button')).pop();
-    if (lastItem) lastItem.after(btn);
-    else nav.appendChild(btn);
-
-    updateButtonReachability(piReachable);
-    updateBeamerIndicator(beamerConnected);
-  };
-
-  // Weiter beobachten: Autodarts baut die Kopfleiste beim Seitenwechsel teils neu auf.
-  tryInject();
-  new MutationObserver(tryInject).observe(document.body, { childList: true, subtree: true });
-
-  // Initial connectivity check + background polling (only when modal is closed)
-  fetchStatus();
-  bgPollInterval = setInterval(() => {
-    if (!modalRoot) fetchStatus();
-  }, 30_000);
+// Der Unterstrich-Balken ist das einzige div in der Navigation.
+function underlineBar(nav) {
+  return [...nav.children].find((el) => el.tagName === 'DIV');
 }
 
-// Modal open / close
+// --- Navigationseintrag -------------------------------------------------------
 
-async function openModal() {
-  if (modalRoot) return;
-  if (!piReachable) return;
-
-  // CSS laden (einmalig)
-  if (!document.getElementById('raspdarts-styles')) {
-    const link = document.createElement('link');
-    link.id = 'raspdarts-styles';
-    link.rel = 'stylesheet';
-    link.href = chrome.runtime.getURL('modal.css');
-    document.head.appendChild(link);
-  }
-
-  // Fetch and inject modal HTML
-  const html = await fetch(chrome.runtime.getURL('modal.html')).then(r => r.text());
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = html;
-  document.body.appendChild(wrapper);
-  modalRoot = wrapper;
-
-  // Extension-Ressourcen-URLs setzen (relative Pfade funktionieren nach Injektion nicht)
-  const logoImg = wrapper.querySelector('#raspdarts-title img');
-  if (logoImg) logoImg.src = chrome.runtime.getURL('icons/button.png');
-
-  // Event-Handler binden
-  document.getElementById('raspdarts-close').addEventListener('click', closeModal);
-  document.getElementById('raspdarts-overlay').addEventListener('click', (e) => {
-    if (e.target.id === 'raspdarts-overlay') closeModal();
-  });
-  document.getElementById('btn-autodarts-update').addEventListener('click', () => {
-    openDialog({
-      title: autodartsInstalled ? 'Update Autodarts' : 'Install Autodarts',
-      confirmText: autodartsInstalled
-        ? 'Really update Autodarts on the Raspberry Pi?'
-        : 'Really install Autodarts on the Raspberry Pi?',
-      confirmBtnClass: 'raspdarts-btn-primary',
-      action: { type: 'stream', url: '/api/autodarts/install' },
-    });
-  });
-  document.getElementById('btn-autodarts-monitor').addEventListener('click', () => {
-    if (piIP) window.open(`http://${piIP}:3180/monitor`, '_blank');
-  });
-  document.getElementById('btn-autodarts-uninstall').addEventListener('click', () => {
-    openDialog({
-      title: 'Uninstall Autodarts',
-      confirmText: 'Really uninstall Autodarts from the Raspberry Pi?',
-      confirmBtnClass: 'raspdarts-btn-danger',
-      action: { type: 'stream', url: '/api/autodarts/uninstall' },
-    });
-  });
-  document.getElementById('btn-system-update').addEventListener('click', () => {
-    openDialog({
-      title: 'Update Raspdarts',
-      confirmText: 'Really update Raspdarts on the Raspberry Pi?',
-      confirmBtnClass: 'raspdarts-btn-primary',
-      action: { type: 'stream', url: '/api/system/update' },
-    });
-  });
-  document.getElementById('btn-system-uninstall').addEventListener('click', () => {
-    openDialog({
-      title: 'Uninstall Raspdarts',
-      confirmText: 'Really uninstall Raspdarts from the Raspberry Pi?',
-      confirmBtnClass: 'raspdarts-btn-danger',
-      action: { type: 'stream', url: '/api/system/uninstall' },
-    });
-  });
-  document.getElementById('btn-reboot').addEventListener('click', () => {
-    openDialog({
-      title: 'Restart',
-      confirmText: 'Really restart the Raspberry Pi?',
-      confirmBtnClass: 'raspdarts-btn-warning',
-      action: { type: 'fetch', url: '/api/system/reboot', doneText: 'Restarting Pi\u2026', autoClose: 3000 },
-    });
-  });
-  document.getElementById('btn-shutdown').addEventListener('click', () => {
-    openDialog({
-      title: 'Shut Down',
-      confirmText: 'Really shut down the Raspberry Pi?',
-      confirmBtnClass: 'raspdarts-btn-danger',
-      action: { type: 'fetch', url: '/api/system/shutdown', doneText: 'Shutting down Pi\u2026', autoClose: 3000 },
-    });
-  });
-
-  // Initial status fetch + start polling
-  await fetchStatus();
-  pollInterval = setInterval(() => {
-    if (!streamActive) fetchStatus();
-  }, 10_000);
+// Punkt hinter dem Text: gruen = Spieldaten-Verbindung zum Pi steht, grau = nicht.
+function updateNavDot() {
+  const dot = document.getElementById('raspdarts-beamer-dot');
+  if (!dot) return;
+  const connected = reachable === true && Boolean(status?.beamer?.ingest_connected);
+  dot.style.background = connected ? 'var(--color-green-50, #12cf81)' : 'rgba(255,255,255,0.25)';
 }
 
-function closeModal() {
-  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-  // Stream-cancel senden wenn ein Stream läuft
-  if (activePort) {
-    try { activePort.postMessage({ type: 'stream-cancel' }); } catch {}
-    activePort = null;
-  }
-  document.getElementById('raspdarts-dialog-overlay')?.remove();
-  if (modalRoot) { modalRoot.remove(); modalRoot = null; }
-  streamActive = false;
+function tryInjectNavButton() {
+  if (document.getElementById('raspdarts-nav-btn')) return;
+  const nav = findMainNav();
+  if (!nav) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'raspdarts-nav-btn';
+  btn.type = 'button';
+  btn.className = AUTODARTS_NAV_ITEM_CLASSES;
+  btn.style.gap = '6px';
+  btn.append('Raspdarts');
+
+  const dot = document.createElement('span');
+  dot.id = 'raspdarts-beamer-dot';
+  dot.style.cssText = 'width:8px;height:8px;border-radius:50%;flex-shrink:0;';
+  btn.appendChild(dot);
+  btn.addEventListener('click', showPage);
+
+  // Vor dem Unterstrich-Balken einfuegen, der als letztes Kind in der Navigation steckt.
+  const lastItem = [...nav.children].filter((el) => el.matches('a, button')).pop();
+  if (lastItem) lastItem.after(btn);
+  else nav.appendChild(btn);
+  updateNavDot();
 }
 
-// Status polling
+// --- Status -------------------------------------------------------------------
 
 async function fetchStatus() {
   const result = await sendToBackground({ type: 'fetch', url: '/api/status' });
-
-  if (!result || !result.ok) {
-    consecutiveFailures++;
-    updateButtonReachability(false);
-    updateBeamerIndicator(false);
-    if (modalRoot) {
-      document.getElementById('raspdarts-error')?.classList.remove('raspdarts-hidden');
-      document.getElementById('raspdarts-content')?.classList.add('raspdarts-hidden');
-      if (consecutiveFailures >= 2) {
-        setTimeout(() => closeModal(), 2000);
-      }
-    }
-    return;
+  if (result?.ok) {
+    status = result.data;
+    reachable = true;
+  } else {
+    reachable = false;
   }
+  updateNavDot();
+  renderPage();
+}
 
-  consecutiveFailures = 0;
-  updateButtonReachability(true);
+function renderPage() {
+  if (page) page.render(buildView({ status, reachable, busy }, texts));
+}
 
-  document.getElementById('raspdarts-error')?.classList.add('raspdarts-hidden');
-  document.getElementById('raspdarts-content')?.classList.remove('raspdarts-hidden');
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(() => { if (!busy) fetchStatus(); }, STATUS_INTERVAL_MS);
+}
 
-  const d = result.data;
-  updateBeamerIndicator(Boolean(d.beamer?.ingest_connected));
-  const setValue = (id, val) => {
-    const el = document.querySelector(`#${id} .raspdarts-card-value`);
-    if (el) { el.textContent = val; el.classList.remove('raspdarts-skeleton'); }
+function stopPolling() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+// --- Seite zeigen und verstecken ----------------------------------------------
+
+function ensureDocumentStyle() {
+  if (document.getElementById('raspdarts-document-style')) return;
+  const style = document.createElement('style');
+  style.id = 'raspdarts-document-style';
+  style.textContent = DOCUMENT_STYLE;
+  document.head.appendChild(style);
+}
+
+function getPage() {
+  if (!pagePromise) {
+    texts = getTexts(detectLanguage(findMainNav()?.getAttribute('aria-label')));
+    pagePromise = globalThis.raspdartsPage
+      .create({ t: texts, onAction: runAction, onActivityClosed: fetchStatus })
+      .then((created) => { page = created; return created; })
+      .catch((error) => { pagePromise = null; throw error; });
+  }
+  return pagePromise;
+}
+
+async function showPage() {
+  if (pageVisible) return;
+  const created = await getPage();
+  const main = document.querySelector('main');
+  if (pageVisible || !main) return;
+
+  ensureDocumentStyle();
+  // Autodarts baut <main> bei Seitenwechseln neu auf; dann wieder einhaengen.
+  if (created.host.parentElement !== main) main.appendChild(created.host);
+  document.documentElement.setAttribute(PAGE_ATTR, '');
+  pageVisible = true;
+  lastHref = location.href;
+  moveUnderline();
+  renderPage();
+  fetchStatus();
+  startPolling();
+}
+
+// Die Seite wird nur versteckt: Eine laufende Aktion samt Protokoll laeuft weiter.
+function hidePage() {
+  if (!pageVisible) return;
+  pageVisible = false;
+  document.documentElement.removeAttribute(PAGE_ATTR);
+  page?.closeDialog();
+  restoreUnderline();
+  stopPolling();
+}
+
+function moveUnderline() {
+  const nav = findMainNav();
+  const btn = document.getElementById('raspdarts-nav-btn');
+  const bar = nav && underlineBar(nav);
+  if (!bar || !btn) return;
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = btn.getBoundingClientRect();
+  underline = {
+    bar,
+    savedLeft: bar.style.left,
+    savedWidth: bar.style.width,
+    ourLeft: `${btnRect.left - navRect.left}px`,
   };
-  setValue('card-cpu',    `${d.cpu_percent}%`);
-  setValue('card-ram',    `${Math.round(d.ram_used_mb / 1024 * 10) / 10} / ${Math.round(d.ram_total_mb / 1024 * 10) / 10} GB`);
-  setValue('card-temp',   `${d.temp_celsius}°C`);
-  setValue('card-uptime', formatUptime(d.uptime_seconds));
-  const versionEl = document.getElementById('raspdarts-version');
-  if (versionEl) versionEl.textContent = d.autodarts_version;
-  const managerVersionEl = document.getElementById('raspdarts-manager-version');
-  if (managerVersionEl) managerVersionEl.textContent = d.raspdarts_version ? `v${d.raspdarts_version}` : '--';
+  bar.style.left = underline.ourLeft;
+  bar.style.width = `${btnRect.width}px`;
+}
 
-  autodartsInstalled = d.autodarts_version !== 'unknown';
-  piIP = d.ip_address || null;
-  if (!streamActive) {
-    const autodartsBtn = document.getElementById('btn-autodarts-update');
-    if (autodartsBtn) {
-      autodartsBtn.querySelector('.raspdarts-btn-text').textContent = autodartsInstalled
-        ? 'Update Autodarts'
-        : 'Install Autodarts';
-      autodartsBtn.disabled = false;
-    }
-    const monitorBtn = document.getElementById('btn-autodarts-monitor');
-    if (monitorBtn) {
-      if (autodartsInstalled && piIP) {
-        monitorBtn.classList.remove('raspdarts-hidden');
-      } else {
-        monitorBtn.classList.add('raspdarts-hidden');
-      }
-    }
-    const uninstallAutoBtn = document.getElementById('btn-autodarts-uninstall');
-    if (uninstallAutoBtn) uninstallAutoBtn.disabled = !autodartsInstalled;
+// Nur zuruecksetzen, wenn Autodarts den Balken inzwischen nicht selbst
+// verschoben hat (das tut es bei einem echten Seitenwechsel).
+function restoreUnderline() {
+  if (!underline) return;
+  const { bar, savedLeft, savedWidth, ourLeft } = underline;
+  if (bar.style.left === ourLeft) {
+    bar.style.left = savedLeft;
+    bar.style.width = savedWidth;
+  }
+  underline = null;
+}
 
-    const uninstallSysBtn = document.getElementById('btn-system-uninstall');
-    if (uninstallSysBtn) uninstallSysBtn.disabled = false;
-
-    const systemBtn = document.getElementById('btn-system-update');
-    if (systemBtn) {
-      systemBtn.querySelector('.raspdarts-btn-text').textContent = 'Update Raspdarts';
-      systemBtn.disabled = false;
-    }
-    document.getElementById('btn-reboot')?.removeAttribute('disabled');
-    document.getElementById('btn-shutdown')?.removeAttribute('disabled');
+function onDomChange() {
+  tryInjectNavButton();
+  if (location.href !== lastHref) {
+    lastHref = location.href;
+    hidePage();
   }
 }
 
-// Universal confirm dialog
+// --- Aktionen -----------------------------------------------------------------
 
-function openDialog({ title, confirmText, confirmBtnClass, action }) {
-  document.getElementById('raspdarts-dialog-overlay')?.remove();
+async function runAction(key) {
+  const action = ACTIONS[key];
+  if (busy || !action || !page) return;
+  const confirmed = await page.confirm(key, action.danger);
+  if (!confirmed || busy) return;
 
-  const overlay = document.createElement('div');
-  overlay.id = 'raspdarts-dialog-overlay';
-
-  const titleEl = document.createElement('div');
-  titleEl.className = 'raspdarts-dialog-title';
-  titleEl.textContent = title;
-
-  const textEl = document.createElement('p');
-  textEl.className = 'raspdarts-dialog-text';
-  textEl.textContent = confirmText;
-
-  const yesBtn = document.createElement('button');
-  yesBtn.id = 'btn-dialog-yes';
-  yesBtn.className = `raspdarts-btn ${confirmBtnClass}`;
-  yesBtn.textContent = 'Yes, continue';
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.id = 'btn-dialog-cancel';
-  cancelBtn.className = 'raspdarts-btn raspdarts-btn-secondary';
-  cancelBtn.textContent = 'Cancel';
-
-  const confirmButtons = document.createElement('div');
-  confirmButtons.className = 'raspdarts-confirm-buttons';
-  confirmButtons.appendChild(yesBtn);
-  confirmButtons.appendChild(cancelBtn);
-
-  const confirmSection = document.createElement('div');
-  confirmSection.id = 'raspdarts-dialog-confirm';
-  confirmSection.appendChild(textEl);
-  confirmSection.appendChild(confirmButtons);
-
-  const logContent = document.createElement('div');
-  logContent.id = 'raspdarts-dialog-log-content';
-
-  const logEl = document.createElement('div');
-  logEl.className = 'raspdarts-log raspdarts-hidden';
-  logEl.id = 'raspdarts-dialog-log';
-  logEl.appendChild(logContent);
-
-  const spinner = document.createElement('span');
-  spinner.className = 'raspdarts-spinner';
-
-  const spinnerLabel = document.createElement('span');
-  spinnerLabel.textContent = 'Running\u2026';
-
-  const runningFooter = document.createElement('div');
-  runningFooter.id = 'raspdarts-dialog-running';
-  runningFooter.className = 'raspdarts-dialog-spinner-row raspdarts-hidden';
-  runningFooter.appendChild(spinner);
-  runningFooter.appendChild(spinnerLabel);
-
-  const statusEl = document.createElement('div');
-  statusEl.id = 'raspdarts-dialog-status';
-
-  const closeBtn = document.createElement('button');
-  closeBtn.id = 'btn-dialog-close';
-  closeBtn.className = 'raspdarts-btn raspdarts-btn-secondary';
-  closeBtn.textContent = 'Close';
-
-  const doneFooter = document.createElement('div');
-  doneFooter.id = 'raspdarts-dialog-done';
-  doneFooter.className = 'raspdarts-hidden';
-  doneFooter.appendChild(statusEl);
-  doneFooter.appendChild(closeBtn);
-
-  const dialog = document.createElement('div');
-  dialog.id = 'raspdarts-dialog';
-  dialog.appendChild(titleEl);
-  dialog.appendChild(confirmSection);
-  dialog.appendChild(logEl);
-  dialog.appendChild(runningFooter);
-  dialog.appendChild(doneFooter);
-
-  overlay.appendChild(dialog);
-  document.body.appendChild(overlay);
-
-  const closeDialog = () => {
-    overlay.remove();
-    fetchStatus();
-  };
-
-  cancelBtn.addEventListener('click', closeDialog);
-  closeBtn.addEventListener('click', closeDialog);
-
-  yesBtn.addEventListener('click', () => {
-    confirmSection.classList.add('raspdarts-hidden');
-    runningFooter.classList.remove('raspdarts-hidden');
-
-    if (action.type === 'stream') {
-      _dialogRunStream(overlay, action.url);
-    } else {
-      _dialogRunFetch(overlay, action, closeDialog);
-    }
-  });
+  busy = true;
+  renderPage();
+  page.startActivity(texts.dialogs[key].title);
+  if (action.kind === 'stream') runStream(action);
+  else runPower(action);
 }
 
-function _dialogTransitionToDone(overlay, success, message) {
-  streamActive = false;
-  activePort = null;
-  overlay.querySelector('#raspdarts-dialog-running').classList.add('raspdarts-hidden');
-  const doneEl = overlay.querySelector('#raspdarts-dialog-done');
-  doneEl.classList.remove('raspdarts-hidden');
-  const statusEl = overlay.querySelector('#raspdarts-dialog-status');
-  statusEl.textContent = message;
-  statusEl.className = success ? 'success' : 'error';
+function finishAction(success, message) {
+  busy = false;
+  page.finishActivity(success, message);
+  renderPage();
 }
 
-function _dialogRunStream(overlay, url) {
-  const logEl = overlay.querySelector('#raspdarts-dialog-log');
-  const logContent = overlay.querySelector('#raspdarts-dialog-log-content');
+function errorText(error) {
+  return texts.errorPrefix + (error || texts.requestFailed);
+}
 
+function runStream(action) {
   const port = chrome.runtime.connect({ name: 'raspdarts-stream' });
-  activePort = port;
-  streamActive = true;
+  let finished = false;
+  const end = (success, message) => {
+    if (finished) return;
+    finished = true;
+    finishAction(success, message);
+  };
 
   port.onMessage.addListener((msg) => {
-    if (msg.type === 'log') {
-      logEl.classList.remove('raspdarts-hidden');
-      logContent.textContent += msg.line + '\n';
-      logEl.scrollTop = logEl.scrollHeight;
-    } else if (msg.type === 'conflict') {
-      _dialogTransitionToDone(overlay, false, 'Already running \u2014 try again shortly.');
-      port.disconnect();
-    } else if (msg.type === 'done') {
-      _dialogTransitionToDone(overlay, msg.success, msg.success ? 'Completed successfully!' : `Error: ${msg.error}`);
-    }
+    if (msg.type === 'log') page.appendLog(msg.line);
+    else if (msg.type === 'conflict') end(false, texts.alreadyRunning);
+    else if (msg.type === 'done') end(msg.success, msg.success ? texts.success : errorText(msg.error));
   });
-
-  port.onDisconnect.addListener(() => {
-    if (streamActive) _dialogTransitionToDone(overlay, false, 'Stream disconnected.');
-  });
-
-  port.postMessage({ type: 'stream-start', url });
+  port.onDisconnect.addListener(() => end(false, texts.disconnected));
+  port.postMessage({ type: 'stream-start', url: action.url });
 }
 
-async function _dialogRunFetch(overlay, action, closeDialog) {
+async function runPower(action) {
   const result = await sendToBackground({ type: 'fetch', url: action.url, method: 'POST' });
-  if (result && result.ok) {
-    _dialogTransitionToDone(overlay, true, action.doneText);
-    if (action.autoClose) setTimeout(closeDialog, action.autoClose);
+  if (result?.ok) {
+    finishAction(true, texts[action.doneText]);
+    // Nicht schliessen, falls inzwischen schon die naechste Aktion laeuft.
+    setTimeout(() => { if (!busy) page.closeActivity(); fetchStatus(); }, POWER_CLOSE_MS);
+  } else if (result?.status === 409) {
+    finishAction(false, texts.alreadyRunning);
   } else {
-    const errMsg = (result && result.error) ? `Error: ${result.error}` : 'Error: request failed.';
-    _dialogTransitionToDone(overlay, false, errMsg);
+    finishAction(false, errorText(result?.data?.error || result?.error));
   }
 }
 
-// Start
+// --- Start --------------------------------------------------------------------
 
-injectNavButton();
+tryInjectNavButton();
+// Weiter beobachten: Autodarts baut die Kopfleiste beim Seitenwechsel teils neu
+// auf, und ein Adresswechsel heisst, dass jemand unsere Seite verlassen hat.
+new MutationObserver(onDomChange).observe(document.body, { childList: true, subtree: true });
+window.addEventListener('popstate', hidePage);
+// Klick auf einen Link der Kopfleiste verlaesst die Seite, auch ohne
+// Adresswechsel (z. B. "Start", wenn man schon auf / ist).
+document.addEventListener('click', (event) => {
+  if (pageVisible && event.target.closest?.('header a')) hidePage();
+}, true);
+
+fetchStatus();
+setInterval(() => { if (!pageVisible) fetchStatus(); }, BACKGROUND_INTERVAL_MS);

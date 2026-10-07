@@ -25,7 +25,7 @@
     },
     {
       "matches": ["https://play.autodarts.com/*"],
-      "js": ["content.js"],
+      "js": ["texts.js", "view-model.js", "page.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -34,7 +34,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["modal.html", "modal.css", "icons/*"],
+      "resources": ["page.html", "page.css", "icons/*"],
       "matches": ["https://play.autodarts.com/*"]
     }
   ]

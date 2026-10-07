@@ -9,7 +9,7 @@ for BROWSER in chrome firefox; do
   TARGET="$DIST/$BROWSER"
   rm -rf "$TARGET" && mkdir -p "$TARGET"
   cp "$SCRIPT_DIR"/src/*.js "$TARGET/"
-  cp -r "$SCRIPT_DIR/modal.html" "$SCRIPT_DIR/modal.css" "$SCRIPT_DIR/icons" "$TARGET/"
+  cp -r "$SCRIPT_DIR/page.html" "$SCRIPT_DIR/page.css" "$SCRIPT_DIR/icons" "$TARGET/"
   cp "$SCRIPT_DIR/manifest.$BROWSER.json" "$TARGET/manifest.json"
   echo "Gebaut: $TARGET"
 done
