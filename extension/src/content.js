@@ -5,6 +5,7 @@ let pollInterval = null;
 let streamActive = false;
 let activePort = null; // reference to open stream port for cancellation
 let piReachable = true;
+let beamerConnected = false;
 let consecutiveFailures = 0;
 let bgPollInterval = null;
 let autodartsInstalled = true;
@@ -26,80 +27,61 @@ function updateButtonReachability(reachable) {
   piReachable = reachable;
   const btn = document.getElementById('raspdarts-nav-btn');
   if (!btn) return;
-  if (reachable) {
-    btn.style.background = '#22c55e';
-    btn.style.cursor = 'pointer';
-    btn.title = '';
-  } else {
-    btn.style.background = '#6b7280';
-    btn.style.cursor = 'not-allowed';
-    btn.title = 'Raspberry Pi unreachable';
-  }
+  btn.style.opacity = reachable ? '' : '0.5';
+  btn.style.cursor = reachable ? '' : 'not-allowed';
+  btn.title = reachable ? '' : 'Raspberry Pi unreachable';
 }
 
 function updateBeamerIndicator(connected) {
+  beamerConnected = connected;
   const dot = document.getElementById('raspdarts-beamer-dot');
-  if (dot) dot.style.background = connected ? '#ffffff' : 'rgba(0,0,0,0.35)';
+  if (dot) dot.style.background = connected ? 'var(--color-green-50, #22c55e)' : 'rgba(255,255,255,0.25)';
   const label = document.getElementById('raspdarts-beamer-status');
   if (label) label.textContent = connected ? 'connected' : 'not connected';
 }
 
 // Nav button injection
 
+// Klassen der Autodarts-Hauptnavigation, damit der Eintrag wie Start, Spielen usw. aussieht.
+const AUTODARTS_NAV_ITEM_CLASSES = 'font-bold flex items-center relative hover:text-mono-white text-black-20';
+
+function findMainNav() {
+  return document.querySelector('nav[aria-label="Hauptnavigation"]')
+    || document.querySelector('header nav');
+}
+
 function injectNavButton() {
   const tryInject = () => {
-    const nav = document.querySelector('nav') || document.querySelector('[class*="nav"]') || document.querySelector('header');
-    if (!nav) return;
     if (document.getElementById('raspdarts-nav-btn')) return;
+    const nav = findMainNav();
+    if (!nav) return;
 
     const btn = document.createElement('button');
     btn.id = 'raspdarts-nav-btn';
-    btn.style.cssText = `
-      margin-left: 8px; padding: 6px 12px; background: #22c55e;
-      color: #fff; border: none; border-radius: 6px; cursor: pointer;
-      font-size: 13px; font-weight: 500; font-family: inherit;
-      display: inline-flex; align-items: center; gap: 6px; align-self: center;
-      max-width: 100%; overflow: hidden; flex-shrink: 0;
-    `;
+    btn.type = 'button';
+    btn.className = AUTODARTS_NAV_ITEM_CLASSES;
+    btn.style.gap = '6px';
+    btn.append('Raspdarts');
 
-    const iconImg = document.createElement('img');
-    iconImg.src = chrome.runtime.getURL('icons/button.png');
-    iconImg.width = 16;
-    iconImg.height = 16;
-    iconImg.style.flexShrink = '0';
-
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'raspdarts-btn-label';
-    labelSpan.textContent = 'Raspdarts';
-
-    btn.appendChild(iconImg);
-    btn.appendChild(labelSpan);
-
-    // Punkt im Button: hell = Spieldaten-Verbindung zum Pi steht, dunkel = nicht.
+    // Punkt hinter dem Text: gruen = Spieldaten-Verbindung zum Pi steht, grau = nicht.
     const beamerDot = document.createElement('span');
     beamerDot.id = 'raspdarts-beamer-dot';
-    beamerDot.style.cssText = 'width:8px;height:8px;border-radius:50%;flex-shrink:0;background:rgba(0,0,0,0.35);';
+    beamerDot.style.cssText = 'width:8px;height:8px;border-radius:50%;flex-shrink:0;';
     btn.appendChild(beamerDot);
     btn.addEventListener('click', openModal);
-    nav.appendChild(btn);
 
-    // Collapsed sidebar detection: observe nav directly
-    const updateCollapsed = () => {
-      const collapsed = nav.getBoundingClientRect().width < 120;
-      labelSpan.style.display = collapsed ? 'none' : '';
-      btn.style.padding = collapsed ? '6px' : '6px 12px';
-    };
-    const resizeObserver = new ResizeObserver(updateCollapsed);
-    resizeObserver.observe(nav);
-    updateCollapsed();
+    // Vor dem Unterstrich-Balken einfuegen, der als letztes Kind in der Navigation steckt.
+    const lastItem = [...nav.children].filter((el) => el.matches('a, button')).pop();
+    if (lastItem) lastItem.after(btn);
+    else nav.appendChild(btn);
+
+    updateButtonReachability(piReachable);
+    updateBeamerIndicator(beamerConnected);
   };
 
+  // Weiter beobachten: Autodarts baut die Kopfleiste beim Seitenwechsel teils neu auf.
   tryInject();
-  const observer = new MutationObserver(() => {
-    tryInject();
-    if (document.getElementById('raspdarts-nav-btn')) observer.disconnect();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(tryInject).observe(document.body, { childList: true, subtree: true });
 
   // Initial connectivity check + background polling (only when modal is closed)
   fetchStatus();
