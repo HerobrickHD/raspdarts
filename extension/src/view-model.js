@@ -40,16 +40,20 @@
 
   // Version und Zustand der Scheibe. autodarts_board kommt vom Pi (GET /api/state
   // der Scheibe); fehlt es oder ist es null, antwortet die Scheibe nicht.
+  // Antwortet die Scheibe, ist Autodarts installiert, auch wenn der Pi die
+  // Version nicht lesen kann (z. B. fuer einen anderen Benutzer installiert).
   function autodartsView(online, installed, s, t) {
     if (!online) return { version: EMPTY, stateText: EMPTY, stateTone: 'off', showInstall: false };
-    if (!installed) return { version: EMPTY, stateText: t.notInstalled, stateTone: 'off', showInstall: true };
     const board = s.autodarts_board;
+    const answers = Boolean(board) && typeof board === 'object';
+    if (!installed && !answers) return { version: EMPTY, stateText: t.notInstalled, stateTone: 'off', showInstall: true };
+    const version = installed ? s.autodarts_version : EMPTY;
     let state;
-    if (!board || typeof board !== 'object') state = { text: t.boardNoAnswer, tone: 'off' };
+    if (!answers) state = { text: t.boardNoAnswer, tone: 'off' };
     else if (!board.running) state = { text: t.boardStopped, tone: 'off' };
     else if (!board.connected) state = { text: t.boardDisconnected, tone: 'error' };
     else state = { text: t.boardRunning, tone: 'ok' };
-    return { version: s.autodarts_version, stateText: state.text, stateTone: state.tone, showInstall: false };
+    return { version, stateText: state.text, stateTone: state.tone, showInstall: false };
   }
 
   function pillFor(online, reachable, ip, t) {

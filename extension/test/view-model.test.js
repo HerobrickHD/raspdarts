@@ -91,6 +91,11 @@ describe('buildView', () => {
     expect(view.autodarts.stateText).toBe('Keine Antwort');
   });
 
+  test('Scheibe laeuft, Version unbekannt: kein Installationskasten', () => {
+    const view = vm.buildView({ status: { ...STATUS, autodarts_version: 'unknown' }, reachable: true, busy: false }, t);
+    expect(view.autodarts).toEqual({ version: '--', stateText: 'Läuft', stateTone: 'ok', showInstall: false });
+  });
+
   test('nicht erreichbar: kein Installationskasten', () => {
     const view = vm.buildView({ status: { ...STATUS, autodarts_version: 'unknown' }, reachable: false, busy: false }, t);
     expect(view.autodarts.showInstall).toBe(false);
@@ -138,8 +143,8 @@ describe('buildView', () => {
     expect(view.pi).toEqual({ raspdartsVersion: '--', beamerText: 'Nicht verbunden', beamerTone: 'off' });
   });
 
-  test('fehlende Autodarts-Version gilt als nicht installiert', () => {
-    const { autodarts_version, ...rest } = STATUS;
+  test('fehlende Autodarts-Version ohne antwortende Scheibe gilt als nicht installiert', () => {
+    const { autodarts_version, autodarts_board, ...rest } = STATUS;
     const view = vm.buildView({ status: rest, reachable: true, busy: false }, t);
     expect(view.autodarts.showInstall).toBe(true);
   });
