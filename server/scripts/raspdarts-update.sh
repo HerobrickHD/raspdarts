@@ -16,8 +16,10 @@ as_user git -C "$INSTALL_DIR" checkout -- server/package-lock.json
 as_user git -C "$INSTALL_DIR" pull --ff-only origin main
 
 echo "--- Build ---"
-# dist vorher leeren, sonst bleiben Dateien geloeschter Quellen liegen.
-as_user bash -c "cd '$INSTALL_DIR/server' && npm ci --no-audit --no-fund && rm -rf dist && npm run build && npm prune --omit=dev --no-save"
+# In einen frischen Ordner bauen und dist erst danach austauschen: So bleiben
+# keine Dateien geloeschter Quellen liegen, und scheitert der Build, laeuft
+# der alte Stand weiter.
+as_user bash -c "cd '$INSTALL_DIR/server' && npm ci --no-audit --no-fund && rm -rf dist.neu && npm run build -- --outDir dist.neu && rm -rf dist && mv dist.neu dist && npm prune --omit=dev --no-save"
 
 bash "$INSTALL_DIR/server/scripts/setup-root.sh"
 
