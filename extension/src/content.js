@@ -168,14 +168,12 @@ function moveUnderline() {
   if (!bar || !btn) return;
   const navRect = nav.getBoundingClientRect();
   const btnRect = btn.getBoundingClientRect();
-  underline = {
-    bar,
-    savedLeft: bar.style.left,
-    savedWidth: bar.style.width,
-    ourLeft: `${btnRect.left - navRect.left}px`,
-  };
-  bar.style.left = underline.ourLeft;
+  const savedLeft = bar.style.left;
+  const savedWidth = bar.style.width;
+  bar.style.left = `${btnRect.left - navRect.left}px`;
   bar.style.width = `${btnRect.width}px`;
+  // So merken, wie der Browser den Wert zurueckgibt (er rundet beim Lesen).
+  underline = { bar, savedLeft, savedWidth, ourLeft: bar.style.left };
 }
 
 // Nur zuruecksetzen, wenn Autodarts den Balken inzwischen nicht selbst
