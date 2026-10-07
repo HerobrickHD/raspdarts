@@ -59,7 +59,7 @@ main() {
   else
     info "Unvollstaendige Installation gefunden - setze sie fort ..."
   fi
-  (cd "$INSTALL_DIR/server" && npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev --no-save)
+  (cd "$INSTALL_DIR/server" && npm ci --no-audit --no-fund && rm -rf dist && npm run build && npm prune --omit=dev --no-save)
   sudo bash "$INSTALL_DIR/server/scripts/setup-root.sh" --hostname
   sudo systemctl restart raspdarts
 

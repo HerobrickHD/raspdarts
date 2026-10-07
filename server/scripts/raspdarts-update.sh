@@ -16,7 +16,8 @@ as_user git -C "$INSTALL_DIR" checkout -- server/package-lock.json
 as_user git -C "$INSTALL_DIR" pull --ff-only origin main
 
 echo "--- Build ---"
-as_user bash -c "cd '$INSTALL_DIR/server' && npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev --no-save"
+# dist vorher leeren, sonst bleiben Dateien geloeschter Quellen liegen.
+as_user bash -c "cd '$INSTALL_DIR/server' && npm ci --no-audit --no-fund && rm -rf dist && npm run build && npm prune --omit=dev --no-save"
 
 bash "$INSTALL_DIR/server/scripts/setup-root.sh"
 
