@@ -18,7 +18,7 @@ import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
 import type { DisplayHub } from "./viewer/display-hub.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
-import type { LayoutStore } from "./viewer/layout-store.js";
+import { displayName, type LayoutStore } from "./viewer/layout-store.js";
 import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
@@ -75,7 +75,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(fastifyWebsocket);
   await app.register(fastifyStatic, { root: PUBLIC_DIR });
 
-  app.get("/ws", { websocket: true }, (socket) => deps.hub.attach(socket));
+  // Der Anzeigename waehlt das Layout; ein unbrauchbarer Name ist kein Fehler,
+  // der Viewer bekommt dann das Standardlayout.
+  app.get<{ Querystring: { display?: string } }>("/ws", { websocket: true }, (socket, request) =>
+    deps.hub.attach(socket, displayName(request.query.display)),
+  );
 
   app.get(
     "/ingest",
@@ -98,8 +102,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.get<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>
     withLayout(reply, () => deps.layouts.read(request.params.display)),
   );
-  app.put<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>
-    withLayout(reply, () => deps.layouts.write(request.params.display, request.body)),
+  app.put<{ Params: { display: string }; Body: unknown }>("/api/layout/:display", (request, reply) =>
+    withLayout(reply, () => {
+      const body = (typeof request.body === "object" && request.body !== null
+        ? request.body
+        : {}) as Record<string, unknown>;
+      const editing = body["editing"] === true;
+      const layout = deps.hub.updateLayout(request.params.display, body["layout"], editing);
+      return { layout, editing };
+    }),
   );
 
   app.get("/api/status", async (_request, reply) => {

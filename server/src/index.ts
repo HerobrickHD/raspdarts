@@ -18,6 +18,8 @@ async function main(): Promise<void> {
   const shutdown = async () => {
     await app.close();
     await deps.recorder?.close();
+    deps.hub.close();
+    deps.layouts.flush();
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());

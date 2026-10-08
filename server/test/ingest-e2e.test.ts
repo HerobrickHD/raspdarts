@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/http.js";
 import { IDLE, toViewerState } from "../src/viewer/game-state.js";
 import type { RecordedFrame } from "../src/viewer/recorder.js";
+import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
 import { listen, testDeps } from "./helpers.js";
 
 const EXTENSION = "chrome-extension://abcdefghijklmnop";
@@ -31,6 +32,12 @@ function connect(url: string, origin?: string) {
   });
   return { socket, messages, opened };
 }
+
+/** Nur die Stand-Nachrichten eines Viewers, in Reihenfolge. */
+const states = (messages: string[]) =>
+  messages.map((m) => JSON.parse(m)).filter((m) => m.type === "state").map((m) => m.state);
+const layouts = (messages: string[]) =>
+  messages.map((m) => JSON.parse(m)).filter((m) => m.type === "layout");
 
 describe("/ingest", () => {
   test("nimmt Verbindungen der Extension an", async () => {
@@ -76,9 +83,41 @@ describe("/ingest", () => {
     await Promise.all([display.opened, ingest.opened]);
     for (const frame of frames) ingest.socket.send(JSON.stringify(frame));
 
-    await vi.waitFor(() => {
-      const last = display.messages.at(-1);
-      expect(last && JSON.parse(last)).toEqual(expected);
+    await vi.waitFor(() => expect(states(display.messages).at(-1)).toEqual(expected));
+  });
+});
+
+describe("/ws", () => {
+  test("nutzt bei ungueltigem Anzeigenamen das Layout standard", async () => {
+    const deps = testDeps();
+    deps.hub.updateLayout("standard", { version: 2, board: { cx: 33, cy: 50, diameter: 50, rotation: 0 } }, false);
+    app = await buildApp(deps);
+    const host = await listen(app);
+
+    const viewer = connect(`ws://${host}/ws?display=Wohnzimmer%20TV`);
+    await viewer.opened;
+
+    await vi.waitFor(() => expect(layouts(viewer.messages).at(-1)?.layout.board.cx).toBe(33));
+  });
+
+  test("Layout-Aenderung per PUT erreicht nur Viewer derselben Anzeige", async () => {
+    app = await buildApp(testDeps());
+    const host = await listen(app);
+    const beamer = connect(`ws://${host}/ws?display=beamer`);
+    const tv = connect(`ws://${host}/ws?display=tv`);
+    await Promise.all([beamer.opened, tv.opened]);
+    await vi.waitFor(() => expect(layouts(tv.messages)).toHaveLength(1));
+
+    await app.inject({
+      method: "PUT",
+      url: "/api/layout/beamer",
+      headers: { "x-raspdarts": "1" },
+      payload: { layout: { version: 2, boardMode: "drawn" }, editing: true },
     });
+
+    await vi.waitFor(() =>
+      expect(layouts(beamer.messages).at(-1)).toMatchObject({ layout: { boardMode: "drawn" }, editing: true }),
+    );
+    expect(layouts(tv.messages)).toEqual([{ type: "layout", layout: DEFAULT_LAYOUT, editing: false }]);
   });
 });

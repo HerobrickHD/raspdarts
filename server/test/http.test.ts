@@ -123,16 +123,54 @@ describe("isAllowedHost", () => {
 });
 
 describe("Layout-API", () => {
+  const headers = { "x-raspdarts": "1" };
+  const MOVED = { version: 2, board: { cx: 40, cy: 45, diameter: 80, rotation: 1.5 } };
+
   test("liefert ohne gespeichertes Layout den Standard", async () => {
     app = await buildApp(testDeps());
 
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/layout/handy",
-      headers: { "x-raspdarts": "1" },
-    });
+    const response = await app.inject({ method: "GET", url: "/api/layout/handy", headers });
 
     expect(response.json()).toEqual(DEFAULT_LAYOUT);
+  });
+
+  test("speichert ein Layout mit Bearbeiten-Zustand und liefert es zurueck", async () => {
+    app = await buildApp(testDeps());
+
+    const put = await app.inject({
+      method: "PUT",
+      url: "/api/layout/handy",
+      headers,
+      payload: { layout: MOVED, editing: true },
+    });
+    const get = await app.inject({ method: "GET", url: "/api/layout/handy", headers });
+
+    expect(put.statusCode).toBe(200);
+    expect(put.json()).toMatchObject({ layout: { board: MOVED.board }, editing: true });
+    expect(get.json().board).toEqual(MOVED.board);
+  });
+
+  test("macht aus unbrauchbarem Inhalt das Standardlayout statt eines Fehlers", async () => {
+    app = await buildApp(testDeps());
+
+    for (const payload of [{}, { layout: "kaputt" }, { meta: { x: 1, y: 1, scale: 1 } }]) {
+      const response = await app.inject({ method: "PUT", url: "/api/layout/handy", headers, payload });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ layout: DEFAULT_LAYOUT, editing: false });
+    }
+  });
+
+  test("weist ungueltige Anzeigenamen mit 400 ab", async () => {
+    app = await buildApp(testDeps());
+
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/layout/..%2Fx",
+      headers,
+      payload: { layout: MOVED, editing: false },
+    });
+
+    expect(response.statusCode).toBe(400);
   });
 });
 

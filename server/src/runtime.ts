@@ -16,14 +16,15 @@ export interface Runtime extends AppDeps {
 }
 
 export function createDeps(options: { record: boolean }): Runtime {
-  const hub = new DisplayHub();
+  const layouts = new LayoutStore("data/layouts");
+  const hub = new DisplayHub(layouts);
   // Jede Session wird mitgeschrieben: Material fuer Tests und fuer die
   // spaeteren Stufen (die Wurf-Koordinaten stecken schon in den Nachrichten).
   const recorder = options.record ? new Recorder(sessionPath()) : null;
   return {
     hub,
     recorder,
-    layouts: new LayoutStore("data/layouts"),
+    layouts,
     ingest: new Ingest(createFramePipeline(hub, recorder)),
     status: createStatusReader(),
     jobs: new JobRunner(),

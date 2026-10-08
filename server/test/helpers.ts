@@ -16,10 +16,11 @@ import type { SystemStatus } from "../src/system/status.js";
  * Aufzeichnung. Wer `hub` ueberschreibt, muss auch `ingest` passend mitgeben.
  */
 export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
-  const hub = new DisplayHub();
+  const layouts = new LayoutStore(mkdtempSync(join(tmpdir(), "raspdarts-test-")));
+  const hub = new DisplayHub(layouts);
   return {
     hub,
-    layouts: new LayoutStore(mkdtempSync(join(tmpdir(), "raspdarts-test-"))),
+    layouts,
     ingest: new Ingest(createFramePipeline(hub, null)),
     status: async (): Promise<SystemStatus> => ({
       cpu_percent: 12.5,
