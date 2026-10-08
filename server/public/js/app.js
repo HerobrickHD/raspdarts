@@ -6,6 +6,7 @@
  */
 import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
 import { createBoard } from "./board.js";
+import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
 import { SAMPLE_STATE } from "./sample-state.js";
 
@@ -24,9 +25,24 @@ let state = { phase: "idle" };
 let layout = null;
 let remoteEditing = false;
 
+/* Dieses Geraet bearbeitet gerade, oder ein anderes mit demselben Anzeigenamen. */
+const isEditing = () => remoteEditing || editor.isEditing();
+
+const editor = createEditor({
+  viewer,
+  display,
+  getLayout: () => layout,
+  applyLocal: (next) => {
+    layout = next;
+    applyLayout(viewer, layout);
+    render();
+  },
+  onEditingChange: () => render(),
+});
+
 /* Beim Einrichten ohne laufendes Spiel gaebe es sonst nichts zu platzieren. */
 function shownState() {
-  return remoteEditing && state.phase !== "playing" ? SAMPLE_STATE : state;
+  return isEditing() && state.phase !== "playing" ? SAMPLE_STATE : state;
 }
 
 function render() {
@@ -39,7 +55,7 @@ function render() {
       : shown.phase === "unsupported"
         ? `${shown.variant} wird noch nicht unterstützt`
         : "";
-  boardSvg.dataset.mode = remoteEditing ? "lines" : (layout?.boardMode ?? "light");
+  boardSvg.dataset.mode = isEditing() ? "lines" : (layout?.boardMode ?? "light");
   board.render(shown);
   if (shown.phase === "playing") {
     renderHead(headEl, shown.match);
@@ -52,8 +68,11 @@ function onMessage(message) {
   if (message.type === "state") state = message.state;
   if (message.type === "layout") {
     remoteEditing = message.editing;
-    layout = message.layout;
-    applyLayout(viewer, layout);
+    if (!editor.isEditing()) {
+      layout = message.layout;
+      applyLayout(viewer, layout);
+    }
+    editor.refresh();
   }
   render();
 }
