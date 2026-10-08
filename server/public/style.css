@@ -266,7 +266,7 @@ body {
 .card-darts .dart-icon {
   width: 5vh;
   height: 1.2vh;
-  transform: rotate(-45deg);
+  transform: rotate(225deg);
 }
 
 /* --- Scheibe -------------------------------------------------------------- */

@@ -4,6 +4,7 @@
  * Spielregeln kennt der Viewer nicht - Rest, Bust, Checkout und Sieger kommen
  * fertig vom Pi. Hier wird nur entschieden, wie es aussieht.
  */
+import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
 import { createBoard } from "./board.js";
 import { applyLayout } from "./layout-view.js";
 import { SAMPLE_STATE } from "./sample-state.js";
@@ -11,6 +12,9 @@ import { SAMPLE_STATE } from "./sample-state.js";
 const viewer = document.getElementById("viewer");
 const boardSvg = document.getElementById("board-svg");
 const messageEl = document.getElementById("message");
+const headEl = viewer.querySelector('[data-block="kopf"] .head');
+const turnEl = viewer.querySelector('[data-block="aufnahme"] .turn');
+const playerSlots = [1, 2, 3, 4, 5, 6].map((n) => viewer.querySelector(`[data-block="spieler-${n}"]`));
 
 /* Mehrere Anzeigen, getrennte Layouts: ?display=beamer, ?display=tv ... */
 const display = new URLSearchParams(location.search).get("display") || "standard";
@@ -37,6 +41,11 @@ function render() {
         : "";
   boardSvg.dataset.mode = remoteEditing ? "lines" : (layout?.boardMode ?? "light");
   board.render(shown);
+  if (shown.phase === "playing") {
+    renderHead(headEl, shown.match);
+    renderTurn(turnEl, shown.turn);
+    renderPlayers(playerSlots, shown.players);
+  }
 }
 
 function onMessage(message) {
