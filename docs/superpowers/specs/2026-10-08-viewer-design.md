@@ -87,6 +87,9 @@ Der Viewer bleibt einfaches HTML, CSS und SVG ohne Build-Schritt
 type Field = {
   multiplier: 0 | 1 | 2 | 3;   // 0 = daneben
   number: number;              // 1–20, 25 = Bull, 0 = daneben
+  ring: "inner" | "outer" | null; // nur bei Single: innerer oder äußerer Teil
+                                  // (Autodarts „SingleInner“/„SingleOuter“),
+                                  // sonst und bei Checkout-Feldern null
 };
 
 type ViewerState =
@@ -219,7 +222,8 @@ eigenes Modul mit reinen Funktionen:
   Schlagschatten, an `coordsToPoint(coords)`; ohne Koordinaten an
   `fieldCenter(field)`. Daneben-Würfe (`number 0`) ohne Koordinaten werden
   nicht eingezeichnet.
-- Hervorhebung `last-dart`: das Feld gefüllt mit `rgba(255, 220, 0, 0.65)`,
+- Hervorhebung `last-dart`: das Feld (bei Single nur der getroffene Teil,
+  `ring`) gefüllt mit `rgba(255, 220, 0, 0.65)`,
   Deckkraft pulsierend 0,2 → 0,8 → 0,2 in 0,8 s. Ob das auf der echten Scheibe
   so bleibt, entscheidet die Messung.
 
@@ -241,10 +245,12 @@ eigenes Modul mit reinen Funktionen:
 - Zustände: **aktiv** lila-roter Verlauf, Restzahl weiß · **inaktiv**
   dunkelgrau, Restzahl grau · **Bust** grau mit eigenem Riss-Muster (nicht die
   Autodarts-Grafik) · **Sieger** grüner Verlauf.
-- **Profilbild:** `avatarUrl`; ohne eigenes Bild das Autodarts-Standardbild.
-  Dessen Adresse ist noch nicht bekannt und wird bei der Umsetzung aus einer
-  laufenden Spielansicht ausgelesen (Karte eines lokalen Spielers). Lädt ein
-  Bild nicht, bleibt der Platz leer.
+- **Profilbild:** `avatarUrl`; ohne eigenes Bild das Autodarts-Standardbild
+  `https://play.autodarts.com/assets/player-silhouette-X1nJGQO_.png` (dunkler
+  Schattenriss, gefunden im Seitencode am 8. Oktober 2026). Der Dateiname
+  enthält eine Build-Kennung und kann sich mit jeder Autodarts-Version ändern;
+  dann lädt das Bild nicht mehr und der Platz bleibt leer, bis die Adresse
+  nachgezogen ist. Lädt ein Bild nicht, bleibt der Platz leer.
 - **Flagge:** `https://play.autodarts.com/flags/4x3/<country>.svg`; lädt sie
   nicht oder fehlt `country`, entfällt sie.
 
@@ -297,7 +303,8 @@ type DisplayLayout = {
 - Nachrichten auf `/ws`: `{ "type": "state", "state": ViewerState }` und
   `{ "type": "layout", "layout": DisplayLayout, "editing": boolean }`.
 - Bearbeiten schreibt über `PUT /api/layout/<name>` (mit `X-Raspdarts`-Header,
-  wie bisher). Der Pi prüft das Layout, schickt es **sofort** an alle Viewer
+  wie bisher), Inhalt `{ "layout": DisplayLayout, "editing": boolean }`,
+  Antwort ebenso. `GET /api/layout/<name>` liefert weiter nur das Layout. Der Pi prüft das Layout, schickt es **sofort** an alle Viewer
   dieser Anzeige und schreibt die Datei gebündelt (höchstens alle 500 ms).
   Der Editor sendet beim Ziehen höchstens alle 100 ms.
 - Ob gerade bearbeitet wird, steht im Layout-Ereignis (`editing`), damit alle
