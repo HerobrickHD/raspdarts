@@ -1,5 +1,11 @@
 # Teilprojekt B: Board-Verwaltung – Zwischenstand vor der Pause
 
+> **Verworfen am 8. Oktober 2026.** Ohne Kalibrieren und Dienst-Neustart (Arnold
+> will beides nicht in Raspdarts) bliebe nur Einrichtungskram, den `ad` per SSH
+> schon kann. Raspdarts konzentriert sich stattdessen auf die Anzeige (bisher
+> „Beamer“). Dieses Dokument bleibt als Nachweis; die API-Referenz
+> `docs/autodarts-v2-board-api.md` bleibt gültig.
+
 Stand: 7. Oktober 2026, abends. **Noch keine Spec**, sondern der Stand des
 Brainstormings, damit es nach der Pause nahtlos weitergeht.
 
@@ -84,10 +90,25 @@ play.autodarts.com anbieten – vor allem für Windows-Nutzer ohne Terminal.
 5. Standby: in der Autodarts-Karte „Gestoppt“ beibehalten oder „Gestoppt
    (z. B. Standby)“?
 
+**Antworten von Arnold (8. Oktober 2026)**
+
+1. In den bestehenden Reiter „Raspdarts“ integrieren. Dort sind durch
+   Teilprojekt A Sachen weggefallen → die Seite gehört ohnehin geglättet,
+   das ist Teil von B.
+2. Kamerabild nur auf Knopfdruck (kein unnötiger Verkehr). Seine Frage: stört
+   das Abgreifen eines Bildes die Erkennung? → siehe Einschätzung im Chat,
+   vor der Spec messen.
+3. Bestätigungen: noch offen, wird geklärt.
+4. Auflösung: **nein, auf keinen Fall** anbieten. (Test „Auflösung ändern“
+   entfällt damit.)
+5. Standby: einfach „Gestoppt“.
+
 **Vor der Spec noch zu prüfen**
 
 - `/api/events` mit echten Würfen (Arnold wirft ein paar Darts, ich lese mit).
-- Auflösung ändern und zurück (nur mit Arnolds Zustimmung, ggf. neu kalibrieren).
+- ~~Auflösung ändern und zurück~~ – entfällt (Auflösung wird nicht angeboten).
+- Kamerabild abrufen während der Erkennung: CPU und FPS (`/api/state/stats`)
+  mit und ohne Bildabruf vergleichen.
 
 ## Sonstiges, beim Test aufgefallen
 
