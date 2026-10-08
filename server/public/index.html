@@ -3,46 +3,59 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Autodarts Beamer</title>
+    <title>Raspdarts Viewer</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main id="board" class="board" data-phase="connecting">
-      <!-- Jeder Baustein ist frei platzierbar. data-block ist der Schluessel,
-           unter dem seine Position beim Dienst gespeichert wird. -->
-      <section class="block" data-block="meta">
-        <header class="meta">
-          <span id="variant" class="meta-item"></span>
-          <span id="leg" class="meta-item"></span>
-        </header>
-        <span class="size-handle" title="Groesse ziehen"></span>
+    <!-- Dart-Symbol fuer leere Felder der Aufnahme und die Dartzahl der Karten. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="dart-icon" viewBox="0 0 100 24">
+        <path d="M0 12 L22 10.5 L22 13.5 Z" fill="currentColor" />
+        <rect x="22" y="8" width="30" height="8" rx="3" fill="currentColor" />
+        <rect x="52" y="11" width="22" height="2" fill="currentColor" />
+        <path d="M72 12 L100 2 L92 12 L100 22 Z" fill="currentColor" />
+      </symbol>
+    </svg>
+
+    <main id="viewer" class="viewer" data-phase="idle">
+      <!-- Jeder Block ist frei platzierbar. data-block ist der Schluessel im Layout. -->
+      <section class="block" data-block="kopf">
+        <div class="head"></div>
+        <span class="handle handle-resize" data-handle="resize"></span>
       </section>
 
-      <section class="block" data-block="players">
-        <div id="players" class="players"></div>
-        <span class="size-handle" title="Groesse ziehen"></span>
+      <section class="block" data-block="aufnahme">
+        <div class="turn"></div>
+        <span class="handle handle-resize" data-handle="resize"></span>
       </section>
 
-      <section class="block" data-block="checkout">
-        <footer class="checkout">
-          <span class="checkout-label">Checkout</span>
-          <span id="checkout-path" class="checkout-path"></span>
-        </footer>
-        <span class="size-handle" title="Groesse ziehen"></span>
+      <section class="block board-block" data-block="scheibe">
+        <svg id="board-svg" class="board-svg" data-mode="light" aria-hidden="true"></svg>
+        <span class="handle handle-resize" data-handle="resize"></span>
+        <span class="handle handle-rotate" data-handle="rotate"></span>
       </section>
+
+      <section class="block player-block" data-block="spieler-1"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <section class="block player-block" data-block="spieler-2"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <section class="block player-block" data-block="spieler-3"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <section class="block player-block" data-block="spieler-4"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <section class="block player-block" data-block="spieler-5"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <section class="block player-block" data-block="spieler-6"><span class="handle handle-resize" data-handle="resize"></span></section>
 
       <p id="message" class="message"></p>
-      <span id="link" class="link" aria-hidden="true"></span>
+      <p class="offline">Keine Verbindung zum Raspdarts-Dienst</p>
 
-      <button id="edit-toggle" class="edit-toggle" type="button" title="Layout bearbeiten">
-        Layout
-      </button>
-      <p id="edit-hint" class="edit-hint">
-        Bausteine ziehen zum Verschieben, Ecke unten rechts zum Vergroessern.
-        Wird automatisch gespeichert.
-      </p>
+      <button id="edit-toggle" class="edit-toggle" type="button">Layout</button>
+      <div id="edit-toolbar" class="edit-toolbar">
+        <button type="button" data-mode="light">Nur Licht</button>
+        <button type="button" data-mode="drawn">Gezeichnet</button>
+        <span class="edit-hint">
+          Ziehen: verschieben · Ecke: Größe · Kreis: drehen · Mausrad: Größe ·
+          Pfeile, +/−, Q/E: fein (Umschalt: grob) · Esc: fertig
+        </span>
+      </div>
     </main>
-    <script src="app.js"></script>
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>

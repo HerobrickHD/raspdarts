@@ -1,22 +1,43 @@
 /*
- * Beamer-Anzeige.
+ * Raspdarts Viewer.
  *
- * Gestaltungsregel: Schwarz ist "aus". Alles, was nicht leuchten muss, bleibt
- * schwarz - sonst haengt ein grauer Kasten an der Wand. Keine Flaechen, keine
- * Rahmen, keine Animation ausser dem weichen Wechsel des aktiven Spielers.
- *
- * Jeder Baustein ist frei platzierbar. Grundgroessen stehen in vh, damit das
- * eingerichtete Layout bei jeder Beamer-Aufloesung passt; der vom Benutzer
- * gezogene Massstab multipliziert obendrauf.
+ * Schwarz ist "aus": Was nicht leuchten soll, bleibt schwarz - der Beamer wirft
+ * dort kein Licht. Grundgroessen in vh, damit das Layout bei jeder Aufloesung
+ * passt; der Massstab aus dem Layout kommt obendrauf.
  */
 
+@font-face {
+  font-family: "Manrope";
+  src: url("fonts/manrope-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("fonts/bebas-neue-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-display: block;
+}
+
 :root {
-  --ink: #ffffff;
-  --dim: #6e6e6e;
-  --label: #8a8a8a;
-  --active: #ffb020;
-  --checkout: #3ddc84;
-  --bust: #ff4d4d;
+  --field-dark: #01040b;
+  --field-light: #f3e5c8;
+  --red: #e72946;
+  --green: #009856;
+  --surround: #141518;
+  --number: #97989b;
+  --card: #17181c;
+  --score-dim: #b9bdc6;
+  --active-from: #7d1fa8;
+  --active-to: #e0384f;
+  --winner-from: #0e8f6e;
+  --winner-to: #2fd47f;
+  --bust: #55565b;
+  --chip: #1d1f26;
+  --checkout: #4be3a0;
+  --checkout-bg: #10392f;
+  --hint: #3a3a3a;
   --edit: #4a9eff;
 }
 
@@ -30,273 +51,428 @@ html,
 body {
   height: 100%;
   background: #000;
-  color: var(--ink);
-  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  color: #fff;
+  font-family: "Manrope", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
 }
 
-.board {
+.viewer {
   position: relative;
   height: 100%;
 }
 
-/* --- Platzierbare Bausteine ------------------------------------------- */
+/* --- Bloecke ------------------------------------------------------------ */
 
 .block {
   position: absolute;
   transform-origin: top left;
-  /* Beim Spielen faengt kein Baustein Klicks ab. */
   pointer-events: none;
   white-space: nowrap;
 }
 
-/* --- Kopfzeile: Spielart und Leg -------------------------------------- */
-
-.meta {
-  display: flex;
-  gap: 2em;
-  color: var(--label);
-  font-size: 3.4vh;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+.block[hidden] {
+  display: none;
 }
 
-/* --- Spielerzeilen ----------------------------------------------------- */
-
-.players {
-  /* inline-flex: der Block ist so breit wie seine breiteste Zeile und laesst
-     sich dadurch als Einheit verschieben. */
-  display: inline-flex;
-  flex-direction: column;
-  gap: 4vh;
-}
-
-.player {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 3vw;
-  --score-size: 24vh;
-}
-
-.player-identity {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5em;
-}
-
-.player-name {
-  color: var(--label);
-  font-size: calc(var(--score-size) * 0.3);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.player-legs {
-  color: var(--label);
-  font-size: calc(var(--score-size) * 0.18);
-  letter-spacing: 0.08em;
-  opacity: 0.7;
-}
-
-.player-tally {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6em;
-}
-
-/* Bereits geworfene Darts der laufenden Aufnahme - bewusst zurueckhaltend. */
-.player-turn {
-  color: var(--label);
-  font-size: calc(var(--score-size) * 0.22);
-  letter-spacing: 0.08em;
-}
-
-.player-bust {
-  color: var(--bust);
-  font-size: calc(var(--score-size) * 0.22);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.player-score {
-  font-size: var(--score-size);
-  font-weight: 700;
-  line-height: 0.95;
-  color: var(--dim);
-  /* Feste Breite, damit 40 und 387 buendig untereinander stehen. */
-  min-width: 3ch;
-  text-align: right;
-}
-
-.player.is-active .player-name,
-.player.is-active .player-score {
-  color: var(--active);
-}
-
-/* --- Checkout-Weg ------------------------------------------------------ */
-
-.checkout {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6em;
-}
-
-/* Ohne Weg bleibt auch das Label aus - ein leeres "CHECKOUT" waere Ballast. */
-.checkout:not(.has-path) .checkout-label {
+/* Ohne Spiel ist alles schwarz - ausser beim Einrichten. */
+.viewer:not([data-phase="playing"]):not(.is-editing):not(.is-remote-editing) .block {
   visibility: hidden;
 }
 
-.checkout-label {
-  color: var(--label);
-  font-size: 3.4vh;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+/* --- Kopf ----------------------------------------------------------------- */
+
+.head {
+  display: flex;
+  gap: 1vh;
 }
 
-.checkout-path {
-  color: var(--checkout);
-  font-size: 10vh;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+.chip {
+  background: var(--chip);
+  color: #d7d9de;
+  font-size: 2.2vh;
+  font-weight: 600;
+  padding: 0.5vh 1.4vh;
+  border-radius: 999px;
 }
 
-/* --- Bearbeiten-Modus -------------------------------------------------- */
+/* --- Aufnahmeleiste ------------------------------------------------------- */
 
-.edit-toggle {
-  position: absolute;
-  left: 1.5vw;
-  bottom: 1.5vh;
-  padding: 0.5em 1em;
-  background: transparent;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  color: #3a3a3a;
-  font: inherit;
-  font-size: 1.8vh;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 160ms ease, border-color 160ms ease;
+.turn {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) 14vh;
+  align-items: center;
+  width: 66vh;
+  height: 9.2vh;
+  background: #16171b;
+  border: 0.3vh solid transparent;
+  border-radius: 1.6vh;
 }
 
-.edit-toggle:hover {
-  color: var(--label);
-  border-color: var(--label);
+.turn.is-busted {
+  border-color: var(--red);
 }
 
-.board.is-editing .edit-toggle {
-  color: var(--edit);
-  border-color: var(--edit);
-}
-
-.edit-hint {
-  display: none;
-  position: absolute;
-  left: 1.5vw;
-  bottom: 6vh;
-  color: var(--label);
-  font-size: 1.8vh;
-  max-width: 28em;
-  line-height: 1.5;
-  /* Bausteine koennen ueberall liegen - der Hinweis braucht eigenen Grund,
-     sonst steht er unlesbar in einer Zahl. */
-  background: rgba(0, 0, 0, 0.88);
-  padding: 0.8em 1em;
-  border-radius: 4px;
-}
-
-.board.is-editing .edit-hint {
-  display: block;
-}
-
-.board.is-editing .block {
-  pointer-events: auto;
-  cursor: grab;
-  outline: 1px dashed #333;
-  outline-offset: 0.6em;
-}
-
-.board.is-editing .block:hover {
-  outline-color: var(--edit);
-}
-
-.block.is-dragging {
-  cursor: grabbing;
-  outline-color: var(--edit) !important;
-}
-
-/* Anfasser zum Skalieren, nur im Bearbeiten-Modus sichtbar. */
-.size-handle {
-  display: none;
-  position: absolute;
-  right: -1.2em;
-  bottom: -1.2em;
-  width: 1.1em;
-  height: 1.1em;
-  background: var(--edit);
-  border-radius: 2px;
-  cursor: nwse-resize;
-  font-size: 2vh;
-}
-
-.board.is-editing .size-handle {
-  display: block;
-}
-
-/* --- Zustaende ---------------------------------------------------------- */
-
-.message {
-  display: none;
-  position: absolute;
-  inset: 0;
+.turn-dart,
+.turn-total {
+  display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  font-size: 7vh;
-  color: var(--label);
-  padding: 0 8vw;
+  font-weight: 800;
+  font-size: 5.2vh;
 }
 
-.board[data-phase="idle"] .message,
-.board[data-phase="finished"] .message,
-.board[data-phase="connecting"] .message {
+.turn-dart .dart-icon {
+  width: 9vh;
+  height: 2.2vh;
+}
+
+.turn-total {
+  height: 100%;
+  border-left: 0.15vh solid #2a2b31;
+}
+
+.turn.is-busted .turn-total {
+  font-size: 3vh;
+}
+
+.dart-icon {
+  color: #fff;
+}
+
+/* --- Spielerkarten -------------------------------------------------------- */
+
+.card {
+  width: 49vh;
+  height: 34vh;
+  border-radius: 2vh;
+  background: var(--card);
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6vh;
+  overflow: hidden;
+  transition: background-color 300ms ease;
 }
 
-.board[data-phase="idle"] .block,
-.board[data-phase="connecting"] .block,
-.board[data-phase="finished"] .block {
-  visibility: hidden;
+.card.is-active {
+  background: linear-gradient(135deg, var(--active-from), var(--active-to));
 }
 
-/* Beim Einrichten sind die Bausteine immer sichtbar - sonst koennte man das
-   Layout nur waehrend eines laufenden Spiels ausrichten. */
-.board.is-editing .block {
-  visibility: visible;
+.card.is-winner {
+  background: linear-gradient(135deg, var(--winner-from), var(--winner-to));
 }
 
-.board.is-editing .message {
+/* Ueberworfen: eigenes Riss-Muster, nicht die Autodarts-Grafik. */
+.card.is-busted {
+  background-color: var(--bust);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' preserveAspectRatio='none'><g stroke='rgba(255,255,255,0.28)' stroke-width='0.5' fill='none'><polyline points='38,30 10,5'/><polyline points='38,30 0,28'/><polyline points='38,30 6,62'/><polyline points='38,30 30,70'/><polyline points='38,30 62,70'/><polyline points='38,30 100,58'/><polyline points='38,30 100,20'/><polyline points='38,30 70,0'/><polyline points='38,30 40,0'/><polygon points='30,24 46,22 50,36 34,40'/><polygon points='20,14 58,10 66,46 22,52'/></g></svg>");
+  background-size: 100% 100%;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 1vh;
+}
+
+.card-avatar {
+  width: 5.6vh;
+  height: 5.6vh;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #000;
+}
+
+.card-name {
+  font-family: "Bebas Neue", "Manrope", sans-serif;
+  font-size: 3.6vh;
+  letter-spacing: 0.04em;
+  background: #0c0d10;
+  padding: 0.2vh 2vh 0.2vh 1vh;
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+}
+
+.card-flag {
+  width: 2.6vh;
+  height: 1.95vh;
+}
+
+.card-flag[hidden] {
   display: none;
 }
 
-.board[data-phase="finished"] .message {
-  color: var(--active);
+.card-main {
+  display: flex;
+  align-items: center;
+  gap: 1.2vh;
+}
+
+.card-checkout {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vh;
+}
+
+.card-checkout li {
+  background: var(--checkout-bg);
+  color: var(--checkout);
   font-weight: 700;
+  font-size: 2.6vh;
+  padding: 0.5vh 1.2vh;
+  border-radius: 0.8vh;
 }
 
-/* Verbindungsabriss: ein kleiner Punkt in der Ecke, mehr nicht. */
-.link {
-  position: absolute;
-  right: 2vw;
-  bottom: 2vh;
-  width: 1.2vh;
+.card-score {
+  font-weight: 800;
+  font-size: 16vh;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--score-dim);
+}
+
+.card.is-active .card-score,
+.card.is-winner .card-score,
+.card.is-busted .card-score {
+  color: #fff;
+}
+
+.card-legs {
+  background: #000;
+  font-weight: 700;
+  font-size: 3vh;
+  padding: 0.4vh 1vh;
+  border-radius: 0.6vh;
+}
+
+.card-averages {
+  font-size: 3.6vh;
+}
+
+.card-averages b,
+.card-darts b {
+  font-weight: 800;
+}
+
+.card-darts {
+  display: flex;
+  align-items: center;
+  gap: 1vh;
+  font-size: 3.4vh;
+}
+
+.card-darts .dart-icon {
+  width: 5vh;
   height: 1.2vh;
-  border-radius: 50%;
-  background: transparent;
+  transform: rotate(-45deg);
 }
 
-.board.is-offline .link {
-  background: #c0392b;
+/* --- Scheibe -------------------------------------------------------------- */
+
+.board-block {
+  transform-origin: center;
+}
+
+.board-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.field-surround {
+  fill: var(--surround);
+}
+.field-dark {
+  fill: var(--field-dark);
+}
+.field-light {
+  fill: var(--field-light);
+}
+.field-red {
+  fill: var(--red);
+}
+.field-green {
+  fill: var(--green);
+}
+
+.board-number {
+  fill: var(--number);
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.board-wires circle,
+.board-wires line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.6;
+}
+
+.dart {
+  fill: #1f4fff;
+  stroke: #fff;
+  stroke-width: 0.9;
+  filter: drop-shadow(0 0 1.3px rgba(0, 0, 0, 0.7));
+}
+
+.highlight-last-dart {
+  fill: rgba(255, 220, 0, 0.65);
+  animation: dart-segment-blink 0.8s ease infinite;
+}
+
+@keyframes dart-segment-blink {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.board-svg[data-mode="light"] .board-fields,
+.board-svg[data-mode="light"] .board-numbers,
+.board-svg[data-mode="light"] .board-wires,
+.board-svg[data-mode="drawn"] .board-wires,
+.board-svg[data-mode="lines"] .board-fields {
+  display: none;
+}
+
+.board-svg[data-mode="lines"] .board-number {
+  fill: #fff;
+}
+
+/* --- Hinweise ------------------------------------------------------------- */
+
+.message {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--hint);
+  font-size: 2.4vh;
+}
+
+.viewer[data-phase="playing"] .message {
+  display: none;
+}
+
+.offline {
+  position: absolute;
+  right: 1.5vh;
+  bottom: 1.5vh;
+  color: var(--hint);
+  font-size: 1.8vh;
+  display: none;
+}
+
+.viewer.is-offline .offline {
+  display: block;
+}
+
+/* --- Bearbeiten ----------------------------------------------------------- */
+
+.edit-toggle {
+  position: fixed;
+  right: 2vh;
+  bottom: 2vh;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms;
+  background: #111;
+  color: #ddd;
+  border: 0.15vh solid #444;
+  border-radius: 0.8vh;
+  padding: 0.8vh 1.6vh;
+  font: 600 1.8vh "Manrope", sans-serif;
+  cursor: pointer;
+}
+
+.edit-toggle.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.viewer.is-editing .edit-toggle {
+  border-color: var(--edit);
+  color: var(--edit);
+}
+
+.edit-toolbar {
+  position: fixed;
+  left: 50%;
+  bottom: 2vh;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: none;
+  gap: 1vh;
+  align-items: center;
+  background: #111;
+  border: 0.15vh solid var(--edit);
+  border-radius: 0.8vh;
+  padding: 0.8vh 1.2vh;
+  font-size: 1.6vh;
+  color: #bbb;
+}
+
+.viewer.is-editing .edit-toolbar {
+  display: flex;
+}
+
+.edit-toolbar button {
+  background: #222;
+  color: #ddd;
+  border: 0.15vh solid #444;
+  border-radius: 0.6vh;
+  padding: 0.5vh 1.2vh;
+  font: 600 1.6vh "Manrope", sans-serif;
+  cursor: pointer;
+}
+
+.edit-toolbar button[aria-pressed="true"] {
+  background: var(--edit);
+  border-color: var(--edit);
+  color: #000;
+}
+
+.viewer.is-editing .block {
+  pointer-events: auto;
+  outline: 0.2vh dashed rgba(74, 158, 255, 0.6);
+  cursor: move;
+}
+
+.viewer.is-editing .block.is-selected {
+  outline: 0.25vh solid var(--edit);
+}
+
+.handle {
+  display: none;
+  position: absolute;
+  width: 2.4vh;
+  height: 2.4vh;
+  background: var(--edit);
+  border-radius: 0.4vh;
+}
+
+.viewer.is-editing .handle {
+  display: block;
+}
+
+.handle-resize {
+  right: -1.2vh;
+  bottom: -1.2vh;
+  cursor: nwse-resize;
+}
+
+.handle-rotate {
+  left: 50%;
+  top: -4vh;
+  margin-left: -1.2vh;
+  border-radius: 50%;
+  cursor: grab;
 }

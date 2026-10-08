@@ -4,6 +4,7 @@
  *     npm run replay data/sessions/2026-09-20T16-30-00.ndjson
  *     npm run replay <datei> --speed 4     (vierfache Geschwindigkeit)
  *     npm run replay <datei> --instant     (ohne Pausen, springt ans Ende)
+ *     npm run replay <datei> --instant --stop 130   (nur die ersten 130 Zeilen)
  *
  * Damit laesst sich der komplette Viewer am Schreibtisch entwickeln,
  * ohne an der Scheibe zu stehen.
@@ -24,12 +25,14 @@ function flagValue(name: string): string | null {
 async function main(): Promise<void> {
   const file = process.argv[2];
   if (!file || file.startsWith("--")) {
-    console.error("Aufruf: npm run replay <datei.ndjson> [--speed 4] [--instant]");
+    console.error("Aufruf: npm run replay <datei.ndjson> [--speed 4] [--instant] [--stop <zeilen>]");
     process.exit(1);
   }
 
   const speed = Number(flagValue("--speed") ?? 1);
   const instant = process.argv.includes("--instant");
+  const stopRaw = flagValue("--stop");
+  const stop = stopRaw === null ? Number.POSITIVE_INFINITY : Number(stopRaw);
   const port = Number(process.env.PORT ?? 8743);
 
   const frames = readFileSync(file, "utf8")
@@ -50,7 +53,7 @@ async function main(): Promise<void> {
   await sleep(2000); // kurz warten, damit die Anzeige sich verbinden kann
 
   let previous = 0;
-  for (const [index, recorded] of frames.entries()) {
+  for (const [index, recorded] of frames.slice(0, stop).entries()) {
     if (!instant) await sleep(Math.max(0, (recorded.t - previous) / speed));
     previous = recorded.t;
 
