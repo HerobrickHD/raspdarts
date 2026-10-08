@@ -103,6 +103,7 @@ function keyAction(event, selected) {
 export function createEditor({ viewer, display, getLayout, applyLocal, onEditingChange }) {
   const button = viewer.querySelector("#edit-toggle");
   const toolbar = viewer.querySelector("#edit-toolbar");
+  const status = viewer.querySelector("#edit-status");
   let editing = false;
   let selected = "scheibe";
   let lastSent = 0;
@@ -118,7 +119,16 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Raspdarts": "1" },
       body: JSON.stringify({ layout: getLayout(), editing }),
-    }).catch((error) => console.error("Layout konnte nicht gespeichert werden", error));
+    })
+      // fetch wirft bei 400/403 nicht - ohne diese Pruefung ginge die Ausrichtung
+      // still verloren (z. B. ueber einen Hostnamen, den der Pi nicht kennt).
+      .then((response) => {
+        status.textContent = response.ok ? "" : `Nicht gespeichert (Fehler ${response.status})`;
+      })
+      .catch((error) => {
+        status.textContent = "Nicht gespeichert: keine Verbindung zum Pi";
+        console.error("Layout konnte nicht gespeichert werden", error);
+      });
   }
 
   /* Hoechstens alle 100 ms; die letzte Aenderung geht immer noch raus. */
@@ -157,6 +167,12 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
     if (editing) {
       keepalive = setInterval(send, KEEPALIVE_MS);
       select(selected);
+    } else {
+      // Sofort weg - der Ausblende-Timer ist beim Bearbeiten meist schon
+      // abgelaufen, sonst bliebe der Knopf an der Wand stehen.
+      clearTimeout(hideTimer);
+      button.classList.remove("is-visible");
+      button.blur();
     }
     refresh();
     onEditingChange(editing);

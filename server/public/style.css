@@ -440,6 +440,15 @@ body {
   color: #000;
 }
 
+.edit-status {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.edit-status:empty {
+  display: none;
+}
+
 .viewer.is-editing .block {
   pointer-events: auto;
   outline: 0.2vh dashed rgba(74, 158, 255, 0.6);

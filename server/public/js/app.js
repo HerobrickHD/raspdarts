@@ -6,6 +6,7 @@
  */
 import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
 import { createBoard } from "./board.js";
+import { displayFromSearch } from "./display-name.js";
 import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
 import { SAMPLE_STATE } from "./sample-state.js";
@@ -18,7 +19,7 @@ const turnEl = viewer.querySelector('[data-block="aufnahme"] .turn');
 const playerSlots = [1, 2, 3, 4, 5, 6].map((n) => viewer.querySelector(`[data-block="spieler-${n}"]`));
 
 /* Mehrere Anzeigen, getrennte Layouts: ?display=beamer, ?display=tv ... */
-const display = new URLSearchParams(location.search).get("display") || "standard";
+const display = displayFromSearch(location.search);
 const board = createBoard(boardSvg);
 
 let state = { phase: "idle" };

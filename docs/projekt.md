@@ -49,7 +49,7 @@ Raspberry Pi 5 (läuft ohnehin durch, hat die Kameras)
 
 Dazwischen steht genau ein Vertrag: der `ViewerState`. Der Dienst schickt
 bei jeder Änderung einen vollständigen Schnappschuss, die Anzeige rendert ihn
-und hält selbst keinen Zustand.
+und hält selbst keinen Spielstand (nur ihr Layout, das ebenfalls vom Dienst kommt).
 
 Die Spieldaten kommen nicht vom Pi selbst, sondern von der Extension im Browser,
 in dem ohnehin gespielt wird. Der Pi braucht dadurch keine Autodarts-Anmeldung.

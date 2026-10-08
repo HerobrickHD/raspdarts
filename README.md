@@ -4,8 +4,9 @@ Alles rund um die Autodarts-Scheibe am Raspberry Pi – in einem Repo:
 
 - **Pi-Verwaltung** direkt aus play.autodarts.com: CPU, RAM, Temperatur, Version und
   Zustand von Autodarts, Raspdarts aktualisieren, Pi neu starten oder herunterfahren.
-- **Beamer-Scoreboard**: Restpunkte, aktiver Spieler und Checkout-Weg groß an der
-  Wand neben der Scheibe.
+- **Viewer**: die Spielansicht im Stil von Autodarts auf schwarzem Grund – für einen
+  Beamer, der direkt auf die Scheibe projiziert (Treffer leuchten auf den echten
+  Feldern), oder für jeden anderen Bildschirm.
 
 ## Aufbau
 
@@ -14,7 +15,7 @@ play.autodarts.com (Laptop)
   └─ Raspdarts-Extension ── liest den Spielstand mit ──┐
                           └─ Seite: Status, Updates ───┤
                                                        ▼
-Raspberry Pi 5 ── raspdarts (ein Dienst, Port 8743) ── Beamer: http://raspdarts.local:8743/
+Raspberry Pi 5 ── raspdarts (ein Dienst, Port 8743) ── Viewer: http://raspdarts.local:8743/
 ```
 
 Auf neueren Pi-OS-Versionen heißt der Befehl `chromium` statt `chromium-browser`.
@@ -28,7 +29,7 @@ Auf neueren Pi-OS-Versionen heißt der Befehl `chromium` statt `chromium-browser
 
 Die Spieldaten kommen von der Extension: Sie liest auf play.autodarts.com die
 WebSocket-Nachrichten der Seite mit und reicht sie an den Pi weiter. Der Pi braucht
-deshalb keine Autodarts-Zugangsdaten. Der Beamer zeigt nur etwas an, solange ein Tab
+deshalb keine Autodarts-Zugangsdaten. Der Viewer zeigt nur etwas an, solange ein Tab
 mit play.autodarts.com offen ist.
 
 ## Installation auf dem Pi
@@ -57,10 +58,10 @@ Erneut ausführen aktualisiert. Deinstallieren:
 curl -fsSL https://raw.githubusercontent.com/HerobrickHD/raspdarts/main/install.sh | bash -s -- --uninstall
 ```
 
-Beamer im Kiosk-Modus (am Pi oder an jedem anderen Gerät im Netz):
+Viewer im Kiosk-Modus (am Pi oder an jedem anderen Gerät im Netz), z. B. für den Beamer:
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars http://raspdarts.local:8743/
+chromium-browser --kiosk --noerrdialogs --disable-infobars "http://raspdarts.local:8743/?display=beamer"
 ```
 
 ## Extension installieren
@@ -90,13 +91,14 @@ cd extension && bash build.sh
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/` | Beamer-Anzeige (`?display=handy` für ein eigenes Layout) |
-| WS | `/ws` | Spielstand für Anzeigen |
+| GET | `/` | Viewer (`?display=beamer` für ein eigenes Layout, sonst `standard`) |
+| WS | `/ws?display=<name>` | Viewer: `{type:"state", state}` und `{type:"layout", layout, editing}` |
 | WS | `/ingest` | Spieldaten von der Extension |
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
-| GET/PUT | `/api/layout/:display` | Layout einer Anzeige |
+| GET | `/api/layout/:display` | Layout einer Anzeige |
+| PUT | `/api/layout/:display` | `{layout, editing}` speichern und live an alle Viewer der Anzeige |
 
 ```bash
 curl -H 'X-Raspdarts: 1' http://raspdarts.local:8743/api/status
@@ -109,7 +111,7 @@ cd server
 npm install
 npm run dev                                         # http://localhost:8743/
 npm test && npm run typecheck
-npm run replay test/fixtures/demo-session.ndjson    # Demo ohne Scheibe
+npm run replay test/fixtures/autodarts-2026-10-08.ndjson --instant --stop 139   # Mitschnitt bis Zeile 139
 npm run replay data/sessions/<datei>.ndjson --speed 4
 ```
 
@@ -120,15 +122,25 @@ Extension: `cd extension && npm install && npm test`.
 
 ## Layout einrichten
 
-Unten links schaltet **Layout** den Bearbeiten-Modus ein: Bausteine ziehen, am blauen
-Anfasser skalieren, gespeichert wird automatisch pro Anzeige unter
-`server/data/layouts/<name>.json`. Positionen sind Prozentwerte und passen deshalb bei
-jeder Beamer-Auflösung.
+Den Viewer am Laptop mit demselben Anzeigenamen öffnen wie am Beamer
+(`?display=beamer`). Bei Mausbewegung erscheint unten rechts **Layout**; damit
+startet der Bearbeiten-Modus. Alle Geräte mit diesem Namen folgen live, der Beamer
+zeigt die Scheibe dabei als Linien – so lässt sie sich auf die echten Drähte legen.
+
+- Scheibe: ziehen = verschieben, Ecke oder Mausrad = Größe, Kreis = drehen;
+  fein mit Pfeiltasten, +/− und Q/E (mit Umschalt grob).
+- Karten, Kopf, Aufnahmeleiste: ziehen und an der Ecke skalieren.
+- „Nur Licht“ (nur Darts und Hervorhebungen, für die Projektion auf die Scheibe)
+  oder „Gezeichnet“ (ganze Scheibe). Esc beendet.
+
+Gespeichert wird automatisch unter `server/data/layouts/<name>.json`. Positionen
+sind Prozentwerte, Größen hängen an der Bildhöhe – das Layout passt bei jeder
+Auflösung.
 
 ## Hinweis
 
 Inoffiziell. Autodarts kann sein Datenformat jederzeit ändern – dann ist nur
-`server/src/beamer/game-state.ts` betroffen. Siehe `docs/protocol.md`.
+`server/src/viewer/game-state.ts` betroffen. Siehe `docs/protocol.md`.
 
 ## Lizenz
 

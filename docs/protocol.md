@@ -96,14 +96,13 @@ Alles außer `<matchId>.state` ergibt IDLE und ändert die Anzeige nicht.
 - `state.checkoutGuide` liefert Autodarts im Checkout-Bereich selbst, als Liste von
   Segmenten wie in `throws` (52 Rest: `S20`, `D16`). Reichen die übrigen Darts
   der Aufnahme nicht mehr, zeigt er schon den Weg für die nächste Aufnahme
-  (112 Rest, ein Dart übrig: `T20 S12 D20`). Raspdarts zeigt ihn an, wenn er
-  in die laufende Aufnahme passt; sonst zeigt der Beamer keinen Weg.
+  (112 Rest, ein Dart übrig: `T20 S12 D20`). Raspdarts zeigt ihn wie Autodarts
+  immer an, für jeden Spieler (`state.checkoutGuides`).
 
-Die `coords` sind normalisierte Einschlagkoordinaten. Sie werden noch nicht
-angezeigt, aber mit aufgezeichnet - sie sind das Material für spätere
-Highlight-Features.
+Die `coords` sind normalisierte Einschlagkoordinaten (1 = Außenkante des
+Double-Rings, y nach oben). Der Viewer zeichnet die Darts dort auf der Scheibe ein.
 
-**Wenn sich das Format ändert:** nur `server/src/beamer/game-state.ts`
+**Wenn sich das Format ändert:** nur `server/src/viewer/game-state.ts`
 anpassen und das Fixture `server/test/fixtures/demo-session.ndjson` durch einen
 Ausschnitt einer neuen Aufzeichnung ersetzen. Server und Anzeige bleiben
-unberührt, weil dazwischen der `ScoreboardState` als Vertrag steht.
+unberührt, weil dazwischen der `ViewerState` als Vertrag steht.
