@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import WebSocket from "ws";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/http.js";
-import { IDLE, toScoreboardState } from "../src/viewer/game-state.js";
+import { IDLE, toViewerState } from "../src/viewer/game-state.js";
 import type { RecordedFrame } from "../src/viewer/recorder.js";
 import { listen, testDeps } from "./helpers.js";
 
@@ -67,7 +67,7 @@ describe("/ingest", () => {
       .filter((line) => line.trim().length > 0)
       .map((line) => (JSON.parse(line) as RecordedFrame).frame);
     const expected = frames
-      .map((frame) => toScoreboardState(frame))
+      .map((frame) => toViewerState(frame))
       .filter((state) => state !== IDLE)
       .at(-1);
 

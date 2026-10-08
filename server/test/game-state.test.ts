@@ -1,150 +1,249 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { IDLE, toScoreboardState } from "../src/viewer/game-state.js";
+import { IDLE, MISS, toField, toViewerState, type ViewerState } from "../src/viewer/game-state.js";
+import type { RecordedFrame } from "../src/viewer/recorder.js";
 
 /**
- * Nachbau der Match-State-Nachricht laut docs/protocol.md.
- *
- * Die Struktur ist gegen eine echte Aufzeichnung vom 2026-10-04 geprueft
- * (siehe docs/protocol.md, "Geprueft"). Aendert Autodarts das Format, werden
- * Fixture und Parser zusammen angepasst - die Erwartungen darunter bleiben
- * gueltig, weil sie das Verhalten der Anzeige beschreiben, nicht das Drahtformat.
+ * Echter Mitschnitt vom 8. Oktober 2026 (docs/referenz/autodarts-spielansicht/):
+ * 301 SI-SO, 1 Leg, testuser01 gegen den lokalen Spieler TEST. Index = Zeile
+ * in der Datei, ab 0 gezaehlt (= Index im Mitschnitt).
  */
-function matchState(overrides: Record<string, unknown> = {}) {
-  return {
-    variant: "X01",
-    player: 0,
-    players: [{ name: "Arnold" }, { name: "Marcus" }],
-    gameScores: [121, 284],
-    scores: [{ legs: 2 }, { legs: 1 }],
-    leg: 4,
-    settings: { baseScore: 501 },
-    turns: [{ throws: [] }],
-    winner: -1,
-    ...overrides,
-  };
+const FRAMES = readFileSync("test/fixtures/autodarts-2026-10-08.ndjson", "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0)
+  .map((line) => (JSON.parse(line) as RecordedFrame).frame);
+
+type Playing = Extract<ViewerState, { phase: "playing" }>;
+
+function playingAt(index: number): Playing {
+  const state = toViewerState(FRAMES[index]);
+  if (state.phase !== "playing") throw new Error(`Frame ${index} ist kein laufendes Spiel`);
+  return state;
 }
 
-describe("toScoreboardState", () => {
-  test("meldet idle, wenn gar kein Match vorliegt", () => {
-    expect(toScoreboardState(null)).toEqual(IDLE);
-    expect(toScoreboardState({ irgendwas: true })).toEqual(IDLE);
+const T20 = { multiplier: 3, number: 20, ring: null };
+const GRAVATAR = "https://gravatar.com/avatar/0f8c028d2738c5edbd60683b2222996c";
+
+describe("toViewerState mit dem Mitschnitt", () => {
+  test("ein Dart: Rest, Averages, Spieldaten und Hervorhebung", () => {
+    const state = playingAt(106);
+
+    expect(state.variant).toBe("X01");
+    expect(state.match).toEqual({
+      baseScore: 301,
+      legsToWin: 1,
+      setsToWin: null,
+      inMode: "Straight",
+      outMode: "Straight",
+    });
+    expect(state.players[0]).toEqual({
+      name: "testuser01",
+      avatarUrl: GRAVATAR,
+      country: "de",
+      score: 241,
+      legs: 0,
+      sets: 0,
+      average: { leg: 180, match: 180 },
+      dartsThrown: 1,
+      isActive: true,
+      isWinner: false,
+      busted: false,
+      checkout: null,
+    });
+    expect(state.players[1]).toMatchObject({
+      name: "TEST",
+      avatarUrl: null,
+      country: null,
+      score: 301,
+      isActive: false,
+    });
+    expect(state.turn).toEqual({
+      darts: [{ field: T20, coords: { x: -0.03407105416423997, y: 0.5896913220733837 } }],
+      points: 60,
+      busted: false,
+    });
+    expect(state.highlights).toEqual([{ field: T20, kind: "last-dart" }]);
   });
 
-  test("uebernimmt Restpunkte, Legs und markiert den aktiven Spieler", () => {
-    const state = toScoreboardState(matchState());
+  test("drei Darts: Single mit Ring, Bull, letzter Dart hervorgehoben", () => {
+    const state = playingAt(111);
 
-    expect(state.phase).toBe("playing");
-    if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.players).toEqual([
-      { name: "Arnold", score: 121, legs: 2, isActive: true },
-      { name: "Marcus", score: 284, legs: 1, isActive: false },
+    expect(state.turn.darts.map((dart) => dart.field)).toEqual([
+      T20,
+      { multiplier: 1, number: 12, ring: "outer" },
+      { multiplier: 2, number: 25, ring: null },
+    ]);
+    expect(state.turn.points).toBe(122);
+    expect(state.players[0].score).toBe(179);
+    expect(state.highlights).toEqual([
+      { field: { multiplier: 2, number: 25, ring: null }, kind: "last-dart" },
     ]);
   });
 
-  test("zeigt keinen Checkout-Weg, wenn Autodarts keinen schickt", () => {
-    // Nur Autodarts kennt den Spielmodus (Double Out, Straight Out ...) sicher.
-    const state = toScoreboardState(matchState({ gameScores: [40, 284] }));
+  test("Spielerwechsel: neuer aktiver Spieler, leere Aufnahme, keine Hervorhebung", () => {
+    const state = playingAt(113);
 
-    if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.checkout).toBeNull();
+    expect(state.players.map((player) => player.isActive)).toEqual([false, true]);
+    expect(state.turn).toEqual({ darts: [], points: 0, busted: false });
+    expect(state.highlights).toEqual([]);
   });
 
-  test("zeigt den Vorschlag, wenn er in die restlichen Darts der Aufnahme passt", () => {
-    const state = toScoreboardState(
-      matchState({
-        gameScores: [110, 284],
-        turns: [{ throws: [{ segment: { name: "T20", multiplier: 3, number: 20 } }] }],
-        state: {
-          checkoutGuide: [
-            { bed: "Triple", multiplier: 3, name: "T20", number: 20 },
-            { bed: "Double", multiplier: 2, name: "Bull", number: 25 },
-          ],
-        },
-      }),
+  test("Bust: Rest zurueckgesetzt, Karte und Aufnahme als ueberworfen markiert", () => {
+    const state = playingAt(129);
+
+    expect(state.players[0]).toMatchObject({ score: 179, busted: true, isActive: true });
+    expect(state.players[1].busted).toBe(false);
+    expect(state.turn.busted).toBe(true);
+    expect(state.turn.darts).toHaveLength(3);
+  });
+
+  test("Checkout-Weg auch dann, wenn er erst fuer die naechste Aufnahme gilt", () => {
+    // 119 Rest nach einem Dart, Weg mit drei Darts - Autodarts zeigt ihn trotzdem.
+    const state = playingAt(124);
+
+    expect(state.players[0].checkout).toEqual([
+      T20,
+      { multiplier: 2, number: 20, ring: null },
+      { multiplier: 1, number: 19, ring: null },
+    ]);
+    expect(state.players[1].checkout).toBeNull();
+  });
+
+  test("Checkout-Weg fuer jeden Spieler, nicht nur den aktiven", () => {
+    const state = playingAt(142);
+
+    expect(state.players[0].isActive).toBe(true);
+    expect(state.players[1].checkout).toEqual([
+      T20,
+      { multiplier: 3, number: 19, ring: null },
+      { multiplier: 2, number: 18, ring: null },
+    ]);
+  });
+
+  test("Sieger: gruene Karte statt eigenem Endzustand, leerer Weg wird null", () => {
+    const state = playingAt(156);
+
+    expect(state.players[1]).toMatchObject({ isWinner: true, legs: 1, score: 0, checkout: null });
+    expect(state.players[0]).toMatchObject({ isWinner: false, checkout: [{ multiplier: 1, number: 9, ring: null }] });
+  });
+
+  test("Nachrichten ohne Spielstand ergeben idle", () => {
+    expect(toViewerState(FRAMES[0])).toEqual(IDLE); // autodarts.users
+    const gameEvent = FRAMES.find(
+      (frame) => JSON.stringify(frame).includes('"event":"throw"'),
     );
+    expect(toViewerState(gameEvent)).toEqual(IDLE);
+  });
+});
 
-    if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.checkout).toEqual(["T20", "BULL"]);
+describe("toViewerState mit Ersatzwerten", () => {
+  test("idle ohne Match", () => {
+    expect(toViewerState(null)).toEqual(IDLE);
+    expect(toViewerState({ irgendwas: true })).toEqual(IDLE);
   });
 
-  test("uebernimmt den Checkout-Vorschlag von Autodarts", () => {
-    const state = toScoreboardState(
-      matchState({
-        gameScores: [52, 284],
-        state: {
-          checkoutGuide: [
-            { bed: "Single", multiplier: 1, name: "S20", number: 20 },
-            { bed: "Double", multiplier: 2, name: "D16", number: 16 },
-          ],
-        },
-      }),
-    );
-
-    if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.checkout).toEqual(["S20", "D16"]);
+  test("andere Spielarten werden als nicht unterstuetzt gemeldet", () => {
+    expect(
+      toViewerState({ variant: "Cricket", players: [{ name: "A" }], gameScores: [0] }),
+    ).toEqual({ phase: "unsupported", variant: "Cricket" });
   });
 
-  test("zeigt keinen Checkout-Weg, wenn der Vorschlag nicht mehr in die Aufnahme passt", () => {
-    // Autodarts zeigt dann schon den Weg fuer die naechste Aufnahme
-    const state = toScoreboardState(
-      matchState({
-        gameScores: [40, 284],
-        turns: [
-          {
-            throws: [
-              { segment: { name: "S1", multiplier: 1, number: 1 } },
-              { segment: { name: "S1", multiplier: 1, number: 1 } },
-            ],
-          },
-        ],
-        state: {
-          checkoutGuide: [
-            { bed: "Single", multiplier: 1, name: "S20", number: 20 },
-            { bed: "Double", multiplier: 2, name: "D10", number: 10 },
-          ],
-        },
-      }),
-    );
+  test("drei Spieler ohne turns, stats und settings", () => {
+    const state = toViewerState({
+      variant: "X01",
+      player: 2,
+      players: [{ name: "A" }, {}, { name: "C", avatarUrl: "" }],
+      gameScores: [501, 480],
+      winner: -1,
+    });
 
     if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.checkout).toBeNull();
+    expect(state.players).toHaveLength(3);
+    expect(state.players[1]).toEqual({
+      name: "Spieler 2",
+      avatarUrl: null,
+      country: null,
+      score: 480,
+      legs: 0,
+      sets: 0,
+      average: { leg: 0, match: 0 },
+      dartsThrown: 0,
+      isActive: false,
+      isWinner: false,
+      busted: false,
+      checkout: null,
+    });
+    expect(state.players[2]).toMatchObject({ name: "C", score: 0, isActive: true });
+    expect(state.match).toEqual({
+      baseScore: 0,
+      legsToWin: 1,
+      setsToWin: null,
+      inMode: "Straight",
+      outMode: "Straight",
+    });
+    expect(state.turn).toEqual({ darts: [], points: 0, busted: false });
   });
 
-  test("schreibt den Bull einheitlich, egal wie Autodarts ihn nennt", () => {
-    const state = toScoreboardState(
-      matchState({
-        turns: [
-          {
-            throws: [
-              { segment: { name: "Bull", multiplier: 2, number: 25 } },
-              { segment: { name: "25", multiplier: 1, number: 25 } },
-            ],
-          },
-        ],
-      }),
-    );
+  test("Daneben als letzter Dart: keine Hervorhebung, Dart ohne Koordinaten", () => {
+    const state = toViewerState({
+      variant: "X01",
+      player: 0,
+      players: [{ name: "A" }],
+      gameScores: [501],
+      turns: [{ throws: [{ segment: { number: 0, multiplier: 0, bed: "Outside" } }] }],
+    });
 
     if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.currentTurn.darts).toEqual(["BULL", "25"]);
+    expect(state.turn.darts).toEqual([{ field: MISS, coords: null }]);
+    expect(state.highlights).toEqual([]);
   });
 
-  test("meldet eine ueberworfene Aufnahme", () => {
-    const state = toScoreboardState(matchState({ turnBusted: true }));
+  test("Saetze werden uebernommen, wenn Autodarts sie meldet", () => {
+    const state = toViewerState({
+      variant: "X01",
+      players: [{ name: "A" }],
+      gameScores: [501],
+      legs: 3,
+      sets: 2,
+      settings: { baseScore: 501, inMode: "Double", outMode: "Master" },
+    });
 
     if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.currentTurn.busted).toBe(true);
+    expect(state.match).toEqual({
+      baseScore: 501,
+      legsToWin: 3,
+      setsToWin: 2,
+      inMode: "Double",
+      outMode: "Master",
+    });
+  });
+});
+
+describe("toField", () => {
+  test("liest Triple, Double, Bull und den Teil eines Single", () => {
+    expect(toField({ bed: "Triple", multiplier: 3, number: 20 })).toEqual(T20);
+    expect(toField({ bed: "Double", multiplier: 2, number: 25 })).toEqual({
+      multiplier: 2,
+      number: 25,
+      ring: null,
+    });
+    expect(toField({ bed: "SingleInner", multiplier: 1, number: 5 })).toEqual({
+      multiplier: 1,
+      number: 5,
+      ring: "inner",
+    });
+    expect(toField({ bed: "Single", multiplier: 1, number: 19 })).toEqual({
+      multiplier: 1,
+      number: 19,
+      ring: null,
+    });
   });
 
-  test("meldet keine ueberworfene Aufnahme im normalen Spiel", () => {
-    const state = toScoreboardState(matchState());
-
-    if (state.phase !== "playing") throw new Error("unerreichbar");
-    expect(state.currentTurn.busted).toBe(false);
-  });
-
-  test("meldet den Gewinner, wenn das Match beendet ist", () => {
-    const state = toScoreboardState(matchState({ winner: 1 }));
-
-    expect(state).toEqual({ phase: "finished", winner: "Marcus" });
+  test("macht aus allem Unbrauchbaren einen Daneben-Wurf", () => {
+    expect(toField(null)).toEqual(MISS);
+    expect(toField({ number: 0, multiplier: 1 })).toEqual(MISS);
+    expect(toField({ number: 21, multiplier: 1 })).toEqual(MISS);
+    expect(toField({ number: 25, multiplier: 3 })).toEqual(MISS);
+    expect(toField({ number: 20, multiplier: 4 })).toEqual(MISS);
   });
 });

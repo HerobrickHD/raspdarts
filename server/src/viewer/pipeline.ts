@@ -1,13 +1,13 @@
 /**
  * Was mit jeder eingehenden Autodarts-Nachricht passiert: aufzeichnen,
- * in einen ScoreboardState uebersetzen, an die Anzeigen verteilen.
+ * in einen ViewerState uebersetzen, an die Anzeigen verteilen.
  *
  * Nachrichten, die kein Spielstand sind (Lobby, Board-Status ...), ergeben
  * IDLE und aendern die Anzeige nicht. Angezeigt wird also immer das Match, fuer
  * das zuletzt Daten kamen.
  */
 import type { DisplayHub } from "./display-hub.js";
-import { IDLE, toScoreboardState, type ScoreboardState } from "./game-state.js";
+import { IDLE, toViewerState, type ViewerState } from "./game-state.js";
 
 export interface FrameSink {
   write(frame: unknown): void;
@@ -24,9 +24,9 @@ export function createFramePipeline(
       console.warn(`Aufzeichnung fehlgeschlagen: ${(error as Error).message}`);
     }
 
-    let state: ScoreboardState;
+    let state: ViewerState;
     try {
-      state = toScoreboardState(frame);
+      state = toViewerState(frame);
     } catch (error) {
       console.warn(`Nachricht nicht auswertbar, uebersprungen: ${(error as Error).message}`);
       return;

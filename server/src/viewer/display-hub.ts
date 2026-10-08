@@ -1,11 +1,11 @@
 /**
- * Verteilt den ScoreboardState an alle verbundenen Anzeigen.
+ * Verteilt den ViewerState an alle verbundenen Anzeigen.
  *
  * Es werden immer vollstaendige Snapshots gesendet, keine Deltas. Dadurch
  * haelt der Browser keinen eigenen Zustand und eine Anzeige, die sich spaeter
  * verbindet, ist sofort korrekt.
  */
-import { IDLE, type ScoreboardState } from "./game-state.js";
+import { IDLE, type ViewerState } from "./game-state.js";
 
 export interface DisplaySocket {
   send(data: string): void;
@@ -14,7 +14,7 @@ export interface DisplaySocket {
 
 export class DisplayHub {
   readonly #clients = new Set<DisplaySocket>();
-  #state: ScoreboardState = IDLE;
+  #state: ViewerState = IDLE;
 
   attach(socket: DisplaySocket): void {
     this.#clients.add(socket);
@@ -23,7 +23,7 @@ export class DisplayHub {
   }
 
   /** Setzt den Zustand und schiebt ihn an alle Anzeigen. */
-  broadcast(state: ScoreboardState): void {
+  broadcast(state: ViewerState): void {
     this.#state = state;
     const payload = JSON.stringify(state);
     for (const client of this.#clients) {
@@ -35,7 +35,7 @@ export class DisplayHub {
     }
   }
 
-  get state(): ScoreboardState {
+  get state(): ViewerState {
     return this.#state;
   }
 

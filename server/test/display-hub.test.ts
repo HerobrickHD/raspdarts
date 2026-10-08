@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { DisplayHub, type DisplaySocket } from "../src/viewer/display-hub.js";
-import { IDLE, type ScoreboardState } from "../src/viewer/game-state.js";
+import { IDLE, type ViewerState } from "../src/viewer/game-state.js";
 
 function fakeSocket() {
   const sent: string[] = [];
@@ -12,7 +12,7 @@ function fakeSocket() {
   return { socket, sent, close: () => onClose() };
 }
 
-const FINISHED: ScoreboardState = { phase: "finished", winner: "Arnold" };
+const FINISHED: ViewerState = { phase: "unsupported", variant: "Cricket" };
 
 describe("DisplayHub", () => {
   test("schickt einer neuen Anzeige sofort den aktuellen Stand", () => {
