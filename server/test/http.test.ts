@@ -11,7 +11,7 @@ describe("Header-Schutz", () => {
   test("weist /api-Anfragen ohne X-Raspdarts mit 403 ab", async () => {
     app = await buildApp(testDeps());
 
-    const response = await app.inject({ method: "GET", url: "/api/layout/beamer" });
+    const response = await app.inject({ method: "GET", url: "/api/layout/standard" });
 
     expect(response.statusCode).toBe(403);
   });
@@ -21,7 +21,7 @@ describe("Header-Schutz", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/api/layout/beamer",
+      url: "/api/layout/standard",
       headers: { "x-raspdarts": "ja" },
     });
 
@@ -33,7 +33,7 @@ describe("Header-Schutz", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/api/layout/beamer",
+      url: "/api/layout/standard",
       headers: { "x-raspdarts": "1" },
     });
 
@@ -44,7 +44,7 @@ describe("Header-Schutz", () => {
   test("laesst sich nicht durch Prozent-Kodierung des Pfads umgehen", async () => {
     app = await buildApp(testDeps());
 
-    const response = await app.inject({ method: "GET", url: "/%61pi/layout/beamer" });
+    const response = await app.inject({ method: "GET", url: "/%61pi/layout/standard" });
 
     expect(response.statusCode).toBe(403);
   });
@@ -63,7 +63,7 @@ describe("Header-Schutz", () => {
 
     const response = await app.inject({
       method: "OPTIONS",
-      url: "/api/layout/beamer",
+      url: "/api/layout/standard",
       headers: { origin: "https://evil.example", "access-control-request-method": "PUT" },
     });
 
@@ -75,7 +75,7 @@ describe("Host-Pruefung (DNS-Rebinding)", () => {
   const get = (host: string) =>
     app.inject({
       method: "GET",
-      url: "/api/layout/beamer",
+      url: "/api/layout/standard",
       headers: { "x-raspdarts": "1", host },
     });
 
@@ -123,19 +123,16 @@ describe("isAllowedHost", () => {
 });
 
 describe("Layout-API", () => {
-  test("speichert ein Layout und liefert es zurueck", async () => {
+  test("liefert ohne gespeichertes Layout den Standard", async () => {
     app = await buildApp(testDeps());
-    const headers = { "x-raspdarts": "1" };
 
-    await app.inject({
-      method: "PUT",
+    const response = await app.inject({
+      method: "GET",
       url: "/api/layout/handy",
-      headers,
-      payload: { checkout: { x: 60, y: 12, scale: 2 } },
+      headers: { "x-raspdarts": "1" },
     });
-    const response = await app.inject({ method: "GET", url: "/api/layout/handy", headers });
 
-    expect(response.json().checkout).toEqual({ x: 60, y: 12, scale: 2 });
+    expect(response.json()).toEqual(DEFAULT_LAYOUT);
   });
 });
 
