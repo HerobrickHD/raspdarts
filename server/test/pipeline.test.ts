@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
-import { DisplayHub } from "../src/beamer/display-hub.js";
-import { IDLE } from "../src/beamer/game-state.js";
-import { createFramePipeline } from "../src/beamer/pipeline.js";
+import { DisplayHub } from "../src/viewer/display-hub.js";
+import { IDLE } from "../src/viewer/game-state.js";
+import { createFramePipeline } from "../src/viewer/pipeline.js";
 
 const MATCH_FRAME = {
   channel: "autodarts.matches",

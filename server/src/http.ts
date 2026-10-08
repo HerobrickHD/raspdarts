@@ -1,5 +1,5 @@
 /**
- * Die eine Fastify-App des Dienstes: Beamer-Anzeige, Spieldaten-Annahme und
+ * Die eine Fastify-App des Dienstes: Viewer, Spieldaten-Annahme und
  * Pi-Verwaltung auf einem Port.
  *
  * Schutz: Alles unter /api/ verlangt den Header X-Raspdarts: 1. Ein Browser
@@ -16,9 +16,9 @@ import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
-import type { DisplayHub } from "./beamer/display-hub.js";
-import { isExtensionOrigin, type Ingest } from "./beamer/ingest.js";
-import type { LayoutStore } from "./beamer/layout-store.js";
+import type { DisplayHub } from "./viewer/display-hub.js";
+import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
+import type { LayoutStore } from "./viewer/layout-store.js";
 import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
@@ -94,7 +94,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     },
   );
 
-  // Layout je Anzeige: der Beamer richtet sich anders aus als das Handy.
+  // Layout je Anzeige: der Beamer an der Scheibe richtet sich anders aus als der Fernseher.
   app.get<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>
     withLayout(reply, () => deps.layouts.read(request.params.display)),
   );

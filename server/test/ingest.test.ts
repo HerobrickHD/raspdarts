@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { Ingest, isExtensionOrigin } from "../src/beamer/ingest.js";
+import { Ingest, isExtensionOrigin } from "../src/viewer/ingest.js";
 
 describe("isExtensionOrigin", () => {
   test.each([

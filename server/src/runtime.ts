@@ -2,11 +2,11 @@
  * Baut alle Abhaengigkeiten des Dienstes zusammen. Genutzt vom Hauptprogramm
  * und von replay.ts, damit beide denselben Weg gehen.
  */
-import { DisplayHub } from "./beamer/display-hub.js";
-import { Ingest } from "./beamer/ingest.js";
-import { LayoutStore } from "./beamer/layout-store.js";
-import { createFramePipeline } from "./beamer/pipeline.js";
-import { Recorder, sessionPath } from "./beamer/recorder.js";
+import { DisplayHub } from "./viewer/display-hub.js";
+import { Ingest } from "./viewer/ingest.js";
+import { LayoutStore } from "./viewer/layout-store.js";
+import { createFramePipeline } from "./viewer/pipeline.js";
+import { Recorder, sessionPath } from "./viewer/recorder.js";
 import type { AppDeps } from "./http.js";
 import { JobRunner } from "./system/jobs.js";
 import { createStatusReader } from "./system/status.js";

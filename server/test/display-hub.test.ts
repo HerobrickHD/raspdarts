@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { DisplayHub, type DisplaySocket } from "../src/beamer/display-hub.js";
-import { IDLE, type ScoreboardState } from "../src/beamer/game-state.js";
+import { DisplayHub, type DisplaySocket } from "../src/viewer/display-hub.js";
+import { IDLE, type ScoreboardState } from "../src/viewer/game-state.js";
 
 function fakeSocket() {
   const sent: string[] = [];

@@ -1,5 +1,5 @@
 /**
- * Das Layout der Beamer-Anzeige: wo jeder Baustein sitzt und wie gross er ist.
+ * Das Layout einer Anzeige: wo jeder Baustein sitzt und wie gross er ist.
  *
  * Positionen sind Prozentwerte der Projektionsflaeche, keine Pixel. Dadurch
  * passt ein einmal eingerichtetes Layout auch dann noch, wenn der Beamer mit

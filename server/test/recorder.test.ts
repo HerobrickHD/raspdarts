@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { Recorder } from "../src/beamer/recorder.js";
+import { Recorder } from "../src/viewer/recorder.js";
 
 let dir: string;
 afterEach(() => {

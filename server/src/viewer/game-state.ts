@@ -1,6 +1,6 @@
 /**
  * Uebersetzt die rohe Autodarts-Match-Nachricht in den ScoreboardState -
- * den einzigen Vertrag zwischen Dienst und Beamer-Anzeige.
+ * den einzigen Vertrag zwischen Dienst und Viewer.
  *
  * Diese Datei ist die einzige Stelle, die das Drahtformat von Autodarts kennt.
  * Zeigt eine echte Aufzeichnung (data/sessions/), dass Felder anders heissen,

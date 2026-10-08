@@ -3,8 +3,8 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import WebSocket from "ws";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/http.js";
-import { IDLE, toScoreboardState } from "../src/beamer/game-state.js";
-import type { RecordedFrame } from "../src/beamer/recorder.js";
+import { IDLE, toScoreboardState } from "../src/viewer/game-state.js";
+import type { RecordedFrame } from "../src/viewer/recorder.js";
 import { listen, testDeps } from "./helpers.js";
 
 const EXTENSION = "chrome-extension://abcdefghijklmnop";

@@ -5,7 +5,7 @@
  *     npm run replay <datei> --speed 4     (vierfache Geschwindigkeit)
  *     npm run replay <datei> --instant     (ohne Pausen, springt ans Ende)
  *
- * Damit laesst sich die komplette Beamer-Anzeige am Schreibtisch entwickeln,
+ * Damit laesst sich der komplette Viewer am Schreibtisch entwickeln,
  * ohne an der Scheibe zu stehen.
  */
 import { readFileSync } from "node:fs";

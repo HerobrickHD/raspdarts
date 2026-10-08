@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp, isAllowedHost } from "../src/http.js";
-import { DEFAULT_LAYOUT } from "../src/beamer/layout.js";
+import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
 import { testDeps } from "./helpers.js";
 
 let app: FastifyInstance;

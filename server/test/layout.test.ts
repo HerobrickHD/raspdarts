@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BLOCK_IDS, DEFAULT_LAYOUT, sanitizeLayout } from "../src/beamer/layout.js";
+import { BLOCK_IDS, DEFAULT_LAYOUT, sanitizeLayout } from "../src/viewer/layout.js";
 
 describe("sanitizeLayout", () => {
   test("liefert das Standard-Layout, wenn nichts gespeichert ist", () => {
