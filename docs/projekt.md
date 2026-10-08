@@ -1,6 +1,6 @@
 # Raspdarts — worum es geht
 
-Stand: 4. Oktober 2026
+Stand: 8. Oktober 2026
 
 ## Die Idee
 
@@ -20,13 +20,16 @@ die Felder auf der Scheibe selbst anleuchten.
 
 ## Das Ziel
 
-Eine Anzeige, die neben der Scheibe hängt und alles zeigt, was man beim Spielen
-wissen will — ohne dass man den Kopf drehen oder etwas bedienen muss.
+Eine Anzeige – der **Viewer** –, die alles zeigt, was man beim Spielen wissen
+will, ohne dass man den Kopf drehen oder etwas bedienen muss. Der wichtigste
+Fall ist ein Beamer, der direkt auf die Scheibe projiziert: Treffer und
+Hervorhebungen leuchten auf den echten Feldern, Spielerkarten und Aufnahme
+stehen daneben an der Wand. Der Viewer ist nur eine Adresse auf dem Pi; jedes
+Gerät mit Browser kann ihn öffnen (Beamer, Fernseher, Laptop).
 
 Gebaut wird **Feature für Feature**, nicht alles auf einmal. Jede Stufe ist für
 sich benutzbar und wird an der echten Scheibe erprobt, bevor die nächste
-beginnt. Das ist eine bewusste Entscheidung: Ein Projekt, das alles gleichzeitig
-versucht, wird chaotisch und nie fertig.
+beginnt.
 
 ## Aufbau
 
@@ -41,16 +44,16 @@ Raspberry Pi 5 (läuft ohnehin durch, hat die Kameras)
 │     verteilt einen fertigen Spielstand-Schnappschuss
 │     und verwaltet den Pi (Status, Updates, Neustart)
 │
-└── Beamer ← Browser im Vollbild, zeigt nur an
+└── Viewer ← Browser im Vollbild (Beamer, Fernseher …)
 ```
 
-Dazwischen steht genau ein Vertrag: der `ScoreboardState`. Der Dienst schickt
+Dazwischen steht genau ein Vertrag: der `ViewerState`. Der Dienst schickt
 bei jeder Änderung einen vollständigen Schnappschuss, die Anzeige rendert ihn
 und hält selbst keinen Zustand.
 
 Die Spieldaten kommen nicht vom Pi selbst, sondern von der Extension im Browser,
 in dem ohnehin gespielt wird. Der Pi braucht dadurch keine Autodarts-Anmeldung.
-Der Preis: Der Beamer zeigt nur etwas an, solange ein Tab mit play.autodarts.com
+Der Preis: Der Viewer zeigt nur etwas an, solange ein Tab mit play.autodarts.com
 offen ist.
 
 **Warum diese Trennung wichtig ist:**
@@ -61,7 +64,7 @@ offen ist.
 - Mehrere Anzeigen gleichzeitig gehen ohne Zusatzaufwand — Beamer an der Wand,
   Handy in der Hand, beide aktuell.
 - Autodarts hat keine offizielle API. Ändert sich ihr Datenformat, ist genau
-  eine Datei betroffen (`server/src/beamer/game-state.ts`). Server und Anzeige
+  eine Datei betroffen (`server/src/viewer/game-state.ts`). Server und Anzeige
   merken nichts davon.
 
 ## Ohne Dartscheibe entwickeln
@@ -77,34 +80,25 @@ Stufen brauchen. Das Archiv füllt sich also, bevor es gebraucht wird.
 
 ## Stufen
 
-**Stufe 1 — Scoreboard** *(gebaut)*
+**Grundlage Viewer** *(Spec `docs/superpowers/specs/2026-10-08-viewer-design.md`)*
 
-Restpunkte, aktiver Spieler, gewonnene Legs, die Darts der laufenden Aufnahme
-und der empfohlene Checkout-Weg. Schwarzer Grund, große Zahlen, drei Farben.
+Schwarzer Grund, eigene Scheibe (Nur Licht / Gezeichnet / Linien),
+Spielerkarten und Aufnahme im Stil der Autodarts-Spielansicht, Layout je
+Anzeige mit Live-Editor zum Ausrichten der Scheibe auf die echte Scheibe.
+Nur X01.
 
-Die drei Bausteine — Kopfzeile, Spielerblock, Checkout — lassen sich einzeln
-verschieben und in der Größe ändern, damit das Bild zur eigenen Wand passt.
-Gespeichert wird pro Anzeige, sodass der Beamer sein Layout behält, wenn am
-Handy etwas verstellt wird.
+**Danach, in dieser Reihenfolge**
 
-**Stufe 2 — Zielfeld am Rand**
+1. Messung mit Beamer und Darts: stört Licht auf der Scheibe die Erkennung?
+   Danach Licht-Verhalten festlegen, ggf. 4-Ecken-Entzerrung.
+2. Bust- und Endanimation.
+3. Kachel auf play.autodarts.com/boards (Pi-Werte, Anzeige einstellen) statt
+   des Navigationseintrags.
+4. Weitere Spielarten (Gotcha, Cricket …) – der Pi rechnet z. B. bei Gotcha
+   aus, mit welchem Feld man wen zurücksetzt, der Viewer färbt es.
 
-Ein Marker am Bildrand zeigt auf das nächste zu treffende Segment. Braucht noch
-keine Kalibrierung.
-
-**Stufe 3 — Trefferanzeige**
-
-Die letzten drei Darts als Punktwolke, zunächst in einer kleinen Scheiben-Grafik
-neben dem Score. Die Koordinaten dafür liegen dann längst vor.
-
-**Stufe 4 — Statistik**
-
-Average, Checkout-Quote, Streuung über die Sitzung.
-
-**Stufe 5 — Projektion auf die Scheibe**
-
-Felder direkt anleuchten. Die anspruchsvollste Stufe, mit einem offenen Risiko
-(siehe unten).
+Verworfen (8. Oktober 2026): Board-Verwaltung (Kameras, Kalibrierung,
+Einstellungen) in Raspdarts – das kann Autodarts' eigene Terminal-App `ad`.
 
 ## Das offene Risiko
 
@@ -113,19 +107,17 @@ was sich auf der Scheibenoberfläche verändert hat. Ein Beamer, der Muster **au
 die Scheibe** wirft, verändert genau dieses Bild.
 
 Ob das die Erkennung tatsächlich stört, weiß niemand, bevor es gemessen wurde.
-Deshalb gilt für Stufe 5: **erst mit einem einfachen Testbild messen, dann
-bauen.** Mögliche Auswege, falls es klemmt — nur zwischen den Aufnahmen
+Deshalb gilt für das Licht auf der Scheibe: **erst mit einem einfachen Testbild
+messen, dann festlegen.** Mögliche Auswege, falls es klemmt — nur zwischen den Aufnahmen
 projizieren, statische statt bewegter Flächen, Helligkeit reduzieren.
 
-Solange das ungeklärt ist, bleibt die Scheibenfläche dunkel. Die Stufen 1 bis 4
-berühren das Problem nicht.
+Bis dahin ist das Licht-Verhalten vorläufig (wie bei Autodarts: Darts als
+Punkte, letztes Feld blinkt). Anzeigen neben der Scheibe (Wand, Fernseher)
+berührt das Problem nicht.
 
 ## Was als Nächstes ansteht
 
-Ein einziges Leg an der Scheibe werfen, während die Extension mitliest. Die
-Aufzeichnung unter `server/data/sessions/` zeigt dann zum ersten Mal echten
-Verkehr. Damit wird geprüft, ob das Datenformat den Annahmen in
-`docs/protocol.md` entspricht, die aus Community-Quellen rekonstruiert wurden.
+Die Messung aus „Das offene Risiko“, sobald Beamer und Darts da sind.
 
 ## Grundsätze
 
@@ -134,5 +126,7 @@ Verkehr. Damit wird geprüft, ob das Datenformat den Annahmen in
   Pi wird geprüft, nicht vermutet.
 - **Annahmen kennzeichnen.** Was aus Community-Quellen stammt und nicht am
   lebenden System geprüft wurde, steht in `docs/protocol.md` als solches markiert.
-- **Die Anzeige bleibt dumm.** Keine Spiellogik im Browser. Das hält sie
-  austauschbar und die Logik testbar.
+- **Spielregeln auf dem Pi, Darstellung im Viewer.** Rest, Bust, Checkout und
+  Sieger entscheidet Autodarts, `game-state.ts` übersetzt. Der Viewer darf in
+  der Darstellung beliebig schlau sein (Geometrie, Hervorhebungen,
+  Animationen), rechnet aber keine Spielwerte.
