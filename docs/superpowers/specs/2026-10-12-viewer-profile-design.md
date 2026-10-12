@@ -127,7 +127,7 @@ type Profile = {
   fehlende oder falsch getypte bekommen die Vorgabe, ein `choice`-Wert muss
   einer der `choices` sein.
 - `layout`: wie bisher `sanitizeLayout` (Grenzen je Wert, blockweise Standard).
-- `name`: getrimmt, 1–40 Zeichen, sonst „Profil“.
+- `name`: getrimmt, länger als 40 Zeichen wird gekürzt, leer → „Profil“.
 - Ohne `version: 3` → Standardprofil (Vorlage „Projektion“).
 
 ### Übernahme beim ersten Start
@@ -162,7 +162,7 @@ Alle schreibenden Aufrufe brauchen wie bisher den Header `X-Raspdarts: 1`.
 | GET | `/api/profiles` | → `{ active: id, profiles: [{ id, name }] }` |
 | GET | `/api/profiles/:id` | → `Profile & { id }` |
 | POST | `/api/profiles` | `{ name, template }` → neues Profil (201), wird aktiv |
-| PUT | `/api/profiles/:id` | Teilweise: `{ name?, content?, layout?, editing? }` → gültiges Profil |
+| PUT | `/api/profiles/:id` | Teilweise: `{ name?, content?, layout?, editing? }` → gültiges Profil; `editing`: `"inhalte"`, `"layout"` oder `null` |
 | POST | `/api/profiles/:id/reset` | `{ template }` → Inhalte aus der Vorlage, Layout bleibt |
 | DELETE | `/api/profiles/:id` | → 204; 409 beim letzten Profil |
 | PUT | `/api/active-profile` | `{ id }` → `{ active }`; 404 bei unbekanntem Profil |
@@ -177,15 +177,18 @@ Beim Verbinden schickt der Pi nacheinander:
 
 - `{ type: "catalog", catalog }` – Bausteine, Optionen, Vorlagen
 - `{ type: "state", state }` – unverändert
-- `{ type: "profile", profile: Profile & { id }, profiles: [{ id, name }], editing }`
+- `{ type: "profile", profile: Profile & { id }, profiles: [{ id, name }], editing: "inhalte" | "layout" | null }`
 
 Danach geht `profile` an **alle** Viewer bei jeder Änderung des aktiven
 Profils, bei einem Wechsel des aktiven Profils und bei jeder Änderung der
 Profilliste (anlegen, umbenennen, löschen). Änderungen an einem nicht aktiven
 Profil gibt es über die Oberfläche nicht.
 
-`editing` gilt für den ganzen Viewer (nicht mehr je Anzeigename): Es wird mit
-`PUT /api/profiles/:id` gesetzt, fällt nach 60 s ohne Änderung von selbst
+`editing` gilt für den ganzen Viewer (nicht mehr je Anzeigename) und sagt,
+in welchem Schritt gerade eingestellt wird: Bei `"inhalte"` zeigen alle Geräte
+ohne laufendes Spiel Beispieldaten in der echten Darstellung, bei `"layout"`
+zusätzlich die Scheibe als Linien. Es wird mit `PUT /api/profiles/:id`
+(nur für das aktive Profil, nur wenn mitgeschickt) gesetzt, fällt nach 60 s ohne Änderung von selbst
 zurück und endet beim Wechsel des aktiven Profils.
 
 ## Bedienung im Viewer
@@ -224,7 +227,8 @@ Anpassen:
 - **🗑 Löschen** und **Vorlage anklicken** fragen vorher in der Leiste nach
   („Inhalte von ‚Standard‘ auf ‚Fernseher‘ zurücksetzen? Das Layout bleibt.“).
   Löschen ist beim letzten Profil gesperrt.
-- In Schritt 1 zeigen alle Geräte die echte Darstellung (nicht „Linien“).
+- In Schritt 1 zeigen alle Geräte die echte Darstellung (nicht „Linien“),
+  ohne laufendes Spiel mit Beispieldaten.
 
 ### Schritt 2 – Layout
 
