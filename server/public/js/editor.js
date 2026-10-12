@@ -5,6 +5,7 @@
  * der sie an alle Viewer weiterreicht - so folgt der Beamer live, waehrend
  * man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
  */
+import { snapRotation } from "./rotation.js";
 
 /* Der Pi beendet "editing" nach 60 s ohne Aenderung; solange der Editor offen
    ist, haelt ein Lebenszeichen es an. */
@@ -35,7 +36,7 @@ function drag(layout, id, handle, start, move, anchor) {
       board.diameter = clamp(from.diameter * ratio, 5, 400);
     } else if (handle === "rotate") {
       const turned = angle(move.clientX, move.clientY, anchor) - angle(start.x, start.y, anchor);
-      board.rotation = normalizeAngle(from.rotation + turned);
+      board.rotation = snapRotation(normalizeAngle(from.rotation + turned), { free: move.altKey });
     }
     return;
   }
