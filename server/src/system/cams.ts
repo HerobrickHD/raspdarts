@@ -44,6 +44,7 @@ const TIMEOUT_MS = 2000;
 const IMAGE_TTL_MS = 1000;
 const STATE_TTL_MS = 1000;
 const CONFIG_TTL_MS = 30_000;
+const FAILURE_TTL_MS = 1000;
 
 /** Nimmt aus der Autodarts-Config nur Board-ID und Anzahl belegter Kamera-Plaetze. */
 export function parseCamsConfig(body: unknown): { board_id: string | null; cams: number } | null {
@@ -61,12 +62,17 @@ export function parseCamsConfig(body: unknown): { board_id: string | null; cams:
 /**
  * Haelt das Ergebnis von `load` fuer `ttlMs` ab dem Ende des Abrufs. Solange
  * ein Abruf laeuft, bekommen alle Aufrufer denselben - auch wenn er laenger
- * als `ttlMs` dauert. Ein Fehler wird nicht gemerkt.
+ * als `ttlMs` dauert. Ein Fehler wird nicht gemerkt. Springt die Uhr zurueck
+ * (der Pi hat keine Echtzeituhr), gilt der Wert als abgelaufen.
  */
 export function cached<T>(ttlMs: number, now: () => number, load: () => Promise<T>): () => Promise<T> {
   let entry: { promise: Promise<T>; settledAt: number | null } | null = null;
+  const fresh = (settledAt: number) => {
+    const age = now() - settledAt;
+    return age >= 0 && age < ttlMs;
+  };
   return () => {
-    if (entry && (entry.settledAt === null || now() - entry.settledAt < ttlMs)) return entry.promise;
+    if (entry && (entry.settledAt === null || fresh(entry.settledAt))) return entry.promise;
     const current: { promise: Promise<T>; settledAt: number | null } = { promise: load(), settledAt: null };
     entry = current;
     current.promise.then(
@@ -84,11 +90,24 @@ export function cached<T>(ttlMs: number, now: () => number, load: () => Promise<
 export function createCams(deps: CamsDeps): Cams {
   let fetched = 0;
 
-  const config = cached(CONFIG_TTL_MS, deps.now, async () => {
+  const configOk = cached(CONFIG_TTL_MS, deps.now, async () => {
     const parsed = parseCamsConfig(await deps.http.json("/api/config", TIMEOUT_MS));
     if (!parsed) throw new Error("Unerwartete Config");
     return parsed;
   });
+  // Ein Fehler gilt eine Sekunde, damit Autodarts auch dann gebremst gefragt wird.
+  const configOrNull = cached(FAILURE_TTL_MS, deps.now, async () => {
+    try {
+      return await configOk();
+    } catch {
+      return null;
+    }
+  });
+  async function config(): Promise<{ board_id: string | null; cams: number }> {
+    const result = await configOrNull();
+    if (!result) throw new Error("Autodarts-Config nicht lesbar");
+    return result;
+  }
 
   // null = keine brauchbare Antwort; auch das gilt eine Sekunde.
   const running = cached(STATE_TTL_MS, deps.now, async (): Promise<boolean | null> => {

@@ -83,6 +83,17 @@ describe("cached", () => {
     expect(await get()).toBe(2);
   });
 
+  // Der Pi hat keine Echtzeituhr; springt die Uhr zurueck, darf nichts einfrieren.
+  test("laedt neu, wenn die Uhr zurueckspringt", async () => {
+    const clock = { now: 10_000 };
+    let loads = 0;
+    const get = cached(1000, () => clock.now, async () => ++loads);
+
+    expect(await get()).toBe(1);
+    clock.now = 5000;
+    expect(await get()).toBe(2);
+  });
+
   test("merkt sich einen Fehler nicht", async () => {
     let fail = true;
     const get = cached(30_000, () => 0, async () => {
@@ -119,13 +130,29 @@ describe("info", () => {
     expect(fake.count("/api/config")).toBe(2);
   });
 
-  test("wirft, wenn Autodarts nicht antwortet, und versucht es beim naechsten Mal erneut", async () => {
-    const { fake, cams } = setup();
+  test("wirft, wenn Autodarts nicht antwortet, und versucht es nach einer Sekunde erneut", async () => {
+    const { fake, clock, cams } = setup();
     fake.config = new Error("Zeitlimit");
 
     await expect(cams.info()).rejects.toThrow();
     fake.config = CONFIG;
+    clock.now = 1000;
     expect((await cams.info()).cams).toBe(3);
+  });
+
+  test("fragt die Config nach einem Fehler hoechstens einmal pro Sekunde", async () => {
+    const { fake, clock, cams } = setup();
+    fake.config = new Error("Zeitlimit");
+
+    await expect(cams.info()).rejects.toThrow();
+    clock.now = 500;
+    await expect(cams.info()).rejects.toThrow();
+    expect(await cams.image(0)).toEqual({ ok: false, reason: "unavailable" });
+    expect(fake.count("/api/config")).toBe(1);
+
+    clock.now = 1500;
+    await expect(cams.info()).rejects.toThrow();
+    expect(fake.count("/api/config")).toBe(2);
   });
 });
 

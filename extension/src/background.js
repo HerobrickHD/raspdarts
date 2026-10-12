@@ -21,9 +21,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // Kamerabild fuer das Kamerafenster auf play.autodarts.com/boards. Kommt als
 // Daten-URL zurueck, weil die HTTPS-Seite nichts direkt vom Pi laden darf.
+// Mit Zeitlimit: Ist der Pi ganz weg, haengt fetch sonst bis zum TCP-Zeitlimit
+// des Systems, und das Fenster zeigt so lange alte Bilder wie frische.
+const IMAGE_TIMEOUT_MS = 4000;
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type !== 'image') return false;
-  fetch(`${BASE_URL}/api/cams/${Number(msg.cam)}`, { headers: CLIENT_HEADERS, cache: 'no-store' })
+  fetch(`${BASE_URL}/api/cams/${Number(msg.cam)}`, {
+    headers: CLIENT_HEADERS,
+    cache: 'no-store',
+    signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+  })
     .then(async (res) => {
       if (!res.ok) {
         sendResponse({ ok: false, status: res.status });
