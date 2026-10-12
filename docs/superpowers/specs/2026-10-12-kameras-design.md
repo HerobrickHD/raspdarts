@@ -40,6 +40,21 @@ anderen Seiten als `/boards`.
 - Vormessung am 12.10. (Board läuft, je 10 s): ohne Abruf CPU von Autodarts
   81–94 % (Ø ≈ 84 %), 30–31 fps; mit Abruf aller 3 Kameras je 1×/s 80–99 %
   (Ø ≈ 87 %), 30–31 fps. Bildrate unverändert, CPU-Unterschied im Rauschen.
+- **Abnahme-Messung am 12.10.** (ausgerollter Stand `92a8617` auf dem Pi, Board
+  läuft, je 60 s, `/api/state/stats` jede Sekunde):
+
+  | Durchgang | CPU Autodarts Ø | fps Ø (min) | Bildabrufe bei Autodarts |
+  |---|---|---|---|
+  | ohne Fenster | 86,6 % | 30,6 (30) | 0 |
+  | ein Fenster | 86,4 % | 30,5 (30) | 166 |
+  | zwei Fenster | 88,3 % | 30,5 (30) | 178 |
+
+  Bestanden: Bildrate unverändert, Bildabrufe unter der Grenze von 183
+  (60 s × 3 Kameras + 3); ohne Bremse wären es mit zwei Fenstern ≈ 260
+  gewesen. Beobachtet nebenbei: Autodarts' Standby nach 15 Minuten ohne Wurf
+  greift auch bei offenem Kamerafenster – die Bildabrufe halten Autodarts
+  nicht wach. Ein verdecktes Chrome-Fenster gilt unter Windows als versteckt;
+  das Kamerafenster ruft dann nichts ab.
 
 ## Teil 1: Raspdarts-Server
 
