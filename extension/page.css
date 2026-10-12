@@ -5,8 +5,6 @@
 :host {
   all: initial;
   display: block;
-  height: 100%;
-  overflow-y: auto;
   font-family: "Manrope Variable", "Manrope", sans-serif;
   color: var(--color-mono-white, #fff);
 }
@@ -15,11 +13,8 @@
 [hidden] { display: none !important; }
 
 .wrap {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 40px 24px 32px;
   display: grid;
-  gap: 24px;
+  gap: 16px;
 }
 
 .card {
@@ -242,4 +237,41 @@ button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); backgro
   color: var(--color-black-20, #cacfd9);
   overflow-wrap: anywhere;
   user-select: all;
+}
+
+/* Viewer-Block: Weitergabe an/aus */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  font-weight: 700;
+  background: var(--color-black-70, #2b2f36);
+  color: var(--color-black-20, #cacfd9);
+}
+.switch .knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-black-30, #8b93a1);
+}
+.switch[aria-checked="true"] { background: var(--color-blue-60, #0b55df); color: var(--color-mono-white, #fff); }
+.switch[aria-checked="true"]:hover:not(:disabled) { background: var(--color-blue-50, #4a89ff); }
+.switch[aria-checked="true"] .knob { background: var(--color-mono-white, #fff); }
+.viewer-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--color-black-20, #cacfd9);
 }

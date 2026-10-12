@@ -1,7 +1,8 @@
 'use strict';
 
 // Baut die Raspdarts-Seite im Shadow DOM und zeigt an, was view-model.js
-// berechnet. Entscheidet nichts selbst: Aktionen meldet sie an content.js.
+// berechnet. Entscheidet nichts selbst: Aktionen und den Schalter meldet sie
+// an viewer.js.
 (function (root) {
   async function loadAsset(path) {
     const response = await fetch(chrome.runtime.getURL(path));
@@ -9,7 +10,7 @@
     return response.text();
   }
 
-  async function create({ t, onAction, onActivityClosed }) {
+  async function create({ t, onAction, onActivityClosed, onToggle }) {
     const [html, css] = await Promise.all([loadAsset('page.html'), loadAsset('page.css')]);
 
     const host = document.createElement('div');
@@ -22,7 +23,7 @@
     const field = (name) => shadow.querySelector(`[data-field="${name}"]`);
     let resolveDialog = null;
 
-    function render(view) {
+    function render(view, viewer) {
       field('pill').dataset.tone = view.pill.tone;
       field('pillText').textContent = view.pill.text;
       for (const key of ['cpu', 'ram', 'temperature', 'uptime']) field(key).textContent = view.stats[key];
@@ -36,8 +37,11 @@
       field('install').hidden = !autodarts.showInstall;
 
       field('raspdartsVersion').textContent = view.pi.raspdartsVersion;
-      field('beamerStatus').textContent = view.pi.beamerText;
-      field('beamerDot').dataset.tone = view.pi.beamerTone;
+      const viewerSwitch = field('viewerSwitch');
+      viewerSwitch.setAttribute('aria-checked', String(viewer.on));
+      field('viewerSwitchText').textContent = viewer.switchText;
+      field('viewerState').textContent = viewer.stateText;
+      field('viewerDot').dataset.tone = viewer.stateTone;
 
       shadow.querySelectorAll('[data-action]').forEach((button) => { button.disabled = view.disabled; });
     }
@@ -106,6 +110,7 @@
       const button = event.target.closest('button');
       if (!button || button.disabled) return;
       if (button.dataset.action) onAction(button.dataset.action);
+      else if (button === field('viewerSwitch')) onToggle();
       else if (button === field('copyCommand')) copyCommand(button);
       else if (button === field('activityClose')) { closeActivity(); onActivityClosed(); }
       else if (button === field('dialogCancel')) answerDialog(false);
@@ -126,6 +131,7 @@
       render,
       confirm,
       closeDialog: () => answerDialog(false),
+      isDialogOpen: () => resolveDialog !== null,
       startActivity,
       appendLog,
       finishActivity,

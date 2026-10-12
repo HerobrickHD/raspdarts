@@ -26,7 +26,7 @@
     },
     {
       "matches": ["https://play.autodarts.com/*"],
-      "js": ["texts.js", "forwarding.js", "view-model.js", "stream.js", "page.js", "viewer-view.js", "cams-view.js", "board-card.js", "cams.js", "content.js"],
+      "js": ["texts.js", "forwarding.js", "view-model.js", "stream.js", "page.js", "viewer-view.js", "cams-view.js", "board-card.js", "cams.js", "viewer.js"],
       "run_at": "document_idle"
     }
   ],

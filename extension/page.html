@@ -1,4 +1,15 @@
 <div class="wrap">
+  <section class="card viewer">
+    <h2><span data-text="viewerTitle"></span></h2>
+    <div class="switch-row">
+      <span data-text="viewerSwitchLabel"></span>
+      <button class="switch" data-field="viewerSwitch" role="switch" aria-checked="true">
+        <span class="knob"></span><span data-field="viewerSwitchText"></span>
+      </button>
+    </div>
+    <div class="viewer-state"><span class="dot" data-field="viewerDot"></span><span data-field="viewerState">--</span></div>
+  </section>
+
   <section class="card hero">
     <div class="brand">
       <div class="logo"><img data-asset="icons/button.png" alt=""></div>
@@ -46,7 +57,6 @@
       </h2>
       <div class="rows">
         <div class="row"><span class="key" data-text="raspdarts"></span><span class="val" data-field="raspdartsVersion">--</span></div>
-        <div class="row"><span class="key" data-text="beamer"></span><span class="val"><span class="dot" data-field="beamerDot"></span><span data-field="beamerStatus">--</span></span></div>
       </div>
       <div class="btns">
         <button class="primary" data-action="updateRaspdarts" data-text="updateRaspdarts"></button>
