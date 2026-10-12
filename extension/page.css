@@ -188,6 +188,7 @@ button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); backgro
   word-break: break-word;
   color: var(--color-black-30, #b8bcc5);
   background: var(--color-black-90, #01040b);
+  scrollbar-color: var(--color-black-60, #3a3f4a) transparent;
 }
 .result {
   display: flex;
@@ -220,6 +221,7 @@ button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); backgro
   box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
 }
 .dialog .btns { justify-content: flex-end; margin-top: 24px; }
+.dialog.activity { width: min(640px, calc(100vw - 32px)); }
 
 /* Installationsbefehl, wenn Autodarts auf dem Pi fehlt */
 .install p { margin: 0 0 12px; }
@@ -275,3 +277,18 @@ button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); backgro
   font-size: 14px;
   color: var(--color-black-20, #cacfd9);
 }
+
+/* Link "Viewer oeffnen" im Kopf des Viewer-Blocks, aussehend wie button.ghost */
+a.link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: "Manrope Variable", "Manrope", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  text-decoration: none;
+  color: var(--color-black-30, #b8bcc5);
+}
+a.link:hover { color: var(--color-mono-white, #fff); }

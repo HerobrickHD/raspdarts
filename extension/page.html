@@ -1,6 +1,10 @@
 <div class="wrap">
   <section class="card viewer">
-    <h2><span data-text="viewerTitle"></span></h2>
+    <h2>
+      <span data-text="viewerTitle"></span>
+      <!-- Welche Anzeige der Knopf oeffnet, steht nur hier. -->
+      <a class="ghost link" href="http://raspdarts.local:8743/" target="_blank" rel="noopener" data-text="viewerOpen"></a>
+    </h2>
     <div class="switch-row">
       <span data-text="viewerSwitchLabel"></span>
       <button class="switch" data-field="viewerSwitch" role="switch" aria-checked="true">
@@ -66,7 +70,11 @@
     </section>
   </div>
 
-  <section class="card" data-field="activity" hidden>
+</div>
+
+<!-- Laufende Aktion als Dialog ueber dem Fenster: das Fenster waechst nicht mit. -->
+<div class="backdrop" data-field="activity" hidden>
+  <div class="dialog activity" role="dialog" aria-modal="true">
     <h2>
       <span data-field="activityTitle"></span>
       <span class="running" data-field="activityRunning"><span class="spin"></span><span data-text="running"></span></span>
@@ -76,7 +84,7 @@
       <span data-field="activityMessage"></span>
       <button data-field="activityClose" data-text="close"></button>
     </div>
-  </section>
+  </div>
 </div>
 
 <div class="backdrop" data-field="dialog" hidden>

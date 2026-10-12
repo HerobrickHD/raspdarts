@@ -106,6 +106,13 @@
       field('activity').hidden = true;
     }
 
+    // Nach dem Wiedereinhaengen ins Fenster: Solange die Seite ausgehaengt war,
+    // hatte das Scrollen keine Wirkung.
+    function revealLog() {
+      const log = field('log');
+      log.scrollTop = log.scrollHeight;
+    }
+
     shadow.addEventListener('click', (event) => {
       const button = event.target.closest('button');
       if (!button || button.disabled) return;
@@ -136,6 +143,7 @@
       appendLog,
       finishActivity,
       closeActivity,
+      revealLog,
     };
   }
 
