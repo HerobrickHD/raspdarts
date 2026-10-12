@@ -11,6 +11,7 @@
     "https://play.autodarts.com/*",
     "http://raspdarts.local:8743/*"
   ],
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": ["https://play.autodarts.com/*"],
@@ -20,12 +21,12 @@
     },
     {
       "matches": ["https://play.autodarts.com/*"],
-      "js": ["bridge.js"],
+      "js": ["forwarding.js", "bridge.js"],
       "run_at": "document_start"
     },
     {
       "matches": ["https://play.autodarts.com/*"],
-      "js": ["texts.js", "view-model.js", "stream.js", "page.js", "content.js", "cams-view.js", "cams.js"],
+      "js": ["texts.js", "forwarding.js", "view-model.js", "stream.js", "page.js", "viewer-view.js", "cams-view.js", "board-card.js", "cams.js", "viewer.js"],
       "run_at": "document_idle"
     }
   ],

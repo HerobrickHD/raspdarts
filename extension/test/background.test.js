@@ -56,3 +56,23 @@ describe('Nachricht image', () => {
     expect(result).toEqual({ ok: false, status: 0, error: 'Unreachable' });
   });
 });
+
+describe('Nachricht fetch', () => {
+  // Ist der Pi ganz weg, haengt fetch sonst bis zum TCP-Zeitlimit des Systems;
+  // so lange fehlten die Knoepfe auf der Karte (die gemerkte Board-ID greift
+  // erst nach der Antwort) und das Fenster zeigte "Verbinde …".
+  test('bricht nach 8 s ab und meldet den Pi als nicht erreichbar', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+      const signal = options?.signal;
+      if (signal?.aborted) reject(signal.reason);
+      signal?.addEventListener('abort', () => reject(signal.reason));
+    }));
+    timeout.mockImplementation(() => AbortSignal.abort(new DOMException('Zeitlimit', 'TimeoutError')));
+
+    const result = await send({ type: 'fetch', url: '/api/cams' });
+
+    expect(timeout).toHaveBeenCalledWith(8000);
+    expect(result).toEqual({ ok: false, error: 'Unreachable' });
+  });
+});

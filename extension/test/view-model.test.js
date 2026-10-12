@@ -57,7 +57,7 @@ describe('buildView', () => {
     expect(view.showHint).toBe(false);
     expect(view.disabled).toBe(true);
     expect(view.autodarts).toEqual({ version: '--', stateText: '--', stateTone: 'off', showInstall: false });
-    expect(view.pi).toEqual({ raspdartsVersion: '--', beamerText: '--', beamerTone: 'off' });
+    expect(view.pi).toEqual({ raspdartsVersion: '--' });
   });
 
   test('erreichbar: alle Werte, Knoepfe frei', () => {
@@ -68,7 +68,7 @@ describe('buildView', () => {
     expect(view.showHint).toBe(false);
     expect(view.disabled).toBe(false);
     expect(view.autodarts).toEqual({ version: '2.0.2', stateText: 'Läuft', stateTone: 'ok', showInstall: false });
-    expect(view.pi).toEqual({ raspdartsVersion: 'v2.0.0', beamerText: 'Verbunden', beamerTone: 'ok' });
+    expect(view.pi).toEqual({ raspdartsVersion: 'v2.0.0' });
   });
 
   test('Autodarts nicht installiert: Installationskasten', () => {
@@ -140,7 +140,7 @@ describe('buildView', () => {
     expect(view.pill).toEqual({ tone: 'ok', text: 'Pi online' });
     expect(view.stats).toEqual({ cpu: '--', ram: '--', temperature: '--', uptime: '--' });
     expect(view.autodarts).toEqual({ version: '2.0.2', stateText: 'Keine Antwort', stateTone: 'off', showInstall: false });
-    expect(view.pi).toEqual({ raspdartsVersion: '--', beamerText: 'Nicht verbunden', beamerTone: 'off' });
+    expect(view.pi).toEqual({ raspdartsVersion: '--' });
   });
 
   test('fehlende Autodarts-Version ohne antwortende Scheibe gilt als nicht installiert', () => {
@@ -153,7 +153,6 @@ describe('buildView', () => {
     const en = globalThis.raspdartsTexts.getTexts('en');
     const view = vm.buildView({ status: STATUS, reachable: true, busy: false }, en);
     expect(view.autodarts.stateText).toBe('Running');
-    expect(view.pi.beamerText).toBe('Connected');
   });
 });
 

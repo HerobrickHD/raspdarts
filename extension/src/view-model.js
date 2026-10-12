@@ -69,7 +69,6 @@
     const s = online ? status : {};
     const ip = isText(s.ip_address) ? s.ip_address : null;
     const installed = isText(s.autodarts_version) && s.autodarts_version !== 'unknown';
-    const beamerConnected = Boolean(s.beamer?.ingest_connected);
 
     return {
       pill: pillFor(online, reachable, ip, t),
@@ -85,8 +84,6 @@
       autodarts: autodartsView(online, installed, s, t),
       pi: {
         raspdartsVersion: isText(s.raspdarts_version) ? `v${s.raspdarts_version}` : EMPTY,
-        beamerText: online ? (beamerConnected ? t.beamerConnected : t.beamerDisconnected) : EMPTY,
-        beamerTone: beamerConnected ? 'ok' : 'off',
       },
     };
   }
