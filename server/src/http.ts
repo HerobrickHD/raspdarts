@@ -19,6 +19,7 @@ import fastifyWebsocket from "@fastify/websocket";
 import type { DisplayHub } from "./viewer/display-hub.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
 import { displayName, type LayoutStore } from "./viewer/layout-store.js";
+import type { CamFailure, Cams } from "./system/cams.js";
 import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
@@ -44,6 +45,7 @@ export interface AppDeps {
   ingest: Ingest;
   status: () => Promise<SystemStatus>;
   jobs: JobRunner;
+  cams: Cams;
 }
 
 /** Langlaeufer: Ausgabe wird zeilenweise als Server-Sent Events gestreamt. */
@@ -56,6 +58,12 @@ const JOB_ROUTES: Record<string, string> = {
 const POWER_ROUTES: Record<string, string> = {
   "/api/system/reboot": "reboot.sh",
   "/api/system/shutdown": "shutdown.sh",
+};
+
+const CAM_FAILURE_CODES: Record<CamFailure, number> = {
+  "not-found": 404,
+  "board-stopped": 409,
+  unavailable: 502,
 };
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -119,6 +127,22 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     } catch (error) {
       return reply.code(500).send({ error: (error as Error).message });
     }
+  });
+
+  // Kamerabilder fuer die Boards-Seite der Extension; die Bremse steckt in cams.ts.
+  app.get("/api/cams", async (_request, reply) => {
+    try {
+      return await deps.cams.info();
+    } catch {
+      return reply.code(502).send({ error: "unavailable" });
+    }
+  });
+
+  app.get<{ Params: { n: string } }>("/api/cams/:n", async (request, reply) => {
+    const n = /^\d+$/.test(request.params.n) ? Number(request.params.n) : -1;
+    const result = await deps.cams.image(n);
+    if (result.ok) return reply.header("cache-control", "no-store").type("image/jpeg").send(result.jpeg);
+    return reply.code(CAM_FAILURE_CODES[result.reason]).send({ error: result.reason });
   });
 
   for (const [path, script] of Object.entries(JOB_ROUTES)) {
