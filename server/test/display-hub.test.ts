@@ -2,10 +2,10 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { DisplayHub, type DisplaySocket, type ViewerMessage } from "../src/viewer/display-hub.js";
+import { CATALOG } from "../src/viewer/catalog.js";
+import { DisplayHub, editStep, type DisplaySocket, type ViewerMessage } from "../src/viewer/display-hub.js";
 import { IDLE, type ViewerState } from "../src/viewer/game-state.js";
-import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
-import { LayoutStore } from "../src/viewer/layout-store.js";
+import { ProfileStore } from "../src/viewer/profile-store.js";
 
 function fakeSocket() {
   const sent: ViewerMessage[] = [];
@@ -17,9 +17,8 @@ function fakeSocket() {
   return { socket, sent, close: () => onClose() };
 }
 
-const store = () => new LayoutStore(mkdtempSync(join(tmpdir(), "hub-test-")));
+const store = () => new ProfileStore(mkdtempSync(join(tmpdir(), "hub-test-")));
 const UNSUPPORTED: ViewerState = { phase: "unsupported", variant: "Cricket" };
-const MOVED = { version: 2, board: { cx: 40, cy: 45, diameter: 80, rotation: 1.5 } };
 
 let hub: DisplayHub;
 afterEach(() => {
@@ -28,24 +27,26 @@ afterEach(() => {
 });
 
 describe("DisplayHub", () => {
-  test("schickt einem neuen Viewer sofort Stand und Layout seiner Anzeige", () => {
-    hub = new DisplayHub(store());
+  test("schickt einem neuen Viewer Katalog, Stand und aktives Profil", () => {
+    const profiles = store();
+    hub = new DisplayHub(profiles);
     const viewer = fakeSocket();
 
-    hub.attach(viewer.socket, "beamer");
+    hub.attach(viewer.socket);
 
     expect(viewer.sent).toEqual([
+      { type: "catalog", catalog: CATALOG },
       { type: "state", state: IDLE },
-      { type: "layout", layout: DEFAULT_LAYOUT, editing: false },
+      { type: "profile", profile: profiles.active(), profiles: profiles.list(), editing: null },
     ]);
   });
 
-  test("verteilt neue Staende an alle Viewer aller Anzeigen", () => {
+  test("verteilt neue Staende an alle Viewer", () => {
     hub = new DisplayHub(store());
     const a = fakeSocket();
     const b = fakeSocket();
-    hub.attach(a.socket, "beamer");
-    hub.attach(b.socket, "tv");
+    hub.attach(a.socket);
+    hub.attach(b.socket);
 
     hub.broadcast(UNSUPPORTED);
 
@@ -54,60 +55,71 @@ describe("DisplayHub", () => {
     expect(hub.state).toEqual(UNSUPPORTED);
   });
 
-  test("schickt eine Layout-Aenderung nur an Viewer derselben Anzeige", () => {
-    hub = new DisplayHub(store());
-    const beamer = fakeSocket();
-    const tv = fakeSocket();
-    hub.attach(beamer.socket, "beamer");
-    hub.attach(tv.socket, "tv");
+  test("schickt Profilaenderungen samt Liste an alle Viewer", () => {
+    const profiles = store();
+    hub = new DisplayHub(profiles);
+    const a = fakeSocket();
+    const b = fakeSocket();
+    hub.attach(a.socket);
+    hub.attach(b.socket);
 
-    const saved = hub.updateLayout("beamer", MOVED, true);
+    profiles.update("standard", { name: "Beamer" });
+    hub.publishProfile();
 
-    expect(saved.board).toEqual(MOVED.board);
-    expect(beamer.sent.at(-1)).toEqual({ type: "layout", layout: saved, editing: true });
-    expect(tv.sent).toHaveLength(2);
+    for (const viewer of [a, b]) {
+      expect(viewer.sent.at(-1)).toMatchObject({
+        type: "profile",
+        profile: { id: "standard", name: "Beamer" },
+        profiles: [{ id: "standard", name: "Beamer" }],
+      });
+    }
   });
 
-  test("ein spaeter verbundener Viewer erfaehrt, dass gerade bearbeitet wird", () => {
+  test("ein spaeter verbundener Viewer erfaehrt, dass gerade eingestellt wird", () => {
     hub = new DisplayHub(store());
-    hub.updateLayout("beamer", MOVED, true);
+    hub.setEditing("layout");
     const late = fakeSocket();
 
-    hub.attach(late.socket, "beamer");
+    hub.attach(late.socket);
 
-    expect(late.sent.at(-1)).toMatchObject({ type: "layout", editing: true });
+    expect(late.sent.at(-1)).toMatchObject({ type: "profile", editing: "layout" });
   });
 
-  test("Bearbeiten endet von selbst nach dem Zeitlimit", () => {
+  test("Einstellen endet von selbst nach dem Zeitlimit", () => {
     vi.useFakeTimers();
     hub = new DisplayHub(store(), 60_000);
     const viewer = fakeSocket();
-    hub.attach(viewer.socket, "beamer");
-    hub.updateLayout("beamer", MOVED, true);
+    hub.attach(viewer.socket);
+    hub.setEditing("inhalte");
 
     vi.advanceTimersByTime(59_000);
-    hub.updateLayout("beamer", MOVED, true); // jede Aenderung verlaengert
+    hub.setEditing("inhalte"); // jede Meldung verlaengert
     vi.advanceTimersByTime(59_000);
-    expect(hub.isEditing("beamer")).toBe(true);
+    expect(hub.editing).toBe("inhalte");
 
     vi.advanceTimersByTime(1_000);
-    expect(hub.isEditing("beamer")).toBe(false);
-    expect(viewer.sent.at(-1)).toMatchObject({ type: "layout", editing: false });
+    expect(hub.editing).toBeNull();
+    expect(viewer.sent.at(-1)).toMatchObject({ type: "profile", editing: null });
   });
 
-  test("Bearbeiten beenden schaltet sofort zurueck", () => {
-    hub = new DisplayHub(store());
-    hub.updateLayout("beamer", MOVED, true);
+  test("ein Wechsel des aktiven Profils beendet das Einstellen", () => {
+    const profiles = store();
+    hub = new DisplayHub(profiles);
+    const viewer = fakeSocket();
+    hub.attach(viewer.socket);
+    hub.setEditing("layout");
 
-    hub.updateLayout("beamer", MOVED, false);
+    profiles.create("TV", "fernseher");
+    hub.publishProfile();
 
-    expect(hub.isEditing("beamer")).toBe(false);
+    expect(hub.editing).toBeNull();
+    expect(viewer.sent.at(-1)).toMatchObject({ type: "profile", profile: { id: "tv" }, editing: null });
   });
 
   test("vergisst geschlossene und kaputte Viewer", () => {
     hub = new DisplayHub(store());
     const closed = fakeSocket();
-    hub.attach(closed.socket, "beamer");
+    hub.attach(closed.socket);
     closed.close();
     const broken: DisplaySocket = {
       send: () => {
@@ -115,10 +127,18 @@ describe("DisplayHub", () => {
       },
       on: () => undefined,
     };
-    hub.attach(broken, "beamer");
+    hub.attach(broken);
 
     hub.broadcast(UNSUPPORTED);
 
     expect(hub.clientCount).toBe(0);
+  });
+});
+
+describe("editStep", () => {
+  test("kennt nur die beiden Schritte", () => {
+    expect(editStep("inhalte")).toBe("inhalte");
+    expect(editStep("layout")).toBe("layout");
+    for (const raw of [null, undefined, "ja", true, 1]) expect(editStep(raw)).toBeNull();
   });
 });

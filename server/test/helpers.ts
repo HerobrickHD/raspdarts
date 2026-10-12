@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { DisplayHub } from "../src/viewer/display-hub.js";
 import { Ingest } from "../src/viewer/ingest.js";
-import { LayoutStore } from "../src/viewer/layout-store.js";
+import { ProfileStore } from "../src/viewer/profile-store.js";
 import { createFramePipeline } from "../src/viewer/pipeline.js";
 import type { AppDeps } from "../src/http.js";
 import type { Cams } from "../src/system/cams.js";
@@ -13,15 +13,15 @@ import { JobRunner } from "../src/system/jobs.js";
 import type { SystemStatus } from "../src/system/status.js";
 
 /**
- * Abhaengigkeiten fuer Tests: echte Bausteine, Layouts im Temp-Ordner, keine
+ * Abhaengigkeiten fuer Tests: echte Bausteine, Profile im Temp-Ordner, keine
  * Aufzeichnung. Wer `hub` ueberschreibt, muss auch `ingest` passend mitgeben.
  */
 export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
-  const layouts = new LayoutStore(mkdtempSync(join(tmpdir(), "raspdarts-test-")));
-  const hub = new DisplayHub(layouts);
+  const profiles = new ProfileStore(mkdtempSync(join(tmpdir(), "raspdarts-test-")));
+  const hub = new DisplayHub(profiles);
   return {
     hub,
-    layouts,
+    profiles,
     ingest: new Ingest(createFramePipeline(hub, null)),
     status: async (): Promise<SystemStatus> => ({
       cpu_percent: 12.5,

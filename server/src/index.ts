@@ -19,7 +19,7 @@ async function main(): Promise<void> {
     await app.close();
     await deps.recorder?.close();
     deps.hub.close();
-    deps.layouts.flush();
+    deps.profiles.flush();
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());

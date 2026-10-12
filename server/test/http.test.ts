@@ -5,6 +5,7 @@ import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js
 import type { DisplaySocket } from "../src/viewer/display-hub.js";
 import type { ViewerState } from "../src/viewer/game-state.js";
 import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
+import { templateContent } from "../src/viewer/catalog.js";
 import { testDeps } from "./helpers.js";
 
 let app: FastifyInstance;
@@ -14,7 +15,7 @@ describe("Header-Schutz", () => {
   test("weist /api-Anfragen ohne X-Raspdarts mit 403 ab", async () => {
     app = await buildApp(testDeps());
 
-    const response = await app.inject({ method: "GET", url: "/api/layout/standard" });
+    const response = await app.inject({ method: "GET", url: "/api/profiles" });
 
     expect(response.statusCode).toBe(403);
   });
@@ -24,7 +25,7 @@ describe("Header-Schutz", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/api/layout/standard",
+      url: "/api/profiles",
       headers: { "x-raspdarts": "ja" },
     });
 
@@ -36,18 +37,18 @@ describe("Header-Schutz", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/api/layout/standard",
+      url: "/api/profiles",
       headers: { "x-raspdarts": "1" },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(DEFAULT_LAYOUT);
+    expect(response.json()).toEqual({ active: "standard", profiles: [{ id: "standard", name: "Standard" }] });
   });
 
   test("laesst sich nicht durch Prozent-Kodierung des Pfads umgehen", async () => {
     app = await buildApp(testDeps());
 
-    const response = await app.inject({ method: "GET", url: "/%61pi/layout/standard" });
+    const response = await app.inject({ method: "GET", url: "/%61pi/profiles" });
 
     expect(response.statusCode).toBe(403);
   });
@@ -66,7 +67,7 @@ describe("Header-Schutz", () => {
 
     const response = await app.inject({
       method: "OPTIONS",
-      url: "/api/layout/standard",
+      url: "/api/profiles",
       headers: { origin: "https://evil.example", "access-control-request-method": "PUT" },
     });
 
@@ -78,7 +79,7 @@ describe("Host-Pruefung (DNS-Rebinding)", () => {
   const get = (host: string) =>
     app.inject({
       method: "GET",
-      url: "/api/layout/standard",
+      url: "/api/profiles",
       headers: { "x-raspdarts": "1", host },
     });
 
@@ -125,55 +126,159 @@ describe("isAllowedHost", () => {
   );
 });
 
-describe("Layout-API", () => {
+describe("Profil-API", () => {
   const headers = { "x-raspdarts": "1" };
-  const MOVED = { version: 2, board: { cx: 40, cy: 45, diameter: 80, rotation: 1.5 } };
+  const call = (method: "GET" | "POST" | "PUT" | "DELETE", url: string, payload?: object) =>
+    app.inject({ method, url, headers, ...(payload === undefined ? {} : { payload }) });
 
-  test("liefert ohne gespeichertes Layout den Standard", async () => {
+  test("listet die Profile mit dem aktiven", async () => {
     app = await buildApp(testDeps());
 
-    const response = await app.inject({ method: "GET", url: "/api/layout/handy", headers });
+    const response = await call("GET", "/api/profiles");
 
-    expect(response.json()).toEqual(DEFAULT_LAYOUT);
+    expect(response.json()).toEqual({ active: "standard", profiles: [{ id: "standard", name: "Standard" }] });
   });
 
-  test("speichert ein Layout mit Bearbeiten-Zustand und liefert es zurueck", async () => {
+  test("liefert ein Profil mit id", async () => {
     app = await buildApp(testDeps());
 
-    const put = await app.inject({
-      method: "PUT",
-      url: "/api/layout/handy",
-      headers,
-      payload: { layout: MOVED, editing: true },
+    const response = await call("GET", "/api/profiles/standard");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      id: "standard",
+      version: 3,
+      name: "Standard",
+      content: templateContent("projektion"),
+      layout: DEFAULT_LAYOUT,
     });
-    const get = await app.inject({ method: "GET", url: "/api/layout/handy", headers });
-
-    expect(put.statusCode).toBe(200);
-    expect(put.json()).toMatchObject({ layout: { board: MOVED.board }, editing: true });
-    expect(get.json().board).toEqual(MOVED.board);
   });
 
-  test("macht aus unbrauchbarem Inhalt das Standardlayout statt eines Fehlers", async () => {
+  test("legt ein Profil aus einer Vorlage an und macht es aktiv", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+
+    const response = await call("POST", "/api/profiles", { name: "Fernseher Küche", template: "fernseher" });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      id: "fernseher-kueche",
+      name: "Fernseher Küche",
+      content: templateContent("fernseher"),
+    });
+    expect(deps.profiles.activeId).toBe("fernseher-kueche");
+  });
+
+  test("weist eine unbekannte oder fehlende Vorlage mit 400 ab", async () => {
     app = await buildApp(testDeps());
 
-    for (const payload of [{}, { layout: "kaputt" }, { meta: { x: 1, y: 1, scale: 1 } }]) {
-      const response = await app.inject({ method: "PUT", url: "/api/layout/handy", headers, payload });
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ layout: DEFAULT_LAYOUT, editing: false });
-    }
+    expect((await call("POST", "/api/profiles", { name: "X", template: "disco" })).statusCode).toBe(400);
+    expect((await call("POST", "/api/profiles", { name: "X" })).statusCode).toBe(400);
   });
 
-  test("weist ungueltige Anzeigenamen mit 400 ab", async () => {
+  test("aendert Teile eines Profils und setzt editing fuer das aktive", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+
+    const response = await call("PUT", "/api/profiles/standard", {
+      name: "Beamer",
+      content: { hintergrund: { on: true } },
+      editing: "inhalte",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "standard",
+      name: "Beamer",
+      content: { hintergrund: { on: true }, spielinfo: { on: false } },
+    });
+    expect(deps.hub.editing).toBe("inhalte");
+  });
+
+  test("ein PUT ohne editing laesst den Schritt stehen, editing null beendet ihn", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+    await call("PUT", "/api/profiles/standard", { editing: "layout" });
+
+    await call("PUT", "/api/profiles/standard", { name: "Beamer" });
+    expect(deps.hub.editing).toBe("layout");
+
+    await call("PUT", "/api/profiles/standard", { editing: null });
+    expect(deps.hub.editing).toBeNull();
+  });
+
+  test("editing fuer ein nicht aktives Profil wird ignoriert", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+    await call("POST", "/api/profiles", { name: "TV", template: "fernseher" });
+
+    await call("PUT", "/api/profiles/standard", { editing: "layout" });
+
+    expect(deps.hub.editing).toBeNull();
+  });
+
+  test("setzt die Inhalte auf eine Vorlage zurueck, das Layout bleibt", async () => {
+    app = await buildApp(testDeps());
+    const moved = { ...DEFAULT_LAYOUT, board: { cx: 40, cy: 45, diameter: 80, rotation: 1.5 } };
+    await call("PUT", "/api/profiles/standard", { layout: moved });
+
+    const response = await call("POST", "/api/profiles/standard/reset", { template: "minimal" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ content: templateContent("minimal"), layout: { board: moved.board } });
+  });
+
+  test("loescht ein Profil, aber nie das letzte", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+    await call("POST", "/api/profiles", { name: "TV", template: "fernseher" });
+
+    expect((await call("DELETE", "/api/profiles/tv")).statusCode).toBe(204);
+    expect(deps.profiles.activeId).toBe("standard");
+    expect((await call("DELETE", "/api/profiles/standard")).statusCode).toBe(409);
+  });
+
+  test("schaltet das aktive Profil um", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+    await call("POST", "/api/profiles", { name: "TV", template: "fernseher" });
+
+    const response = await call("PUT", "/api/active-profile", { id: "standard" });
+
+    expect(response.json()).toEqual({ active: "standard" });
+    expect(deps.profiles.activeId).toBe("standard");
+    expect((await call("PUT", "/api/active-profile", { id: "gibtsnicht" })).statusCode).toBe(404);
+    expect((await call("PUT", "/api/active-profile", {})).statusCode).toBe(400);
+  });
+
+  test("unbekanntes Profil ergibt 404", async () => {
+    app = await buildApp(testDeps());
+
+    expect((await call("GET", "/api/profiles/gibtsnicht")).statusCode).toBe(404);
+  });
+
+  test.each([
+    ["GET", "/api/profiles/..%2Fx"],
+    ["PUT", "/api/profiles/..%2Fx"],
+    ["DELETE", "/api/profiles/Wohnzimmer%20TV"],
+  ] as const)("%s %s: ungueltige id ergibt 400", async (method, url) => {
+    app = await buildApp(testDeps());
+
+    const response = await call(method, url, method === "PUT" ? { name: "x" } : undefined);
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  test("verlangt den X-Raspdarts-Header", async () => {
     app = await buildApp(testDeps());
 
     const response = await app.inject({
-      method: "PUT",
-      url: "/api/layout/..%2Fx",
-      headers,
-      payload: { layout: MOVED, editing: false },
+      method: "POST",
+      url: "/api/profiles",
+      payload: { name: "X", template: "minimal" },
     });
 
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(403);
   });
 });
 
@@ -330,7 +435,7 @@ describe("/api/ingest/reset", () => {
     deps.hub.broadcast(unsupported);
     const sent: unknown[] = [];
     const socket: DisplaySocket = { send: (data) => sent.push(JSON.parse(data)), on: () => undefined };
-    deps.hub.attach(socket, "standard");
+    deps.hub.attach(socket);
     sent.length = 0;
 
     const response = await app.inject({

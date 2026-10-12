@@ -1,75 +1,104 @@
 /**
- * Verteilt Stand und Layout an die verbundenen Viewer.
+ * Verteilt Katalog, Stand und das aktive Profil an die verbundenen Viewer.
  *
- * Der Stand geht an alle, das Layout nur an die Viewer derselben Anzeige
- * (?display=beamer). Es werden immer vollstaendige Schnappschuesse gesendet,
- * keine Deltas: Ein Viewer, der sich spaeter verbindet, ist sofort richtig.
+ * Alle Viewer zeigen dasselbe: den Spielstand und das aktive Profil. Es werden
+ * immer vollstaendige Schnappschuesse gesendet, keine Deltas: Ein Viewer, der
+ * sich spaeter verbindet, ist sofort richtig.
  *
- * "editing" sagt allen Viewern einer Anzeige, dass gerade jemand das Layout
- * einrichtet - dann zeigen sie die Scheibe als Linien. Bleibt eine Aenderung
- * aus (Editor-Fenster geschlossen), faellt es nach dem Zeitlimit zurueck.
+ * "editing" sagt allen Viewern, dass gerade eingestellt wird ("inhalte" oder
+ * "layout") - dann zeigen sie ohne Spiel Beispieldaten, beim Layout die
+ * Scheibe als Linien. Bleibt eine Meldung aus (Fenster geschlossen), faellt es
+ * nach dem Zeitlimit zurueck; ein Wechsel des aktiven Profils beendet es.
  */
+import { CATALOG, type Catalog } from "./catalog.js";
 import { IDLE, type ViewerState } from "./game-state.js";
-import type { DisplayLayout } from "./layout.js";
+import type { ProfileSummary, ProfileWithId } from "./profile.js";
 
 export interface DisplaySocket {
   send(data: string): void;
   on(event: "close", listener: () => void): unknown;
 }
 
-export interface LayoutSource {
-  read(display: string): DisplayLayout;
-  write(display: string, layout: unknown): DisplayLayout;
+export interface ProfileSource {
+  readonly activeId: string;
+  active(): ProfileWithId;
+  list(): ProfileSummary[];
 }
 
+export type EditStep = "inhalte" | "layout";
+
 export type ViewerMessage =
+  | { type: "catalog"; catalog: Catalog }
   | { type: "state"; state: ViewerState }
-  | { type: "layout"; layout: DisplayLayout; editing: boolean };
+  | { type: "profile"; profile: ProfileWithId; profiles: ProfileSummary[]; editing: EditStep | null };
 
 export const EDIT_TIMEOUT_MS = 60_000;
 
+/** Nur die beiden Schritte gelten; alles andere heisst "es wird nicht eingestellt". */
+export function editStep(raw: unknown): EditStep | null {
+  return raw === "inhalte" || raw === "layout" ? raw : null;
+}
+
 export class DisplayHub {
-  readonly #clients = new Map<DisplaySocket, string>();
-  readonly #editing = new Map<string, NodeJS.Timeout>();
+  readonly #clients = new Set<DisplaySocket>();
   #state: ViewerState = IDLE;
+  #editing: EditStep | null = null;
+  #editTimer: NodeJS.Timeout | null = null;
+  /** Das aktive Profil beim letzten Verteilen - ein Wechsel beendet das Einstellen. */
+  #shownActive: string;
 
   constructor(
-    private readonly layouts: LayoutSource,
+    private readonly profiles: ProfileSource,
     private readonly editTimeoutMs = EDIT_TIMEOUT_MS,
-  ) {}
+  ) {
+    this.#shownActive = profiles.activeId;
+  }
 
-  attach(socket: DisplaySocket, display: string): void {
-    this.#clients.set(socket, display);
+  attach(socket: DisplaySocket): void {
+    this.#clients.add(socket);
     socket.on("close", () => this.#clients.delete(socket));
+    this.#send(socket, { type: "catalog", catalog: CATALOG });
     this.#send(socket, { type: "state", state: this.#state });
-    this.#send(socket, {
-      type: "layout",
-      layout: this.layouts.read(display),
-      editing: this.isEditing(display),
-    });
+    this.#send(socket, this.#profileMessage());
   }
 
   /** Setzt den Stand und schiebt ihn an alle Viewer. */
   broadcast(state: ViewerState): void {
     this.#state = state;
-    for (const socket of [...this.#clients.keys()]) this.#send(socket, { type: "state", state });
+    for (const socket of [...this.#clients]) this.#send(socket, { type: "state", state });
   }
 
-  /** Prueft und speichert das Layout und schickt es an alle Viewer dieser Anzeige. */
-  updateLayout(display: string, layout: unknown, editing: boolean): DisplayLayout {
-    const saved = this.layouts.write(display, layout);
-    this.#setEditing(display, editing);
-    this.#publishLayout(display, saved);
-    return saved;
+  /** Wer gerade einstellt. Jede Meldung verlaengert; ohne Meldung endet es nach dem Zeitlimit. */
+  setEditing(step: EditStep | null): void {
+    if (this.#editTimer) clearTimeout(this.#editTimer);
+    this.#editTimer = null;
+    this.#editing = step;
+    if (!step) return;
+    this.#editTimer = setTimeout(() => {
+      this.#editTimer = null;
+      this.#editing = null;
+      this.publishProfile();
+    }, this.editTimeoutMs);
+    this.#editTimer.unref?.();
   }
 
-  isEditing(display: string): boolean {
-    return this.#editing.has(display);
+  /** Schickt das aktive Profil und die Liste an alle Viewer. */
+  publishProfile(): void {
+    if (this.profiles.activeId !== this.#shownActive) {
+      this.#shownActive = this.profiles.activeId;
+      this.setEditing(null);
+    }
+    const message = this.#profileMessage();
+    for (const socket of [...this.#clients]) this.#send(socket, message);
+  }
+
+  get editing(): EditStep | null {
+    return this.#editing;
   }
 
   close(): void {
-    for (const timer of this.#editing.values()) clearTimeout(timer);
-    this.#editing.clear();
+    if (this.#editTimer) clearTimeout(this.#editTimer);
+    this.#editTimer = null;
   }
 
   get state(): ViewerState {
@@ -80,23 +109,13 @@ export class DisplayHub {
     return this.#clients.size;
   }
 
-  #setEditing(display: string, editing: boolean): void {
-    clearTimeout(this.#editing.get(display));
-    this.#editing.delete(display);
-    if (!editing) return;
-    const timer = setTimeout(() => {
-      this.#editing.delete(display);
-      this.#publishLayout(display, this.layouts.read(display));
-    }, this.editTimeoutMs);
-    timer.unref?.();
-    this.#editing.set(display, timer);
-  }
-
-  #publishLayout(display: string, layout: DisplayLayout): void {
-    const message: ViewerMessage = { type: "layout", layout, editing: this.isEditing(display) };
-    for (const [socket, name] of [...this.#clients]) {
-      if (name === display) this.#send(socket, message);
-    }
+  #profileMessage(): ViewerMessage {
+    return {
+      type: "profile",
+      profile: this.profiles.active(),
+      profiles: this.profiles.list(),
+      editing: this.#editing,
+    };
   }
 
   #send(socket: DisplaySocket, message: ViewerMessage): void {

@@ -5,7 +5,6 @@ import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/http.js";
 import { IDLE, toViewerState } from "../src/viewer/game-state.js";
 import type { RecordedFrame } from "../src/viewer/recorder.js";
-import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
 import { listen, testDeps } from "./helpers.js";
 
 const EXTENSION = "chrome-extension://abcdefghijklmnop";
@@ -36,8 +35,8 @@ function connect(url: string, origin?: string) {
 /** Nur die Stand-Nachrichten eines Viewers, in Reihenfolge. */
 const states = (messages: string[]) =>
   messages.map((m) => JSON.parse(m)).filter((m) => m.type === "state").map((m) => m.state);
-const layouts = (messages: string[]) =>
-  messages.map((m) => JSON.parse(m)).filter((m) => m.type === "layout");
+const profileMessages = (messages: string[]) =>
+  messages.map((m) => JSON.parse(m)).filter((m) => m.type === "profile");
 
 describe("/ingest", () => {
   test("nimmt Verbindungen der Extension an", async () => {
@@ -88,36 +87,40 @@ describe("/ingest", () => {
 });
 
 describe("/ws", () => {
-  test("nutzt bei ungueltigem Anzeigenamen das Layout standard", async () => {
-    const deps = testDeps();
-    deps.hub.updateLayout("standard", { version: 2, board: { cx: 33, cy: 50, diameter: 50, rotation: 0 } }, false);
-    app = await buildApp(deps);
-    const host = await listen(app);
-
-    const viewer = connect(`ws://${host}/ws?display=Wohnzimmer%20TV`);
-    await viewer.opened;
-
-    await vi.waitFor(() => expect(layouts(viewer.messages).at(-1)?.layout.board.cx).toBe(33));
-  });
-
-  test("Layout-Aenderung per PUT erreicht nur Viewer derselben Anzeige", async () => {
+  test("schickt Katalog, Stand und aktives Profil, auch bei alter Adresse mit ?display=", async () => {
     app = await buildApp(testDeps());
     const host = await listen(app);
-    const beamer = connect(`ws://${host}/ws?display=beamer`);
-    const tv = connect(`ws://${host}/ws?display=tv`);
-    await Promise.all([beamer.opened, tv.opened]);
-    await vi.waitFor(() => expect(layouts(tv.messages)).toHaveLength(1));
+
+    const viewer = connect(`ws://${host}/ws?display=beamer`);
+    await viewer.opened;
+
+    await vi.waitFor(() => expect(viewer.messages).toHaveLength(3));
+    expect(viewer.messages.map((m) => JSON.parse(m).type)).toEqual(["catalog", "state", "profile"]);
+    expect(profileMessages(viewer.messages)[0]).toMatchObject({ profile: { id: "standard" }, editing: null });
+  });
+
+  test("ein neues Profil per POST erreicht alle Viewer", async () => {
+    app = await buildApp(testDeps());
+    const host = await listen(app);
+    const a = connect(`ws://${host}/ws`);
+    const b = connect(`ws://${host}/ws`);
+    await Promise.all([a.opened, b.opened]);
+    await vi.waitFor(() => expect(profileMessages(b.messages)).toHaveLength(1));
 
     await app.inject({
-      method: "PUT",
-      url: "/api/layout/beamer",
+      method: "POST",
+      url: "/api/profiles",
       headers: { "x-raspdarts": "1" },
-      payload: { layout: { version: 2, boardMode: "drawn" }, editing: true },
+      payload: { name: "TV", template: "fernseher" },
     });
 
-    await vi.waitFor(() =>
-      expect(layouts(beamer.messages).at(-1)).toMatchObject({ layout: { boardMode: "drawn" }, editing: true }),
-    );
-    expect(layouts(tv.messages)).toEqual([{ type: "layout", layout: DEFAULT_LAYOUT, editing: false }]);
+    for (const viewer of [a, b]) {
+      await vi.waitFor(() =>
+        expect(profileMessages(viewer.messages).at(-1)).toMatchObject({
+          profile: { id: "tv", content: { hintergrund: { on: true } } },
+          profiles: [{ id: "standard" }, { id: "tv" }],
+        }),
+      );
+    }
   });
 });

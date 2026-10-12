@@ -16,10 +16,10 @@ import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
-import type { DisplayHub } from "./viewer/display-hub.js";
+import { editStep, type DisplayHub } from "./viewer/display-hub.js";
 import { IDLE } from "./viewer/game-state.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
-import { displayName, type LayoutStore } from "./viewer/layout-store.js";
+import { ProfileError, type ProfileErrorCode, type ProfileStore } from "./viewer/profile-store.js";
 import type { CamFailure, Cams } from "./system/cams.js";
 import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
@@ -42,7 +42,7 @@ const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
 
 export interface AppDeps {
   hub: DisplayHub;
-  layouts: LayoutStore;
+  profiles: ProfileStore;
   ingest: Ingest;
   status: () => Promise<SystemStatus>;
   jobs: JobRunner;
@@ -67,6 +67,16 @@ const CAM_FAILURE_CODES: Record<CamFailure, number> = {
   unavailable: 502,
 };
 
+const PROFILE_ERROR_CODES: Record<ProfileErrorCode, number> = {
+  "invalid-id": 400,
+  "invalid-template": 400,
+  "not-found": 404,
+  "last-profile": 409,
+};
+
+type Fields = Record<string, unknown>;
+const fields = (body: unknown): Fields => (typeof body === "object" && body !== null ? body : {}) as Fields;
+
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
@@ -84,11 +94,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(fastifyWebsocket);
   await app.register(fastifyStatic, { root: PUBLIC_DIR });
 
-  // Der Anzeigename waehlt das Layout; ein unbrauchbarer Name ist kein Fehler,
-  // der Viewer bekommt dann das Standardlayout.
-  app.get<{ Querystring: { display?: string } }>("/ws", { websocket: true }, (socket, request) =>
-    deps.hub.attach(socket, displayName(request.query.display)),
-  );
+  // Alle Viewer zeigen das aktive Profil; ?display= alter Kiosk-Adressen wird ignoriert.
+  app.get("/ws", { websocket: true }, (socket) => deps.hub.attach(socket));
 
   app.get(
     "/ingest",
@@ -115,18 +122,63 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return { ok: true };
   });
 
-  // Layout je Anzeige: der Beamer an der Scheibe richtet sich anders aus als der Fernseher.
-  app.get<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>
-    withLayout(reply, () => deps.layouts.read(request.params.display)),
+  // Profile: was der Viewer zeigt und wo. Jede Aenderung geht sofort an alle Viewer.
+  app.get("/api/profiles", async () => ({ active: deps.profiles.activeId, profiles: deps.profiles.list() }));
+
+  app.get<{ Params: { id: string } }>("/api/profiles/:id", async (request, reply) =>
+    withProfiles(reply, () => deps.profiles.read(request.params.id)),
   );
-  app.put<{ Params: { display: string }; Body: unknown }>("/api/layout/:display", (request, reply) =>
-    withLayout(reply, () => {
-      const body = (typeof request.body === "object" && request.body !== null
-        ? request.body
-        : {}) as Record<string, unknown>;
-      const editing = body["editing"] === true;
-      const layout = deps.hub.updateLayout(request.params.display, body["layout"], editing);
-      return { layout, editing };
+
+  app.post<{ Body: unknown }>("/api/profiles", async (request, reply) =>
+    withProfiles(reply, () => {
+      const body = fields(request.body);
+      const profile = deps.profiles.create(body["name"], body["template"]);
+      deps.hub.publishProfile();
+      reply.code(201);
+      return profile;
+    }),
+  );
+
+  app.put<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id", async (request, reply) =>
+    withProfiles(reply, () => {
+      const { id } = request.params;
+      const body = fields(request.body);
+      const profile = deps.profiles.update(id, {
+        name: body["name"],
+        content: body["content"],
+        layout: body["layout"],
+      });
+      // Einstellen betrifft, was die Viewer zeigen - also nur das aktive Profil.
+      if (body["editing"] !== undefined && id === deps.profiles.activeId) {
+        deps.hub.setEditing(editStep(body["editing"]));
+      }
+      deps.hub.publishProfile();
+      return profile;
+    }),
+  );
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id/reset", async (request, reply) =>
+    withProfiles(reply, () => {
+      const profile = deps.profiles.resetContent(request.params.id, fields(request.body)["template"]);
+      deps.hub.publishProfile();
+      return profile;
+    }),
+  );
+
+  app.delete<{ Params: { id: string } }>("/api/profiles/:id", async (request, reply) =>
+    withProfiles(reply, () => {
+      deps.profiles.remove(request.params.id);
+      deps.hub.publishProfile();
+      return reply.code(204).send();
+    }),
+  );
+
+  app.put<{ Body: unknown }>("/api/active-profile", async (request, reply) =>
+    withProfiles(reply, () => {
+      const id = fields(request.body)["id"];
+      deps.profiles.setActive(typeof id === "string" ? id : "");
+      deps.hub.publishProfile();
+      return { active: deps.profiles.activeId };
     }),
   );
 
@@ -189,11 +241,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   return app;
 }
 
-/** Ein ungueltiger Anzeigename ist ein Fehler des Aufrufers, kein Serverfehler. */
-function withLayout(reply: FastifyReply, run: () => unknown) {
+/** Fehler des Aufrufers (ungueltige id, letztes Profil ...) sind keine Serverfehler. */
+function withProfiles(reply: FastifyReply, run: () => unknown) {
   try {
     return run();
   } catch (error) {
-    return reply.code(400).send({ error: (error as Error).message });
+    if (error instanceof ProfileError) {
+      return reply.code(PROFILE_ERROR_CODES[error.code]).send({ error: error.message });
+    }
+    throw error;
   }
 }
