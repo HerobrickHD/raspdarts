@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp, isAllowedHost } from "../src/http.js";
 import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js";
+import type { DisplaySocket } from "../src/viewer/display-hub.js";
+import type { ViewerState } from "../src/viewer/game-state.js";
 import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
 import { testDeps } from "./helpers.js";
 
@@ -317,5 +319,36 @@ describe("/api/cams", () => {
     expect((await get("/api/cams/abc")).statusCode).toBe(404);
     expect((await get("/api/cams/1.5")).statusCode).toBe(404);
     expect(asked).toEqual([-1, -1]);
+  });
+});
+
+describe("/api/ingest/reset", () => {
+  test("setzt alle Viewer auf Warten", async () => {
+    const deps = testDeps();
+    app = await buildApp(deps);
+    const unsupported: ViewerState = { phase: "unsupported", variant: "Cricket" };
+    deps.hub.broadcast(unsupported);
+    const sent: unknown[] = [];
+    const socket: DisplaySocket = { send: (data) => sent.push(JSON.parse(data)), on: () => undefined };
+    deps.hub.attach(socket, "standard");
+    sent.length = 0;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ingest/reset",
+      headers: { "x-raspdarts": "1" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+    expect(sent).toEqual([{ type: "state", state: { phase: "idle" } }]);
+  });
+
+  test("verlangt den X-Raspdarts-Header", async () => {
+    app = await buildApp(testDeps());
+
+    const response = await app.inject({ method: "POST", url: "/api/ingest/reset" });
+
+    expect(response.statusCode).toBe(403);
   });
 });

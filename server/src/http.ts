@@ -17,6 +17,7 @@ import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
 import type { DisplayHub } from "./viewer/display-hub.js";
+import { IDLE } from "./viewer/game-state.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
 import { displayName, type LayoutStore } from "./viewer/layout-store.js";
 import type { CamFailure, Cams } from "./system/cams.js";
@@ -105,6 +106,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       socket.on("close", () => deps.ingest.close());
     },
   );
+
+  // Die Extension meldet "Weitergabe ausgeschaltet": Viewer sollen nicht auf
+  // dem letzten Stand stehen bleiben. Ein blosser Verbindungsabbruch setzt
+  // bewusst nichts zurueck (WLAN-Wackler mitten im Spiel).
+  app.post("/api/ingest/reset", async () => {
+    deps.hub.broadcast(IDLE);
+    return { ok: true };
+  });
 
   // Layout je Anzeige: der Beamer an der Scheibe richtet sich anders aus als der Fernseher.
   app.get<{ Params: { display: string } }>("/api/layout/:display", (request, reply) =>
