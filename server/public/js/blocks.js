@@ -32,8 +32,17 @@ function dartIcon() {
   return svg;
 }
 
+/* Reihenfolge wie matchChips; die Schluessel sind die Optionen der Spielinfo im Katalog. */
+const CHIP_KEYS = ["punktzahl", "legs", "modus"];
+
 export function renderHead(el, match) {
-  el.replaceChildren(...matchChips(match).map((text) => node("span", "chip", text)));
+  el.replaceChildren(
+    ...matchChips(match).map((text, index) => {
+      const chip = node("span", "chip", text);
+      chip.dataset.chip = CHIP_KEYS[index];
+      return chip;
+    }),
+  );
 }
 
 export function renderTurn(bar, turn) {

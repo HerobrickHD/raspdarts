@@ -2,12 +2,10 @@
  * Bearbeiten-Modus: Scheibe und Bloecke verschieben, skalieren, drehen.
  *
  * Jede Aenderung gilt sofort im eigenen Bild und geht gedrosselt an den Pi,
- * der sie an alle Viewer mit demselben Anzeigenamen weiterreicht - so folgt
- * der Beamer live, waehrend man am Laptop zieht. Ausgelegt auf Maus und
- * Tastatur.
+ * der sie an alle Viewer weiterreicht - so folgt der Beamer live, waehrend
+ * man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
  */
 
-const SEND_INTERVAL_MS = 100;
 /* Der Pi beendet "editing" nach 60 s ohne Aenderung; solange der Editor offen
    ist, haelt ein Lebenszeichen es an. */
 const KEEPALIVE_MS = 30_000;
@@ -100,49 +98,24 @@ function keyAction(event, selected) {
   return null;
 }
 
-export function createEditor({ viewer, display, getLayout, applyLocal, onEditingChange }) {
+export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal, onEditingChange }) {
   const button = viewer.querySelector("#edit-toggle");
-  const toolbar = viewer.querySelector("#edit-toolbar");
   const status = viewer.querySelector("#edit-status");
   let editing = false;
   let selected = "scheibe";
-  let lastSent = 0;
-  let sendTimer = null;
   let keepalive = null;
   let hideTimer = null;
 
-  function send() {
-    clearTimeout(sendTimer);
-    sendTimer = null;
-    lastSent = Date.now();
-    fetch(`/api/layout/${encodeURIComponent(display)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Raspdarts": "1" },
-      body: JSON.stringify({ layout: getLayout(), editing }),
-    })
-      // fetch wirft bei 400/403 nicht - ohne diese Pruefung ginge die Ausrichtung
-      // still verloren (z. B. ueber einen Hostnamen, den der Pi nicht kennt).
-      .then((response) => {
-        status.textContent = response.ok ? "" : `Nicht gespeichert (Fehler ${response.status})`;
-      })
-      .catch((error) => {
-        status.textContent = "Nicht gespeichert: keine Verbindung zum Pi";
-        console.error("Layout konnte nicht gespeichert werden", error);
-      });
-  }
-
-  /* Hoechstens alle 100 ms; die letzte Aenderung geht immer noch raus. */
-  function sendSoon() {
-    if (sendTimer) return;
-    sendTimer = setTimeout(send, Math.max(0, SEND_INTERVAL_MS - (Date.now() - lastSent)));
+  /* Geht gedrosselt an den Pi; editing sagt allen Geraeten, dass ausgerichtet wird. */
+  function send(patch = {}) {
+    sync.queue(getProfileId(), { ...patch, editing: editing ? "layout" : null });
   }
 
   function change(mutate) {
     const layout = structuredClone(getLayout());
     mutate(layout);
     applyLocal(layout);
-    refresh();
-    sendSoon();
+    send({ layout });
   }
 
   function select(id) {
@@ -152,20 +125,13 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
     }
   }
 
-  function refresh() {
-    const mode = getLayout()?.boardMode;
-    for (const modeButton of toolbar.querySelectorAll("[data-mode]")) {
-      modeButton.setAttribute("aria-pressed", String(modeButton.dataset.mode === mode));
-    }
-  }
-
   function setEditing(next) {
-    if (!getLayout()) return; // noch kein Layout vom Pi
+    if (!getLayout()) return; // noch kein Profil vom Pi
     editing = next;
     viewer.classList.toggle("is-editing", editing);
     clearInterval(keepalive);
     if (editing) {
-      keepalive = setInterval(send, KEEPALIVE_MS);
+      keepalive = setInterval(() => send(), KEEPALIVE_MS);
       select(selected);
     } else {
       // Sofort weg - der Ausblende-Timer ist beim Bearbeiten meist schon
@@ -174,9 +140,9 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
       button.classList.remove("is-visible");
       button.blur();
     }
-    refresh();
     onEditingChange(editing);
     send();
+    sync.flush();
   }
 
   /* Der Knopf wuerde sonst an die Wand projiziert: nur bei Mausbewegung zeigen. */
@@ -189,13 +155,6 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
   });
 
   button.addEventListener("click", () => setEditing(!editing));
-
-  toolbar.addEventListener("click", (event) => {
-    const mode = event.target.closest("[data-mode]")?.dataset.mode;
-    if (mode) change((layout) => {
-      layout.boardMode = mode;
-    });
-  });
 
   viewer.addEventListener("pointerdown", (event) => {
     if (!editing || event.button !== 0) return;
@@ -219,7 +178,7 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
       block.removeEventListener("pointermove", onMove);
       block.removeEventListener("pointerup", onUp);
       block.removeEventListener("pointercancel", onUp);
-      send();
+      sync.flush();
     };
     block.addEventListener("pointermove", onMove);
     block.addEventListener("pointerup", onUp);
@@ -254,5 +213,10 @@ export function createEditor({ viewer, display, getLayout, applyLocal, onEditing
     change(action);
   });
 
-  return { isEditing: () => editing, refresh };
+  return {
+    isEditing: () => editing,
+    setStatus: (text) => {
+      status.textContent = text;
+    },
+  };
 }

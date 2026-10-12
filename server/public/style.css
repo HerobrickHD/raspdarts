@@ -75,8 +75,8 @@ body {
   display: none;
 }
 
-/* Ohne Spiel ist alles schwarz - ausser beim Einrichten. */
-.viewer:not([data-phase="playing"]):not(.is-editing):not(.is-remote-editing) .block {
+/* Ohne Spiel ist alles schwarz - beim Einstellen zeigt app.js Beispieldaten. */
+.viewer:not([data-phase="playing"]) .block {
   visibility: hidden;
 }
 
@@ -346,6 +346,80 @@ body {
   fill: #fff;
 }
 
+/* --- Inhalte (aus dem aktiven Profil, siehe content-view.js) -------------- */
+
+/* Hintergrund wie die Autodarts-Spielansicht, eigener Nachbau: dunkles Blau
+   mit Verlauf und grossen, schwachen Winkeln. Aus = schwarz, kein Licht. */
+.viewer[data-hintergrund="on"] {
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90' preserveAspectRatio='xMidYMid slice'><polygon points='-10,0 18,0 50,45 18,90 -10,90 22,45' fill='rgba(70,120,255,0.07)'/><polygon points='112,90 140,90 172,45 140,0 112,0 144,45' fill='rgba(70,120,255,0.04)'/></svg>")
+      center / cover no-repeat,
+    radial-gradient(ellipse at 75% 15%, rgba(40, 80, 200, 0.35), transparent 60%),
+    linear-gradient(160deg, #050d26 0%, #0a1b4a 55%, #06112f 100%);
+}
+
+.viewer[data-scheibe="off"] .board-block,
+.viewer[data-aufnahme="off"] [data-block="aufnahme"],
+.viewer[data-spielinfo="off"] [data-block="spielinfo"],
+.viewer[data-spieler="off"] .player-block {
+  display: none;
+}
+
+.viewer[data-scheibe-darts="off"] .board-darts,
+.viewer[data-scheibe-letzterdart="off"] .board-highlights {
+  display: none;
+}
+
+/* Beim Ausrichten bleiben die Zahlen als Hilfe stehen. */
+.viewer[data-scheibe-zahlenring="off"]:not(.is-layout) .board-numbers {
+  display: none;
+}
+
+/* Die Aufnahmeleiste behaelt ihre Felder, nur der Inhalt verschwindet. */
+.viewer[data-aufnahme-darts="off"] .turn-dart,
+.viewer[data-aufnahme-summe="off"] .turn-total {
+  visibility: hidden;
+}
+
+.viewer[data-spielinfo-punktzahl="off"] [data-chip="punktzahl"],
+.viewer[data-spielinfo-legs="off"] [data-chip="legs"],
+.viewer[data-spielinfo-modus="off"] [data-chip="modus"] {
+  display: none;
+}
+
+/* Teile der Karte fallen weg, die Karte behaelt ihre Groesse. */
+.viewer[data-spieler-profilbild="off"] .card-avatar,
+.viewer[data-spieler-name="off"] .card-name,
+.viewer[data-spieler-flagge="off"] .card-flag,
+.viewer[data-spieler-rest="off"] .card-score,
+.viewer[data-spieler-legs="off"] .card-legs,
+.viewer[data-spieler-checkout="off"] .card-checkout,
+.viewer[data-spieler-average="off"] .card-averages,
+.viewer[data-spieler-dartzahl="off"] .card-darts {
+  display: none;
+}
+
+/* Ohne Kartenflaeche leuchtet nur die Schrift; wer dran ist, zeigt die Farbe. */
+.viewer[data-spieler-flaeche="off"] .card {
+  background: none;
+}
+
+.viewer[data-spieler-flaeche="off"] .card.is-active :is(.card-score, .card-name),
+.viewer[data-spieler-flaeche="off"] .card.is-winner :is(.card-score, .card-name) {
+  background: linear-gradient(135deg, var(--active-from), var(--active-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.viewer[data-spieler-flaeche="off"] .card.is-winner :is(.card-score, .card-name) {
+  background-image: linear-gradient(135deg, var(--winner-from), var(--winner-to));
+}
+
+.viewer[data-spieler-flaeche="off"] .card.is-busted .card-score {
+  color: var(--bust);
+}
+
 /* --- Hinweise ------------------------------------------------------------- */
 
 .message {
@@ -432,12 +506,6 @@ body {
   padding: 0.5vh 1.2vh;
   font: 600 1.6vh "Manrope", sans-serif;
   cursor: pointer;
-}
-
-.edit-toolbar button[aria-pressed="true"] {
-  background: var(--edit);
-  border-color: var(--edit);
-  color: #000;
 }
 
 .edit-status {
