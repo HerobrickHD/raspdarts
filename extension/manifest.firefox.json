@@ -17,6 +17,7 @@
     "https://play.autodarts.com/*",
     "http://raspdarts.local:8743/*"
   ],
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": ["https://play.autodarts.com/*"],
@@ -26,7 +27,7 @@
     },
     {
       "matches": ["https://play.autodarts.com/*"],
-      "js": ["bridge.js"],
+      "js": ["forwarding.js", "bridge.js"],
       "run_at": "document_start"
     },
     {
