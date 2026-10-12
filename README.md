@@ -72,7 +72,9 @@ cd extension && bash build.sh
 
 - **Chrome:** `chrome://extensions` → Entwicklermodus → „Entpackte Erweiterung laden“ → `extension/dist/chrome`
 - **Firefox (≥ 128):** `about:debugging#/runtime/this-firefox` → „Temporäres Add-on laden“ → `extension/dist/firefox/manifest.json`.
-  Falls die Raspdarts-Seite den Pi nicht erreicht: unter `about:addons` → Raspdarts → Berechtigungen den Zugriff auf `raspdarts.local` erlauben.
+  Falls das Raspdarts-Fenster den Pi nicht erreicht: unter `about:addons` → Raspdarts → Berechtigungen den Zugriff auf `raspdarts.local` erlauben.
+
+Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boards zwei Knöpfe hinzu: **Kameras** (Standbilder der Kameras) und **Viewer** anstelle von „Board Manager“ (Weitergabe der Spieldaten an/aus, Pi-Werte, Aktualisieren, Neu starten, Herunterfahren, Deinstallieren).
 
 ## Sicherheit
 
@@ -94,6 +96,7 @@ cd extension && bash build.sh
 | GET | `/` | Viewer (`?display=beamer` für ein eigenes Layout, sonst `standard`) |
 | WS | `/ws?display=<name>` | Viewer: `{type:"state", state}` und `{type:"layout", layout, editing}` |
 | WS | `/ingest` | Spieldaten von der Extension |
+| POST | `/api/ingest/reset` | Viewer auf „Warte auf Spieldaten“ (Extension beim Ausschalten der Weitergabe) |
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
 | GET | `/api/cams` | Board-ID, Anzahl Kameras, Zähler der Bildabrufe bei Autodarts |
 | GET | `/api/cams/:n` | Standbild von Kamera n (JPEG); höchstens 1 Abruf pro Sekunde und Kamera bei Autodarts, `409` wenn das Board nicht läuft |
