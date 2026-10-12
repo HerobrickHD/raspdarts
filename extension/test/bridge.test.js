@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 // bridge.js laeuft als Content-Script; hier mit nachgemachtem window und chrome.
-async function loadBridge(stored) {
+async function loadBridge(stored, { deferRead = false, readError = false } = {}) {
+  const state = { stored, pendingRead: null };
   const ports = [];
   const changeListeners = [];
   const fakeWindow = new EventTarget();
@@ -21,7 +22,21 @@ async function loadBridge(stored) {
       },
     },
     storage: {
-      local: { get: (key, cb) => cb(stored === undefined ? {} : { [key]: stored }) },
+      local: {
+        get: (key, cb) => {
+          const answer = () => {
+            if (readError) {
+              globalThis.chrome.runtime.lastError = { message: 'kaputt' };
+              cb(undefined);
+              delete globalThis.chrome.runtime.lastError;
+              return;
+            }
+            cb(state.stored === undefined ? {} : { [key]: state.stored });
+          };
+          if (deferRead) state.pendingRead = answer;
+          else answer();
+        },
+      },
       onChanged: { addListener: (fn) => changeListeners.push(fn) },
     },
   };
@@ -35,7 +50,12 @@ async function loadBridge(stored) {
     fakeWindow.dispatchEvent(event);
   };
   const change = (newValue) => changeListeners.forEach((fn) => fn({ forwardGameData: { newValue } }, 'local'));
-  return { ports, frame, change };
+  const pageEvent = (type, persisted) => {
+    const event = new Event(type);
+    Object.defineProperty(event, 'persisted', { value: persisted });
+    fakeWindow.dispatchEvent(event);
+  };
+  return { ports, frame, change, state, pageEvent };
 }
 
 afterEach(() => {
@@ -98,5 +118,41 @@ describe('bridge', () => {
     globalThis.window.dispatchEvent(event);
 
     expect(ports[0].posted).toEqual([]);
+  });
+
+  test('nichts geht raus, bevor der gespeicherte Wert gelesen ist', async () => {
+    vi.useFakeTimers();
+    const { ports, frame, state } = await loadBridge(undefined, { deferRead: true });
+
+    frame('{"frueh":1}');
+    expect(ports).toHaveLength(0);
+
+    state.pendingRead();
+    expect(ports).toHaveLength(1);
+    expect(ports[0].posted).toEqual([]);
+  });
+
+  test('Lesefehler im Speicher: bleibt aus', async () => {
+    vi.useFakeTimers();
+    const { ports, frame } = await loadBridge(true, { readError: true });
+
+    frame('{"a":1}');
+
+    expect(ports).toHaveLength(0);
+  });
+
+  // Zurueck-Taste: die Seite kommt aus dem bfcache; ob storage.onChanged sie
+  // dort erreicht hat, ist nicht zugesichert. Deshalb neu lesen.
+  test('liest den Schalter neu, wenn die Seite aus dem Cache zurueckkommt', async () => {
+    vi.useFakeTimers();
+    const { ports, frame, state, pageEvent } = await loadBridge(true);
+
+    pageEvent('pagehide', true);
+    state.stored = false; // in einem anderen Tab ausgeschaltet, Ereignis verpasst
+    pageEvent('pageshow', true);
+    frame('{"a":1}');
+
+    expect(ports[0].posted).toEqual([]);
+    expect(ports).toHaveLength(1);
   });
 });

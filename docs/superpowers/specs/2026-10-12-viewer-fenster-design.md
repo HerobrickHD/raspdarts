@@ -77,7 +77,8 @@ des Kamera-Features.
   - Seitenwechsel beobachten (nur auf `/boards` aktiv).
 - **Board Manager ausblenden:** auf der Karte des Pi den letzten
   Autodarts-Knopf der linken Gruppe (erkannt an der Position, nicht am Text)
-  per `hidden` verstecken, nicht entfernen. Andere Karten bleiben unberührt.
+  per Inline-Style `display: none !important` verstecken (Autodarts' Klassen
+  würden `hidden` überstimmen), nicht entfernen. Andere Karten bleiben unberührt.
 - **Viewer-Knopf** an dessen Stelle, also hinter dem Kamera-Knopf:
   - an: Aussehen wie die Nachbarn, Symbol Lucide `monitor`, Hinweis
     „Viewer (an)“;

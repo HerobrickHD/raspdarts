@@ -121,7 +121,11 @@
     const next = !forwardOn;
     await card.storageSet(FORWARD_KEY, next); // onChanged aktualisiert Knopf und Fenster
     if (!next) {
-      setTimeout(() => card.sendToBackground({ type: 'fetch', url: '/api/ingest/reset', method: 'POST' }), RESET_DELAY_MS);
+      // Wieder eingeschaltet (Doppelklick)? Dann kein Reset, sonst stuende der
+      // Viewer mitten im Spiel leer bis zum naechsten Wurf.
+      setTimeout(() => {
+        if (!forwardOn) card.sendToBackground({ type: 'fetch', url: '/api/ingest/reset', method: 'POST' });
+      }, RESET_DELAY_MS);
     }
   }
 

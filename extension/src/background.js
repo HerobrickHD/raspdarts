@@ -3,13 +3,17 @@ const INGEST_URL = 'ws://raspdarts.local:8743/ingest';
 // Ohne diesen Header lehnt der Pi jede /api-Anfrage ab (Schutz vor fremden Webseiten).
 const CLIENT_HEADERS = { 'X-Raspdarts': '1' };
 
-// Simple request/response via sendMessage
+// Simple request/response via sendMessage. Mit Zeitlimit: Ist der Pi ganz weg,
+// haengt fetch sonst bis zum TCP-Zeitlimit des Systems. /api/status braucht
+// auf dem Pi bis zu ~5 s (autodarts --version), daher grosszuegig.
+const FETCH_TIMEOUT_MS = 8000;
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type !== 'fetch') return false;
   fetch(`${BASE_URL}${msg.url}`, {
     method: msg.method || 'GET',
     headers: msg.body ? { ...CLIENT_HEADERS, 'Content-Type': 'application/json' } : CLIENT_HEADERS,
     body: msg.body ? JSON.stringify(msg.body) : undefined,
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
     .then(async (res) => {
       const data = await res.json();

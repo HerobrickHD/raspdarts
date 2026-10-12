@@ -57,8 +57,20 @@
     send({ type: 'frame', data: event.data.data });
   });
 
+  function readStored() {
+    chrome.storage.local.get(FORWARD_KEY, (items) => {
+      // Lesefehler: aus bleiben, die Privatsphaere geht vor.
+      if (chrome.runtime.lastError) return;
+      apply(items?.[FORWARD_KEY]);
+    });
+  }
+
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && FORWARD_KEY in changes) apply(changes[FORWARD_KEY].newValue);
   });
-  chrome.storage.local.get(FORWARD_KEY, (items) => apply(items?.[FORWARD_KEY]));
+  // Zurueck-Taste: Die Seite kann aus dem bfcache zurueckkommen, ohne dass
+  // sie eine Aenderung des Schalters mitbekommen hat. Bis zum Neulesen aus.
+  window.addEventListener('pagehide', () => apply(false));
+  window.addEventListener('pageshow', (event) => { if (event.persisted) readStored(); });
+  readStored();
 })();
