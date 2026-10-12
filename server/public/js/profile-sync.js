@@ -12,6 +12,7 @@ export function createSync({ onStatus }) {
   let pending = null;
   let lastSent = 0;
   let timer = null;
+  let inFlight = 0;
 
   function flush() {
     clearTimeout(timer);
@@ -21,10 +22,14 @@ export function createSync({ onStatus }) {
     const body = pending;
     pending = null;
     lastSent = Date.now();
+    inFlight += 1;
     api("PUT", `/api/profiles/${encodeURIComponent(id)}`, body)
       .then(() => onStatus(""))
       // Ohne Meldung ginge eine Einstellung still verloren.
-      .catch((error) => onStatus(`Nicht gespeichert: ${error.message}`));
+      .catch((error) => onStatus(`Nicht gespeichert: ${error.message}`))
+      .finally(() => {
+        inFlight -= 1;
+      });
   }
 
   function queue(id, patch) {
@@ -35,5 +40,9 @@ export function createSync({ onStatus }) {
     if (!timer) timer = setTimeout(flush, Math.max(0, SEND_INTERVAL_MS - (Date.now() - lastSent)));
   }
 
-  return { queue, flush };
+  /* Solange eigene Aenderungen ausstehen oder unterwegs sind, waeren Echos vom
+     Pi veraltet - sie wuerden neuere Klicks im eigenen Bild zuruecksetzen. */
+  const isBusy = () => pending !== null || inFlight > 0;
+
+  return { queue, flush, isBusy };
 }

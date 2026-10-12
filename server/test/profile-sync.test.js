@@ -69,6 +69,24 @@ describe("createSync", () => {
     ]);
   });
 
+  test("ist beschaeftigt, solange Aenderungen ausstehen oder unterwegs sind", async () => {
+    let answerNow;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise((resolve) => (answerNow = () => resolve({ ok: true, status: 200, json: async () => ({}) })))),
+    );
+    const sync = createSync({ onStatus: () => {} });
+    expect(sync.isBusy()).toBe(false);
+
+    sync.queue("standard", { content: 1 });
+    expect(sync.isBusy()).toBe(true);
+    sync.flush();
+    expect(sync.isBusy()).toBe(true); // unterwegs
+
+    answerNow();
+    await vi.waitFor(() => expect(sync.isBusy()).toBe(false));
+  });
+
   test("ohne Profil wird nichts gesendet", () => {
     const sync = createSync({ onStatus: () => {} });
 

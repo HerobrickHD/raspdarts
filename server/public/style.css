@@ -450,7 +450,7 @@ body {
 
 /* --- Bearbeiten ----------------------------------------------------------- */
 
-.edit-toggle {
+.settings-toggle {
   position: fixed;
   right: 2vh;
   bottom: 2vh;
@@ -467,12 +467,12 @@ body {
   cursor: pointer;
 }
 
-.edit-toggle.is-visible {
+.settings-toggle.is-visible {
   opacity: 1;
   pointer-events: auto;
 }
 
-.viewer.is-editing .edit-toggle {
+.viewer.is-settings .settings-toggle {
   border-color: var(--edit);
   color: var(--edit);
 }
@@ -552,4 +552,206 @@ body {
   margin-left: -1.2vh;
   border-radius: 50%;
   cursor: grab;
+}
+
+/* --- Einstellungen (Seitenleiste) ------------------------------------------ */
+/* Bedienoberflaeche fuer den Laptop: feste Pixelgroessen, gut lesbar. Liegt
+   ueber dem Bild, damit es nicht springt. */
+
+.settings {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: min(380px, 100vw);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #111;
+  color: #ddd;
+  border-left: 2px solid var(--edit);
+  font: 500 14px/1.4 "Manrope", system-ui, sans-serif;
+}
+
+.settings[hidden] {
+  display: none;
+}
+
+.settings h2 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings select,
+.settings input[type="text"] {
+  background: #1b1b1b;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.settings button {
+  background: #222;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: 600 14px "Manrope", sans-serif;
+  cursor: pointer;
+}
+
+.settings button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.settings :is(button, input, select):focus-visible {
+  outline: 2px solid var(--edit);
+  outline-offset: 2px;
+}
+
+.settings .settings-close {
+  margin-left: auto;
+  padding: 2px 10px;
+  font-size: 18px;
+}
+
+.settings-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--edit);
+  border-radius: 8px;
+  background: #161a22;
+}
+
+.settings-ask[hidden] {
+  display: none;
+}
+
+.settings-ask form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-ask label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-ask input[type="text"],
+.settings-ask select {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.part {
+  border: 1px solid #262626;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.part-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.part-head label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings .part-expand {
+  padding: 2px 10px;
+}
+
+.part-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 4px 26px;
+}
+
+.part-options[hidden] {
+  display: none;
+}
+
+.part-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+fieldset.part-option {
+  border: 0;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+fieldset.part-option legend {
+  margin-bottom: 4px;
+  color: #999;
+  font-size: 13px;
+}
+
+.part.is-off .part-options {
+  opacity: 0.45;
+}
+
+.settings input[type="checkbox"],
+.settings input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--edit);
+}
+
+.settings-status {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.settings-status:empty {
+  display: none;
+}
+
+.settings .settings-next {
+  margin-top: auto;
+  background: var(--edit);
+  border-color: var(--edit);
+  color: #000;
 }

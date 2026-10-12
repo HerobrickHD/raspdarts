@@ -1,16 +1,12 @@
 /*
- * Bearbeiten-Modus: Scheibe und Bloecke verschieben, skalieren, drehen.
+ * Schritt "Layout": Scheibe und Bloecke verschieben, skalieren, drehen.
  *
- * Jede Aenderung gilt sofort im eigenen Bild und geht gedrosselt an den Pi,
- * der sie an alle Viewer weiterreicht - so folgt der Beamer live, waehrend
- * man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
+ * Jede Aenderung gilt sofort im eigenen Bild und geht gedrosselt an den Pi
+ * (profile-sync.js), der sie an alle Viewer weiterreicht - so folgt der Beamer
+ * live, waehrend man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
+ * Knopf, Seitenleiste und Lebenszeichen gehoeren zu settings.js.
  */
 import { snapRotation } from "./rotation.js";
-
-/* Der Pi beendet "editing" nach 60 s ohne Aenderung; solange der Editor offen
-   ist, haelt ein Lebenszeichen es an. */
-const KEEPALIVE_MS = 30_000;
-const BUTTON_HIDE_MS = 3000;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const normalizeAngle = (deg) => ((((deg + 180) % 360) + 360) % 360) - 180;
@@ -99,24 +95,17 @@ function keyAction(event, selected) {
   return null;
 }
 
-export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal, onEditingChange }) {
-  const button = viewer.querySelector("#edit-toggle");
+export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal, onBack, onDone }) {
+  const toolbar = viewer.querySelector("#edit-toolbar");
   const status = viewer.querySelector("#edit-status");
   let editing = false;
   let selected = "scheibe";
-  let keepalive = null;
-  let hideTimer = null;
-
-  /* Geht gedrosselt an den Pi; editing sagt allen Geraeten, dass ausgerichtet wird. */
-  function send(patch = {}) {
-    sync.queue(getProfileId(), { ...patch, editing: editing ? "layout" : null });
-  }
 
   function change(mutate) {
     const layout = structuredClone(getLayout());
     mutate(layout);
     applyLocal(layout);
-    send({ layout });
+    sync.queue(getProfileId(), { layout, editing: "layout" });
   }
 
   function select(id) {
@@ -126,36 +115,27 @@ export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal
     }
   }
 
-  function setEditing(next) {
-    if (!getLayout()) return; // noch kein Profil vom Pi
-    editing = next;
-    viewer.classList.toggle("is-editing", editing);
-    clearInterval(keepalive);
-    if (editing) {
-      keepalive = setInterval(() => send(), KEEPALIVE_MS);
-      select(selected);
-    } else {
-      // Sofort weg - der Ausblende-Timer ist beim Bearbeiten meist schon
-      // abgelaufen, sonst bliebe der Knopf an der Wand stehen.
-      clearTimeout(hideTimer);
-      button.classList.remove("is-visible");
-      button.blur();
-    }
-    onEditingChange(editing);
-    send();
-    sync.flush();
+  /* Ausgeschaltete Bausteine sind unsichtbar - die Auswahl springt auf einen
+     sichtbaren, sonst schoebe die Tastatur etwas, das man nicht sieht. */
+  function selectVisible() {
+    const shown = [...viewer.querySelectorAll(".block[data-block]")].filter(
+      (block) => block.getClientRects().length > 0,
+    );
+    const current = shown.find((block) => block.dataset.block === selected);
+    select(current ? selected : (shown[0]?.dataset.block ?? selected));
   }
 
-  /* Der Knopf wuerde sonst an die Wand projiziert: nur bei Mausbewegung zeigen. */
-  window.addEventListener("pointermove", () => {
-    button.classList.add("is-visible");
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => {
-      if (!editing) button.classList.remove("is-visible");
-    }, BUTTON_HIDE_MS);
-  });
+  function setActive(next) {
+    editing = next;
+    viewer.classList.toggle("is-editing", editing);
+    if (editing) selectVisible();
+  }
 
-  button.addEventListener("click", () => setEditing(!editing));
+  toolbar.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-action]")?.dataset.action;
+    if (action === "back") onBack();
+    if (action === "done") onDone();
+  });
 
   viewer.addEventListener("pointerdown", (event) => {
     if (!editing || event.button !== 0) return;
@@ -205,7 +185,7 @@ export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal
   window.addEventListener("keydown", (event) => {
     if (!editing) return;
     if (event.key === "Escape") {
-      setEditing(false);
+      onDone();
       return;
     }
     const action = keyAction(event, selected);
@@ -215,6 +195,7 @@ export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal
   });
 
   return {
+    setActive,
     isEditing: () => editing,
     setStatus: (text) => {
       status.textContent = text;

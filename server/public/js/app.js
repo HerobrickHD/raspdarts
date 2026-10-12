@@ -11,6 +11,7 @@ import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
 import { createSync } from "./profile-sync.js";
 import { SAMPLE_STATE } from "./sample-state.js";
+import { createSettings } from "./settings.js";
 
 const viewer = document.getElementById("viewer");
 const boardSvg = document.getElementById("board-svg");
@@ -25,7 +26,12 @@ let state = { phase: "idle" };
 /* Vom Pi: Katalog, aktives Profil, Profilliste und wer gerade einstellt. */
 const view = { catalog: null, profile: null, profiles: [], remoteEditing: null };
 
-const sync = createSync({ onStatus: (text) => editor.setStatus(text) });
+const sync = createSync({
+  onStatus: (text) => {
+    editor.setStatus(text);
+    settings.setStatus(text);
+  },
+});
 
 const editor = createEditor({
   viewer,
@@ -37,11 +43,24 @@ const editor = createEditor({
     applyLayout(viewer, layout);
     render();
   },
-  onEditingChange: () => render(),
+  onBack: () => settings.open("inhalte"),
+  onDone: () => settings.open(null),
+});
+
+const settings = createSettings({
+  viewer,
+  editor,
+  sync,
+  getView: () => view,
+  applyLocalContent: (content) => {
+    view.profile = { ...view.profile, content };
+    render();
+  },
+  onChange: () => render(),
 });
 
 /* null, "inhalte" oder "layout" - auf diesem Geraet oder einem anderen. */
-const editStep = () => (editor.isEditing() ? "layout" : view.remoteEditing);
+const editStep = () => settings.step() ?? view.remoteEditing;
 
 /* Beim Einstellen ohne laufendes Spiel gaebe es sonst nichts zu sehen. */
 function shownState() {
@@ -73,14 +92,19 @@ function onMessage(message) {
   if (message.type === "state") state = message.state;
   if (message.type === "catalog") view.catalog = message.catalog;
   if (message.type === "profile") {
-    // Beim Ausrichten gilt das eigene Layout - der Pi hinkt bis zu 100 ms hinterher.
-    const keepLocal = editor.isEditing() && message.profile.id === view.profile?.id;
-    const layout = keepLocal ? view.profile.layout : message.profile.layout;
-    view.profile = { ...message.profile, layout };
+    // Solange eigene Aenderungen unterwegs sind, ist das Echo des Pi veraltet;
+    // beim Ausrichten gilt ohnehin das eigene Layout.
+    const same = message.profile.id === view.profile?.id;
+    const keepContent = same && sync.isBusy();
+    const keepLayout = same && (sync.isBusy() || editor.isEditing());
+    const layout = keepLayout ? view.profile.layout : message.profile.layout;
+    const content = keepContent ? view.profile.content : message.profile.content;
+    view.profile = { ...message.profile, layout, content };
     view.profiles = message.profiles;
     view.remoteEditing = message.editing;
     applyLayout(viewer, layout);
   }
+  settings.refresh();
   render();
 }
 

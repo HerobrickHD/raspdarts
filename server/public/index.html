@@ -46,13 +46,20 @@
       <p id="message" class="message"></p>
       <p class="offline">Keine Verbindung zum Raspdarts-Dienst</p>
 
-      <button id="edit-toggle" class="edit-toggle" type="button">Layout</button>
+      <button id="settings-toggle" class="settings-toggle" type="button">Einstellungen</button>
+
+      <!-- Schritt "Inhalte": wird von settings-panel.js aus dem Katalog gebaut. -->
+      <aside id="settings" class="settings" aria-label="Einstellungen" hidden></aside>
+
+      <!-- Schritt "Layout" -->
       <div id="edit-toolbar" class="edit-toolbar">
+        <button type="button" data-action="back">← Inhalte</button>
         <span id="edit-status" class="edit-status" role="status"></span>
         <span class="edit-hint">
           Ziehen: verschieben · Ecke: Größe · Kreis: drehen (rastet bei 0°/90° ein, Alt: frei) ·
           Mausrad: Größe · Pfeile, +/−, Q/E: fein (Umschalt: grob) · Esc: fertig
         </span>
+        <button type="button" data-action="done">Fertig</button>
       </div>
     </main>
     <script type="module" src="js/app.js"></script>
