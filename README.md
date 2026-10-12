@@ -61,7 +61,7 @@ curl -fsSL https://raw.githubusercontent.com/HerobrickHD/raspdarts/main/install.
 Viewer im Kiosk-Modus (am Pi oder an jedem anderen Gerät im Netz), z. B. für den Beamer:
 
 ```bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars "http://raspdarts.local:8743/?display=beamer"
+chromium-browser --kiosk --noerrdialogs --disable-infobars "http://raspdarts.local:8743/"
 ```
 
 ## Extension installieren
@@ -93,8 +93,8 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/` | Viewer (`?display=beamer` für ein eigenes Layout, sonst `standard`) |
-| WS | `/ws?display=<name>` | Viewer: `{type:"state", state}` und `{type:"layout", layout, editing}` |
+| GET | `/` | Viewer (zeigt das aktive Profil) |
+| WS | `/ws` | Viewer: `{type:"catalog", catalog}`, `{type:"state", state}`, `{type:"profile", profile, profiles, editing}` |
 | WS | `/ingest` | Spieldaten von der Extension |
 | POST | `/api/ingest/reset` | Viewer auf „Warte auf Spieldaten“ (Extension beim Ausschalten der Weitergabe) |
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
@@ -102,8 +102,13 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | GET | `/api/cams/:n` | Standbild von Kamera n (JPEG); höchstens 1 Abruf pro Sekunde und Kamera bei Autodarts, `409` wenn das Board nicht läuft |
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
-| GET | `/api/layout/:display` | Layout einer Anzeige |
-| PUT | `/api/layout/:display` | `{layout, editing}` speichern und live an alle Viewer der Anzeige |
+| GET | `/api/profiles` | `{active, profiles:[{id, name}]}` |
+| GET | `/api/profiles/:id` | ein Profil (Name, Inhalte, Layout) |
+| POST | `/api/profiles` | `{name, template}` – neues Profil aus Vorlage, wird aktiv |
+| PUT | `/api/profiles/:id` | Teile ändern: `{name?, content?, layout?, editing?}`; live an alle Viewer |
+| POST | `/api/profiles/:id/reset` | `{template}` – Inhalte zurücksetzen, Layout bleibt |
+| DELETE | `/api/profiles/:id` | löschen (nicht das letzte) |
+| PUT | `/api/active-profile` | `{id}` – aktives Profil wechseln |
 
 ```bash
 curl -H 'X-Raspdarts: 1' http://raspdarts.local:8743/api/status
@@ -125,22 +130,31 @@ zurückspielen – so lässt sich die Anzeige am Schreibtisch weiterbauen.
 
 Extension: `cd extension && npm install && npm test`.
 
-## Layout einrichten
+## Viewer einstellen
 
-Den Viewer am Laptop mit demselben Anzeigenamen öffnen wie am Beamer
-(`?display=beamer`). Bei Mausbewegung erscheint unten rechts **Layout**; damit
-startet der Bearbeiten-Modus. Alle Geräte mit diesem Namen folgen live, der Beamer
-zeigt die Scheibe dabei als Linien – so lässt sie sich auf die echten Drähte legen.
+Den Viewer am Laptop öffnen (`http://raspdarts.local:8743/`). Bei Mausbewegung
+erscheint unten rechts **Einstellungen**. Alle Geräte zeigen dasselbe, nämlich das
+**aktive Profil**, und folgen jeder Änderung live.
 
-- Scheibe: ziehen = verschieben, Ecke oder Mausrad = Größe, Kreis = drehen;
-  fein mit Pfeiltasten, +/− und Q/E (mit Umschalt grob).
-- Karten, Kopf, Aufnahmeleiste: ziehen und an der Ecke skalieren.
-- „Nur Licht“ (nur Darts und Hervorhebungen, für die Projektion auf die Scheibe)
-  oder „Gezeichnet“ (ganze Scheibe). Esc beendet.
+**Schritt 1 – Inhalte:** Profil wählen, anlegen (aus einer Vorlage: Projektion,
+Fernseher, Minimal), umbenennen oder löschen. Darunter ein- und ausschalten, was
+erscheint: Hintergrund, Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring, Darts,
+Leuchten), Aufnahme, Spielinfo, Spielerkarten mit ihren Teilen. Eine Vorlage
+anzuklicken setzt die Inhalte zurück, das Layout bleibt.
 
-Gespeichert wird automatisch unter `server/data/layouts/<name>.json`. Positionen
-sind Prozentwerte, Größen hängen an der Bildhöhe – das Layout passt bei jeder
-Auflösung.
+**Schritt 2 – Layout** („Weiter: Layout“): Alle Geräte zeigen die Scheibe als
+Linien, so lässt sie sich auf die echten Drähte legen.
+
+- Scheibe: ziehen = verschieben, Ecke oder Mausrad = Größe, Kreis = drehen
+  (rastet bei 0°, 90°, 180° ein; mit Alt frei); fein mit Pfeiltasten, +/− und
+  Q/E (mit Umschalt grob).
+- Karten, Spielinfo, Aufnahmeleiste: ziehen und an der Ecke skalieren.
+- „← Inhalte“ geht zurück, „Fertig“ oder Esc beendet.
+
+Gespeichert wird automatisch unter `server/data/profiles/<id>.json`, das aktive
+Profil in `active.json`. Positionen sind Prozentwerte, Größen hängen an der
+Bildhöhe, damit das Layout bei jeder Auflösung passt. Beim ersten Start wird ein
+vorhandenes `server/data/layouts/standard.json` zum Profil „Standard“.
 
 ## Hinweis
 
