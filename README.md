@@ -95,6 +95,8 @@ cd extension && bash build.sh
 | WS | `/ws?display=<name>` | Viewer: `{type:"state", state}` und `{type:"layout", layout, editing}` |
 | WS | `/ingest` | Spieldaten von der Extension |
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
+| GET | `/api/cams` | Board-ID, Anzahl Kameras, Zähler der Bildabrufe bei Autodarts |
+| GET | `/api/cams/:n` | Standbild von Kamera n (JPEG); höchstens 1 Abruf pro Sekunde und Kamera bei Autodarts, `409` wenn das Board nicht läuft |
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
 | GET | `/api/layout/:display` | Layout einer Anzeige |
