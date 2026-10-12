@@ -32,7 +32,7 @@
     },
     {
       "matches": ["https://play.autodarts.com/*"],
-      "js": ["texts.js", "view-model.js", "stream.js", "page.js", "content.js", "cams-view.js", "cams.js"],
+      "js": ["texts.js", "forwarding.js", "view-model.js", "stream.js", "page.js", "viewer-view.js", "cams-view.js", "board-card.js", "cams.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
