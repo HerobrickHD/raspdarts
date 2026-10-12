@@ -23,13 +23,13 @@ afterEach(() => {
 });
 
 describe("createSync", () => {
-  test("fasst Aenderungen zusammen und sendet hoechstens alle 100 ms", () => {
+  test("fasst Aenderungen zusammen und sendet hoechstens alle 100 ms", async () => {
     const sync = createSync({ onStatus: () => {} });
 
     sync.queue("standard", { layout: 1 });
     sync.queue("standard", { editing: "layout" });
     expect(calls).toHaveLength(0);
-    vi.advanceTimersByTime(0);
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(calls).toEqual([
       {
@@ -41,9 +41,9 @@ describe("createSync", () => {
     ]);
 
     sync.queue("standard", { layout: 2 });
-    vi.advanceTimersByTime(50);
+    await vi.advanceTimersByTimeAsync(50);
     expect(calls).toHaveLength(1);
-    vi.advanceTimersByTime(50);
+    await vi.advanceTimersByTimeAsync(50);
     expect(calls.at(-1).body).toEqual({ layout: 2 });
   });
 
@@ -56,12 +56,12 @@ describe("createSync", () => {
     expect(calls).toHaveLength(1);
   });
 
-  test("Aenderungen am bisherigen Profil gehen vor einem Wechsel raus", () => {
+  test("Aenderungen am bisherigen Profil gehen vor einem Wechsel raus", async () => {
     const sync = createSync({ onStatus: () => {} });
     sync.queue("standard", { content: 1 });
 
     sync.queue("tv", { editing: "inhalte" });
-    vi.advanceTimersByTime(100);
+    await vi.advanceTimersByTimeAsync(100);
 
     expect(calls.map((c) => [c.url, c.body])).toEqual([
       ["/api/profiles/standard", { content: 1 }],
@@ -85,6 +85,51 @@ describe("createSync", () => {
 
     answerNow();
     await vi.waitFor(() => expect(sync.isBusy()).toBe(false));
+  });
+
+  test("sendet erst nach der Antwort auf die vorige Anfrage - aeltere Klicks ueberholen keine neueren", async () => {
+    const answers = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url, init) => {
+        calls.push({ url, body: JSON.parse(init.body) });
+        return new Promise((resolve) => answers.push(() => resolve({ ok: true, status: 200, json: async () => ({}) })));
+      }),
+    );
+    const sync = createSync({ onStatus: () => {} });
+
+    sync.queue("standard", { content: "A" });
+    sync.flush();
+    sync.queue("standard", { content: "B" });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(calls.map((c) => c.body.content)).toEqual(["A"]);
+
+    answers[0]();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(calls.map((c) => c.body.content)).toEqual(["A", "B"]);
+  });
+
+  test("gibt eine Anfrage ohne Antwort nach 5 s auf und meldet das", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (url, init) =>
+          new Promise((_, reject) =>
+            init.signal.addEventListener("abort", () => reject(new DOMException("abgebrochen", "AbortError"))),
+          ),
+      ),
+    );
+    const status = [];
+    const sync = createSync({ onStatus: (text) => status.push(text) });
+
+    sync.queue("standard", { content: 1 });
+    sync.flush();
+    await vi.advanceTimersByTimeAsync(4900);
+    expect(sync.isBusy()).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(200);
+    expect(status).toEqual(["Nicht gespeichert: keine Antwort vom Pi"]);
+    expect(sync.isBusy()).toBe(false);
   });
 
   test("ohne Profil wird nichts gesendet", () => {

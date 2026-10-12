@@ -21,7 +21,7 @@ export function createSettings({ viewer, editor, sync, getView, applyLocalConten
   let hideTimer = null;
 
   const profileId = () => getView().profile?.id;
-  const path = (suffix = "") => `/api/profiles/${encodeURIComponent(profileId())}${suffix}`;
+  const path = (id, suffix = "") => `/api/profiles/${encodeURIComponent(id)}${suffix}`;
   const report = (error) => panel.setStatus(`Fehlgeschlagen: ${error.message}`);
 
   /* Nach einem Wechsel des aktiven Profils gilt editing fuer das neue. */
@@ -45,17 +45,17 @@ export function createSettings({ viewer, editor, sync, getView, applyLocalConten
       sync.flush();
       api("POST", "/api/profiles", { name, template }).then(afterSwitch).catch(report);
     },
-    onRename(name) {
-      sync.queue(profileId(), { name, editing: step });
+    onRename(id, name) {
+      sync.queue(id, { name, editing: step });
       sync.flush();
     },
-    onDelete() {
+    onDelete(id) {
       sync.flush();
-      api("DELETE", path()).then(afterSwitch).catch(report);
+      api("DELETE", path(id)).then(afterSwitch).catch(report);
     },
-    onTemplate(template) {
+    onTemplate(id, template) {
       sync.flush();
-      api("POST", path("/reset"), { template }).catch(report);
+      api("POST", path(id, "/reset"), { template }).catch(report);
     },
     onNext: () => open("layout"),
     onClose: () => open(null),
@@ -70,6 +70,7 @@ export function createSettings({ viewer, editor, sync, getView, applyLocalConten
     if (!getView().profile) return; // noch kein Profil vom Pi
     step = next;
     root.hidden = step !== "inhalte";
+    if (step !== "inhalte") panel.cancelAsk(); // keine alte Rueckfrage beim naechsten Oeffnen
     viewer.classList.toggle("is-settings", step !== null);
     clearInterval(keepalive);
     if (step) {

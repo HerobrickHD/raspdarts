@@ -24,7 +24,9 @@ export function createPanel(root, handlers) {
   let profile = null;
   let profiles = [];
   let profilesKey = "";
-  /* Offenes Formular oder offene Rueckfrage: { kind: "new" | "rename" | "confirm", ... } */
+  /* Offenes Formular oder offene Rueckfrage: { kind: "new" | "rename" | "confirm", ... }.
+     Sie merkt sich das Profil, das sie nennt - wechselt inzwischen ein anderes
+     Geraet das aktive Profil, darf "Ja" nicht das neue treffen. */
   let ask = null;
   const expanded = new Set(["scheibe"]);
 
@@ -35,9 +37,9 @@ export function createPanel(root, handlers) {
   const close = button("×", () => handlers.onClose(), { className: "settings-close", title: "Schließen" });
   close.setAttribute("aria-label", "Einstellungen schließen");
 
-  const renameButton = button("Umbenennen", () => setAsk({ kind: "rename" }));
+  const renameButton = button("Umbenennen", () => setAsk({ kind: "rename", id: profile.id }));
   const deleteButton = button("Löschen", () =>
-    setAsk({ kind: "confirm", text: `Profil „${profile.name}“ löschen?`, yes: handlers.onDelete }),
+    setAsk({ kind: "confirm", text: `Profil „${profile.name}“ löschen?`, yes: handlers.onDelete.bind(null, profile.id) }),
   );
 
   const askArea = node("div", { className: "settings-ask", hidden: true });
@@ -106,7 +108,7 @@ export function createPanel(root, handlers) {
           setAsk({
             kind: "confirm",
             text: `Inhalte von „${profile.name}“ auf „${template.label}“ zurücksetzen? Das Layout bleibt.`,
-            yes: () => handlers.onTemplate(template.id),
+            yes: handlers.onTemplate.bind(null, profile.id, template.id),
           }),
         ),
       ),
@@ -176,7 +178,7 @@ export function createPanel(root, handlers) {
       );
       return;
     }
-    const kind = ask.kind;
+    const { kind, id } = ask;
     const name = node("input", {
       type: "text",
       maxLength: 40,
@@ -205,7 +207,7 @@ export function createPanel(root, handlers) {
       event.preventDefault();
       setAsk(null);
       if (kind === "new") handlers.onCreate(name.value, template.value);
-      else handlers.onRename(name.value);
+      else handlers.onRename(id, name.value);
     });
     askArea.replaceChildren(form);
     name.focus();
@@ -213,6 +215,7 @@ export function createPanel(root, handlers) {
 
   return {
     render(nextCatalog, nextProfile, nextProfiles) {
+      if (profile && nextProfile.id !== profile.id) setAsk(null); // gehoerte zum alten Profil
       const freshCatalog = nextCatalog !== catalog;
       catalog = nextCatalog;
       profile = nextProfile;
