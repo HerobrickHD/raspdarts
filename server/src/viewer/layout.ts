@@ -1,6 +1,7 @@
 /**
- * Das Layout einer Anzeige: wo die Scheibe und jeder Baustein sitzt und wie
- * gross er ist.
+ * Das Layout eines Profils: wo die Scheibe und jeder Baustein sitzt und wie
+ * gross er ist. Was angezeigt wird (und wie die Scheibe aussieht), steht in den
+ * Inhalten des Profils (catalog.ts), nicht hier.
  *
  * Positionen sind Prozentwerte der Bildflaeche, Groessen haengen an der
  * Bildhoehe - keine Pixel. Ein eingerichtetes Layout passt dadurch auch nach
@@ -15,7 +16,7 @@ export const PLAYER_BLOCKS = [
   "spieler-5",
   "spieler-6",
 ] as const;
-export const BLOCK_IDS = ["kopf", "aufnahme", ...PLAYER_BLOCKS] as const;
+export const BLOCK_IDS = ["spielinfo", "aufnahme", ...PLAYER_BLOCKS] as const;
 export type BlockId = (typeof BLOCK_IDS)[number];
 
 export interface BlockLayout {
@@ -38,21 +39,15 @@ export interface BoardLayout {
   rotation: number;
 }
 
-export type BoardMode = "light" | "drawn";
-
 export interface DisplayLayout {
-  version: 2;
-  boardMode: BoardMode;
   board: BoardLayout;
   blocks: Record<BlockId, BlockLayout>;
 }
 
 export const DEFAULT_LAYOUT: DisplayLayout = {
-  version: 2,
-  boardMode: "light",
   board: { cx: 50, cy: 51, diameter: 50, rotation: 0 },
   blocks: {
-    kopf: { x: 2, y: 3, scale: 1 },
+    spielinfo: { x: 2, y: 3, scale: 1 },
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
     "spieler-1": { x: 1.4, y: 32.7, scale: 1 },
     "spieler-2": { x: 71, y: 32.7, scale: 1 },
@@ -75,14 +70,16 @@ const clamp = (value: number, [min, max]: readonly [number, number]): number =>
 
 const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
+
 /** Ein Wert der Scheibe: begrenzt, oder bei Unbrauchbarem der Standard. */
 function boardValue(v: unknown, fallback: number, limits: readonly [number, number]): number {
   return isNumber(v) ? clamp(v, limits) : fallback;
 }
 
 function sanitizeBlock(stored: unknown, fallback: BlockLayout): BlockLayout {
-  if (typeof stored !== "object" || stored === null) return { ...fallback };
-  const { x, y, scale } = stored as Record<string, unknown>;
+  const { x, y, scale } = asRecord(stored);
   if (!isNumber(x) || !isNumber(y) || !isNumber(scale)) return { ...fallback };
   return {
     x: clamp(x, LIMITS.position),
@@ -95,25 +92,16 @@ function sanitizeBlock(stored: unknown, fallback: BlockLayout): BlockLayout {
  * Macht aus beliebigem gespeichertem Inhalt ein brauchbares Layout.
  *
  * Der Inhalt kommt aus dem Browser und aus einer von Hand editierbaren Datei -
- * deshalb wird nichts geglaubt. Ein Layout ohne version 2 (die alten
- * Beamer-Layouts) gilt als nicht vorhanden. Eine kaputte Datei darf den Viewer
- * nie unbedienbar machen.
+ * deshalb wird nichts geglaubt. Jeder Wert wird einzeln geprueft; eine kaputte
+ * Datei darf den Viewer nie unbedienbar machen.
  */
 export function sanitizeLayout(stored: unknown): DisplayLayout {
   const fresh = structuredClone(DEFAULT_LAYOUT);
-  if (typeof stored !== "object" || stored === null) return fresh;
-  const source = stored as Record<string, unknown>;
-  if (source["version"] !== 2) return fresh;
-
-  const board = (typeof source["board"] === "object" && source["board"] !== null
-    ? source["board"]
-    : {}) as Record<string, unknown>;
-  const blocks = (typeof source["blocks"] === "object" && source["blocks"] !== null
-    ? source["blocks"]
-    : {}) as Record<string, unknown>;
+  const source = asRecord(stored);
+  const board = asRecord(source["board"]);
+  const blocks = asRecord(source["blocks"]);
 
   const defaults = DEFAULT_LAYOUT.board;
-  fresh.boardMode = source["boardMode"] === "drawn" ? "drawn" : "light";
   fresh.board = {
     cx: boardValue(board["cx"], defaults.cx, LIMITS.position),
     cy: boardValue(board["cy"], defaults.cy, LIMITS.position),
@@ -124,4 +112,25 @@ export function sanitizeLayout(stored: unknown): DisplayLayout {
     fresh.blocks[id] = sanitizeBlock(blocks[id], DEFAULT_LAYOUT.blocks[id]);
   }
   return fresh;
+}
+
+/** Darstellung der Scheibe in den alten Layout-Dateien. */
+export type LegacyBoardMode = "light" | "drawn";
+
+/**
+ * Liest eine alte Layout-Datei (version 2, je Anzeigename, bis Oktober 2026).
+ * Der Block "kopf" heisst jetzt "spielinfo"; boardMode wandert in die Inhalte
+ * des Profils. null, wenn es keine alte Datei ist.
+ */
+export function fromLegacyLayout(
+  stored: unknown,
+): { layout: DisplayLayout; boardMode: LegacyBoardMode } | null {
+  const source = asRecord(stored);
+  if (source["version"] !== 2) return null;
+  const blocks = { ...asRecord(source["blocks"]) };
+  if (!("spielinfo" in blocks) && "kopf" in blocks) blocks["spielinfo"] = blocks["kopf"];
+  return {
+    layout: sanitizeLayout({ board: source["board"], blocks }),
+    boardMode: source["boardMode"] === "drawn" ? "drawn" : "light",
+  };
 }
