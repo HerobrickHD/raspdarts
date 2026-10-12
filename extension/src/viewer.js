@@ -87,6 +87,7 @@
       },
     });
     overlay.body.append(created.host);
+    created.revealLog();
     render();
     fetchStatus();
     startPolling();
