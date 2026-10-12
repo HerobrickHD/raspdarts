@@ -65,6 +65,11 @@ mit jeder Version ändern.
 | `GET /api/img/detection` | Erkennungsbild, JPEG, ca. 400 KB |
 | `GET /api/streams/cams/<n>` | MJPEG-Livestream (`multipart/x-mixed-replace; boundary=advisionmjpg`), ca. 2,7 MB/s |
 
+Beobachtet am 12.10.2026: Im Standby (`running:false`, `/api/cams/state` →
+`isOpened:false`) antwortet `/api/img/cams/<n>` weiter mit `200`, liefert aber
+ein schwarzes Bild (ca. 15 KB). Mit laufender Erkennung kostet ein Abruf aller
+drei Kameras je 1×/s keine messbare Bildrate (30–31 fps mit und ohne).
+
 Weitere Pfade laut Programm (nicht getestet): `/api/img/detection/before|after|movement`,
 `/api/img/motion`, `/api/streams/live`, `/api/streams/detection`,
 `/api/streams/motion`, `/api/streams/start|stop`.

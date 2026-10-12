@@ -19,6 +19,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true; // async response
 });
 
+// Kamerabild fuer das Kamerafenster auf play.autodarts.com/boards. Kommt als
+// Daten-URL zurueck, weil die HTTPS-Seite nichts direkt vom Pi laden darf.
+// Mit Zeitlimit: Ist der Pi ganz weg, haengt fetch sonst bis zum TCP-Zeitlimit
+// des Systems, und das Fenster zeigt so lange alte Bilder wie frische.
+const IMAGE_TIMEOUT_MS = 4000;
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type !== 'image') return false;
+  fetch(`${BASE_URL}/api/cams/${Number(msg.cam)}`, {
+    headers: CLIENT_HEADERS,
+    cache: 'no-store',
+    signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        sendResponse({ ok: false, status: res.status });
+        return;
+      }
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      sendResponse({ ok: true, status: res.status, dataUrl: `data:image/jpeg;base64,${toBase64(bytes)}` });
+    })
+    .catch(() => sendResponse({ ok: false, status: 0, error: 'Unreachable' }));
+  return true; // async response
+});
+
+// btoa braucht eine Zeichenkette; in Stuecken, damit der Aufruf-Stack nicht ueberlaeuft.
+function toBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
 // SSE streaming via long-lived port
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'raspdarts-stream') return;

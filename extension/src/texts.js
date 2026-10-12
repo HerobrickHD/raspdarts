@@ -43,6 +43,12 @@
     disconnected: 'Verbindung zum Pi unterbrochen.',
     restarting: 'Pi startet neu …',
     shuttingDown: 'Pi fährt herunter …',
+    camsButton: 'Kameras',
+    camsButtonStopped: 'Kameras – Board ist nicht gestartet',
+    camsTitle: 'Kameras',
+    camsBoardStopped: 'Board ist nicht gestartet',
+    camsNoImage: 'Kein Bild',
+    camsCamera: 'Kamera',
     dialogs: {
       updateRaspdarts: {
         title: 'Raspdarts aktualisieren',
@@ -107,6 +113,12 @@
     disconnected: 'Connection to the Pi was lost.',
     restarting: 'Pi is restarting …',
     shuttingDown: 'Pi is shutting down …',
+    camsButton: 'Cameras',
+    camsButtonStopped: 'Cameras – board is not running',
+    camsTitle: 'Cameras',
+    camsBoardStopped: 'Board is not running',
+    camsNoImage: 'No image',
+    camsCamera: 'Camera',
     dialogs: {
       updateRaspdarts: {
         title: 'Update Raspdarts',
