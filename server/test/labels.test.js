@@ -23,22 +23,28 @@ describe("formatAverage", () => {
 });
 
 describe("matchChips", () => {
-  const match = { baseScore: 301, legsToWin: 1, setsToWin: null, inMode: "Straight", outMode: "Straight" };
+  const X01 = { baseScore: 501, legsToWin: 3, setsToWin: null, inMode: "Straight", outMode: "Double" };
 
-  test("wie die Chips in der Autodarts-Spielansicht", () => {
-    expect(matchChips(match)).toEqual(["301", "Erster bis 1 Leg", "SI-SO"]);
+  test("Spielart, Startpunkte, Ziel, Ein-/Ausstieg mit Schluessel", () => {
+    expect(matchChips(X01, "X01")).toEqual([
+      { key: "spielart", text: "X01" },
+      { key: "punktzahl", text: "501" },
+      { key: "legs", text: "Erster bis 3 Legs" },
+      { key: "modus", text: "SI-DO" },
+    ]);
   });
 
   test("Mehrzahl, Saetze und andere Modi", () => {
-    expect(matchChips({ ...match, baseScore: 501, legsToWin: 3, outMode: "Double" })).toEqual([
-      "501",
-      "Erster bis 3 Legs",
-      "SI-DO",
-    ]);
-    expect(matchChips({ ...match, setsToWin: 2, inMode: "Double", outMode: "Master" })).toEqual([
-      "301",
-      "Erster bis 2 Sets",
-      "DI-MO",
+    expect(matchChips({ ...X01, legsToWin: 1 }, "X01")[2].text).toBe("Erster bis 1 Leg");
+    expect(matchChips({ ...X01, setsToWin: 2 }, "X01")[2].text).toBe("Erster bis 2 Sets");
+    expect(matchChips({ ...X01, inMode: "Double", outMode: "Master" }, "X01")[3].text).toBe("DI-MO");
+  });
+
+  test("ohne Startpunkte und Modus (andere Spielarten) fallen die Chips weg", () => {
+    const gotcha = { baseScore: null, legsToWin: 1, setsToWin: null, inMode: null, outMode: null };
+    expect(matchChips(gotcha, "Gotcha")).toEqual([
+      { key: "spielart", text: "Gotcha" },
+      { key: "legs", text: "Erster bis 1 Leg" },
     ]);
   });
 });
