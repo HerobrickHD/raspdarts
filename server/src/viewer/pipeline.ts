@@ -4,10 +4,11 @@
  *
  * Nachrichten, die kein Spielstand sind (Lobby, Board-Status ...), ergeben
  * IDLE und aendern die Anzeige nicht. Angezeigt wird also immer das Match, fuer
- * das zuletzt Daten kamen.
+ * das zuletzt Daten kamen - bis Autodarts genau dieses Match loescht (Spiel
+ * abgebrochen), dann wartet die Anzeige wieder.
  */
 import type { DisplayHub } from "./display-hub.js";
-import { IDLE, toViewerState, type ViewerState } from "./game-state.js";
+import { IDLE, deletedMatchId, matchIdOf, toViewerState, type ViewerState } from "./game-state.js";
 
 export interface FrameSink {
   write(frame: unknown): void;
@@ -25,11 +26,20 @@ export function createFramePipeline(
 ): (frame: unknown) => void {
   /* Jede unbekannte Spielart nur einmal ins Log - sonst bei jedem Wurf. */
   const reported = new Set<string>();
+  /* Das Match, dessen Stand gerade gezeigt wird - sein Loeschen (Spiel abgebrochen) beendet die Anzeige. */
+  let shownMatch: string | null = null;
   return (frame) => {
     try {
       recorder?.write(frame);
     } catch (error) {
       console.warn(`Aufzeichnung fehlgeschlagen: ${(error as Error).message}`);
+    }
+
+    const deleted = deletedMatchId(frame);
+    if (deleted !== null && deleted === shownMatch) {
+      shownMatch = null;
+      hub.broadcast(IDLE);
+      return;
     }
 
     let state: ViewerState;
@@ -40,6 +50,7 @@ export function createFramePipeline(
       return;
     }
     if (state === IDLE) return;
+    shownMatch = matchIdOf(frame);
     if (state.phase === "playing" && state.mode === null && !reported.has(state.variant)) {
       reported.add(state.variant);
       console.warn(`Spielart "${state.variant}" unbekannt - allgemeine Darstellung`);

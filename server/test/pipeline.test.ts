@@ -90,6 +90,19 @@ describe("createFramePipeline", () => {
     ]);
   });
 
+  test("Spiel abgebrochen: das Loeschen des gezeigten Matches setzt die Anzeige auf Warten", () => {
+    const hub = newHub();
+    const handle = createFramePipeline(hub, null);
+    const shown = { ...MATCH_FRAME, data: { ...MATCH_FRAME.data, id: "m-1" } };
+    handle(shown);
+
+    handle({ channel: "autodarts.matches", topic: "m-2.events", data: { body: {}, event: "delete", id: "m-2" } });
+    expect(hub.state.phase).toBe("playing");
+
+    handle({ channel: "autodarts.matches", topic: "m-1.events", data: { body: {}, event: "delete", id: "m-1" } });
+    expect(hub.state).toBe(IDLE);
+  });
+
   test("bleibt idle ohne Spielstand", () => {
     const hub = newHub();
     createFramePipeline(hub, null)({ irgendwas: 1 });

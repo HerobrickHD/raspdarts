@@ -133,6 +133,24 @@ function toCheckout(raw: unknown): Field[] | null {
   return guide.length === 0 ? null : guide.map(toField);
 }
 
+/** Kennung des Matches aus einem Spielstand; null bei allem anderen. */
+export function matchIdOf(raw: unknown): string | null {
+  const state = unwrap(raw);
+  if (!isObject(state) || !Array.isArray(state["players"]) || !Array.isArray(state["gameScores"])) return null;
+  return asText(state["id"]);
+}
+
+/**
+ * Kennung eines geloeschten Matches - so meldet Autodarts "Spiel abbrechen":
+ * Kanal autodarts.matches, Thema <id>.events, event "delete" (Mitschnitt vom
+ * 13.10.2026). Sonst null.
+ */
+export function deletedMatchId(raw: unknown): string | null {
+  if (!isObject(raw) || raw["channel"] !== "autodarts.matches") return null;
+  const data = asObject(raw["data"]);
+  return data["event"] === "delete" ? asText(data["id"]) : null;
+}
+
 export function toViewerState(raw: unknown): ViewerState {
   const state = unwrap(raw);
   if (!isObject(state)) return IDLE;

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { IDLE, MISS, toField, toViewerState, type ViewerState } from "../src/viewer/game-state.js";
+import { IDLE, MISS, deletedMatchId, matchIdOf, toField, toViewerState, type ViewerState } from "../src/viewer/game-state.js";
 import type { RecordedFrame } from "../src/viewer/recorder.js";
 
 /**
@@ -300,5 +300,27 @@ describe("Reihenfolge", () => {
       ["TEST", 1],
       ["testuser01", 2],
     ]);
+  });
+});
+
+describe("Match-Kennung und Abbruch", () => {
+  const MATCH = "01a135e3-4539-7eae-a9c3-d29f42485f8b";
+  const deleteFrame = {
+    channel: "autodarts.matches",
+    topic: `${MATCH}.events`,
+    data: { body: {}, event: "delete", id: MATCH },
+  };
+
+  test("matchIdOf liest die Kennung aus einem Spielstand", () => {
+    expect(matchIdOf(FRAMES[106])).toBe((FRAMES[106] as { data: { id: string } }).data.id);
+    expect(matchIdOf(deleteFrame)).toBeNull();
+    expect(matchIdOf({ irgendwas: 1 })).toBeNull();
+  });
+
+  test("deletedMatchId erkennt das Loeschen eines Matches (Spiel abgebrochen)", () => {
+    expect(deletedMatchId(deleteFrame)).toBe(MATCH);
+    expect(deletedMatchId({ ...deleteFrame, data: { ...deleteFrame.data, event: "update" } })).toBeNull();
+    expect(deletedMatchId({ channel: "autodarts.users", topic: "u.events", data: { event: "delete", id: "x" } })).toBeNull();
+    expect(deletedMatchId(FRAMES[106])).toBeNull();
   });
 });
