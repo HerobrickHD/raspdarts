@@ -237,6 +237,30 @@ Lage jeder Karte:
   Konstanten in `areas.js`.
 - Die Größe hängt nur von der Spielerzahl ab und ändert sich im Spiel nicht.
   Der aktive Spieler wird hervorgehoben wie bisher, nicht vergrößert.
+- Verteilt wird nach dem **Platz** des Spielers (siehe unten), nicht nach
+  seiner Stelle in den Autodarts-Daten.
+
+### Feste Plätze im Match
+
+Bei mehreren Legs oder Sets (z. B. Best of 3) kann Autodarts die Reihenfolge
+der Spieler je Leg ändern. Damit niemand mitten im Match die Seite wechselt,
+behält jeder Spieler seinen Platz für das ganze Match:
+
+- Der Pi merkt sich je Match (`id` des Matches) die Reihenfolge der
+  Spieler-`id`s aus dem **ersten** Stand, den er davon sieht. Platz 1 ist
+  der erste Spieler darin, Platz 2 der zweite usw.
+- `PlayerView` bekommt `seat` (1–6). Die Bereiche verteilen nach `seat`
+  (Platz 1, 3, 5 links; 2, 4, 6 rechts); die Karten eines Bereichs stehen
+  nach `seat` sortiert.
+- Ein Spieler, der im gemerkten Match noch nicht vorkam, bekommt den
+  nächsten freien Platz. Fehlt die Spieler-`id`, zählt die Stelle in den
+  Daten.
+- Ein neues Match (andere `id`) ordnet neu. Gemerkt wird nur das laufende
+  Match, im Speicher, nicht auf der SD-Karte.
+- Ob Autodarts die Liste `players` umstellt oder nur den beginnenden
+  Spieler wechselt, ist ungeprüft (der Mitschnitt hat ein Leg). Die Plätze
+  sind in beiden Fällen richtig; das erste Best-of-3 gegen den Mitschnitt
+  bestätigt es.
 
 **Standardlage** (alle Standards): `bereich-links { x: 1.4, y: 32.7, w: 49,
 h: 34 }`, `bereich-rechts { x: 71, y: 32.7, w: 49, h: 34 }` – entspricht den
@@ -327,8 +351,8 @@ Vorschau mit Spielern: [1] [2] [3] [4] [5] [6]
   bisher (`data-spieler-verteilung="beide"` usw.) sowie
   `data-spielart="cricket"`.
 - Optionen, die es in der Spielart nicht gibt, gelten als aus.
-- Die Spielerkarten werden aus `areas.js` platziert; Karten gibt es so viele
-  wie Spieler (höchstens 6).
+- Die Spielerkarten werden aus `areas.js` nach `seat` platziert; Karten gibt
+  es so viele wie Spieler (Autodarts erlaubt höchstens 6).
 - Beispieldaten (`sample-state.js`): je Spielart ein Stand mit 6 Spielern,
   von dem die Vorschau die ersten n zeigt; Punktestände passend zur
   Spielart (X01: Rest, sonst Punkte), Checkout nur wo es ihn gibt.
@@ -337,7 +361,6 @@ Vorschau mit Spielern: [1] [2] [3] [4] [5] [6]
 
 - Unbekannte `variant`: allgemeine Darstellung nach dem X01-Teil, einmal je
   Wert im Log.
-- Mehr als 6 Spieler in den Daten: nur die ersten 6 werden gezeigt.
 - Kaputter Spielart-Eintrag: optionsweise aus dem Standard ergänzt;
   ganz unbrauchbar → Eintrag fällt weg (Spielart folgt dem Standard).
 - Alles andere wie bisher (kaputte Datei, `active.json`, ungültige id,
@@ -356,6 +379,9 @@ Vorschau mit Spielern: [1] [2] [3] [4] [5] [6]
 - **Übernahme v3 → v4:** gemeinsamer Teil, X01 angepasst, Bereiche aus
   Karte 1/2 mit `w = 49 · scale`, `h = 34 · scale`; mit 2 Spielern liefert
   `areas.js` genau die alte Lage und Größe.
+- **Feste Plätze:** gleiche Spieler in anderer Reihenfolge im selben Match
+  → gleiche `seat`; neues Match → neu geordnet; Spieler ohne `id`; neuer
+  Spieler im Match → nächster freier Platz.
 - **Bereiche (`areas.js`):** 1 bis 6 Spieler × drei Verteilungen; gleiche
   Größe in beiden Bereichen; Breite begrenzt; Mittigkeit.
 - **Profilspeicher:** anlegen (Scheibe aus aktivem Profil), Spielart ändern
