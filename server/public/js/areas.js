@@ -1,9 +1,12 @@
 /*
  * Spielerkarten in den beiden Bereichen anordnen. Reine Funktion ohne DOM.
  *
- * Alle Karten sind gleich gross: Die Groesse richtet sich nach dem volleren
- * Bereich und haengt nur von der Spielerzahl ab - waehrend eines Spiels
- * springt nichts. Die Breite eines Bereichs begrenzt die Groesse, damit eine
+ * Alle Karten eines Bereichs sind gleich gross. Die Groesse haengt an Breite
+ * und Hoehe des Bereichs und an der Kartenzahl des volleren Bereichs - also
+ * nur an der Spielerzahl, waehrend eines Spiels springt nichts. Gleich grosse
+ * Bereiche ergeben gleich grosse Karten; verschieden grosse Bereiche bleiben
+ * verschieden (z. B. ein schraeg stehender Beamer, oder alte Profile mit
+ * verschieden grossen Karten). Die Breite begrenzt die Groesse, damit eine
  * einzelne Karte nicht riesig wird.
  */
 
@@ -28,14 +31,17 @@ export function arrangeCards(seats, verteilung, areas) {
   const bySide = { links: [], rechts: [] };
   for (const seat of [...seats].sort((a, b) => a - b)) bySide[sideOf(seat, verteilung)].push(seat);
 
+  // Beide Seiten rechnen mit der Kartenzahl der volleren - so passt die
+  // Groesse zur Spielerzahl, nicht dazu, wer gerade auf welcher Seite steht.
   const n = Math.max(1, bySide.links.length, bySide.rechts.length);
-  const fit = (area) => Math.min(area.w / CARD_W, (area.h - GAP * (n - 1)) / (CARD_H * n));
-  const scale = Math.max(0.05, Math.min(...SIDES.filter((side) => visible[side]).map((side) => fit(areas[side]))));
+  const fit = (area) => Math.max(0.05, Math.min(area.w / CARD_W, (area.h - GAP * (n - 1)) / (CARD_H * n)));
+  const scales = { links: fit(areas.links), rechts: fit(areas.rechts) };
 
   const cards = [];
   for (const side of SIDES) {
     const area = areas[side];
     const list = bySide[side];
+    const scale = scales[side];
     const height = list.length * CARD_H * scale + Math.max(0, list.length - 1) * GAP;
     const top = (area.h - height) / 2;
     const left = side === "links" ? 0 : area.w - CARD_W * scale;
@@ -43,5 +49,5 @@ export function arrangeCards(seats, verteilung, areas) {
       cards.push({ seat, side, left, top: top + index * (CARD_H * scale + GAP), scale });
     });
   }
-  return { visible, scale, cards };
+  return { visible, scales, cards };
 }

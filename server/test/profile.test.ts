@@ -117,9 +117,26 @@ describe("sanitizeProfile", () => {
     const x01 = profile.spielarten["x01"]!;
     expect(x01.content["aufnahme"]).toEqual(v3.content.aufnahme);
     expect(x01.content["spieler"]).toMatchObject({ verteilung: "beide", flaeche: false, average: false });
-    expect(x01.content["spielinfo"]).toMatchObject({ on: false, spielart: true });
+    expect(x01.content["spielinfo"]).toMatchObject({ on: false, spielart: false });
     expect(x01.layout.blocks.aufnahme).toEqual({ x: 33, y: 4, scale: 0.9 });
     expect(x01.layout.blocks["bereich-links"]).toEqual({ x: 1.4, y: 32.7, w: CARD.w * 0.7, h: CARD.h * 0.7 });
+  });
+
+  test("Version 3 mit Spielinfo an bekommt keinen neuen Chip Spielart (Bild bleibt gleich)", () => {
+    const profile = sanitizeProfile({
+      version: 3,
+      name: "Standard",
+      content: { spielinfo: { on: true, punktzahl: true, legs: true, modus: true } },
+      layout: {},
+    });
+
+    expect(profile.spielarten["x01"]?.content["spielinfo"]).toEqual({
+      on: true,
+      spielart: false,
+      punktzahl: true,
+      legs: true,
+      modus: true,
+    });
   });
 
   test("ohne Version 3 oder 4: neues Profil, der Name bleibt", () => {

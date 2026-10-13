@@ -159,7 +159,7 @@ Linien, so lässt sie sich auf die echten Drähte legen.
   Pfeiltasten, +/− und Q/E (mit Umschalt grob).
 - Spielerbereiche links und rechts: ziehen, am Griff unten rechts oder mit
   Strg+Pfeil Breite und Höhe ändern. Die Karten ordnen sich darin selbst an
-  (Platz 1, 3, 5 links; 2, 4, 6 rechts; alle gleich groß), immer in der
+  (Platz 1, 3, 5 links; 2, 4, 6 rechts; je Bereich gleich groß), immer in der
   Reihenfolge, die Autodarts schickt. Mit den Spielerknöpfen 1–6 prüfen.
 - Spielinfo, Aufnahmeleiste: ziehen und an der Ecke skalieren.
 - „← Inhalte“ geht zurück, „Fertig“ oder Esc beendet.

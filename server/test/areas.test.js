@@ -28,7 +28,7 @@ describe("sideOf", () => {
 
 describe("arrangeCards", () => {
   test("Bereiche aus der Uebernahme ergeben die alten Karten (2 Spieler, Skalierung 1)", () => {
-    const { cards, scale } = arrangeCards(seats(2), "beide", AREAS);
+    const { cards, scales: { links: scale } } = arrangeCards(seats(2), "beide", AREAS);
     expect(scale).toBe(1);
     expect(cards).toEqual([
       { seat: 1, side: "links", left: 0, top: 0, scale: 1 },
@@ -47,10 +47,32 @@ describe("arrangeCards", () => {
     expect(cards[1].left).toBeCloseTo(0);
   });
 
-  test("1 bis 6 Spieler: alle Karten gleich gross, keine ragt aus ihrem Bereich", () => {
+  test("Uebernahme mit verschieden grossen Karten (Pi: links 1, rechts 0,76): jede Karte bleibt wie sie war", () => {
+    const pi = {
+      links: { x: 3.09, y: 32.46, w: CARD_W * 1, h: CARD_H * 1 },
+      rechts: { x: 66.06, y: 29.47, w: CARD_W * 0.76, h: CARD_H * 0.76 },
+    };
+    const { cards } = arrangeCards(seats(2), "beide", pi);
+    expect(cards[0].scale).toBeCloseTo(1);
+    expect(cards[0].top).toBeCloseTo(0);
+    expect(cards[1].scale).toBeCloseTo(0.76);
+    expect(cards[1].top).toBeCloseTo(0);
+    expect(cards[1].left).toBeCloseTo(0);
+  });
+
+  test("innerhalb eines Bereichs sind alle Karten gleich gross", () => {
+    const uneven = { links: TALL.links, rechts: { x: 70, y: 5, w: 30, h: 90 } };
+    const { cards } = arrangeCards(seats(5), "beide", uneven);
+    for (const side of ["links", "rechts"]) {
+      const scales = new Set(cards.filter((c) => c.side === side).map((c) => c.scale));
+      expect(scales.size, side).toBe(1);
+    }
+  });
+
+  test("1 bis 6 Spieler: gleiche Bereiche ergeben gleich grosse Karten, keine ragt heraus", () => {
     for (const verteilung of ["beide", "links", "rechts"]) {
       for (let n = 1; n <= 6; n++) {
-        const { cards, scale } = arrangeCards(seats(n), verteilung, TALL);
+        const { cards, scales: { links: scale } } = arrangeCards(seats(n), verteilung, TALL);
         expect(cards, `${verteilung} ${n}`).toHaveLength(n);
         for (const card of cards) {
           expect(card.scale).toBe(scale);
@@ -65,14 +87,14 @@ describe("arrangeCards", () => {
   });
 
   test("3 Spieler: Groesse nach dem volleren Bereich, auch rechts", () => {
-    const { cards, scale } = arrangeCards(seats(3), "beide", TALL);
+    const { cards, scales: { links: scale } } = arrangeCards(seats(3), "beide", TALL);
     const expected = Math.min(40 / CARD_W, (90 - GAP) / (CARD_H * 2));
     expect(scale).toBeCloseTo(expected);
     expect(cards.find((c) => c.seat === 2).scale).toBeCloseTo(expected);
   });
 
   test("senkrecht mittig, links buendig links, rechts buendig rechts", () => {
-    const { cards, scale } = arrangeCards(seats(2), "beide", TALL);
+    const { cards, scales: { links: scale } } = arrangeCards(seats(2), "beide", TALL);
     const height = CARD_H * scale;
     expect(cards[0].top).toBeCloseTo((90 - height) / 2);
     expect(cards[0].left).toBe(0);
@@ -80,13 +102,13 @@ describe("arrangeCards", () => {
   });
 
   test("Breite begrenzt: 1 Spieler wird nie breiter als der Bereich", () => {
-    const { scale } = arrangeCards(seats(1), "beide", TALL);
+    const { scales: { links: scale } } = arrangeCards(seats(1), "beide", TALL);
     expect(scale).toBeCloseTo(40 / CARD_W);
   });
 
   test("Verteilung links: rechter Bereich unsichtbar und zaehlt nicht fuer die Groesse", () => {
     const narrowRight = { links: TALL.links, rechts: { x: 70, y: 5, w: 5, h: 5 } };
-    const { visible, scale, cards } = arrangeCards(seats(2), "links", narrowRight);
+    const { visible, scales: { links: scale }, cards } = arrangeCards(seats(2), "links", narrowRight);
     expect(visible).toEqual({ links: true, rechts: false });
     expect(cards.every((c) => c.side === "links")).toBe(true);
     expect(scale).toBeCloseTo(Math.min(40 / CARD_W, (90 - GAP) / (CARD_H * 2)));

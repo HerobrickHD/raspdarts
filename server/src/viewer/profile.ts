@@ -102,7 +102,13 @@ function sanitizeV4(source: Record<string, unknown>): Profile {
 export function fromV3(source: Record<string, unknown>): Profile {
   const content = asRecord(source["content"]);
   const { board, layout } = splitLegacyLayout(source["layout"]);
-  const x01Content = { ...content, spieler: { ...asRecord(content["spieler"]), verteilung: "beide" } };
+  // Neue Optionen so, dass das Bild gleich bleibt: beide Seiten, kein Chip "Spielart".
+  const spielinfo = asRecord(content["spielinfo"]);
+  const x01Content = {
+    ...content,
+    spieler: { ...asRecord(content["spieler"]), verteilung: "beide" },
+    spielinfo: { ...spielinfo, spielart: spielinfo["spielart"] ?? false },
+  };
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
