@@ -30,6 +30,8 @@ export interface ChoiceOption {
   choices: { id: string; label: string }[];
   default: string;
   modes?: string[];
+  /** Nur sichtbar, wenn eine andere Option dieses Bausteins diesen Wert hat. */
+  showIf?: { option: string; value: string };
 }
 
 export type Option = ToggleOption | ChoiceOption;
@@ -180,11 +182,25 @@ export const CATALOG: Catalog = {
           label: "Darstellung",
           type: "choice",
           choices: [
+            { id: "kamera", label: "Kamera" },
             { id: "drawn", label: "Gezeichnet" },
             { id: "lines", label: "Linien" },
             { id: "light", label: "Nur Licht" },
           ],
           default: "light",
+        },
+        {
+          // Nummern wie bei Autodarts (ab 0); in der Leiste Kamera 1 bis 3.
+          id: "kamera",
+          label: "Kamera",
+          type: "choice",
+          choices: [
+            { id: "0", label: "Kamera 1" },
+            { id: "1", label: "Kamera 2" },
+            { id: "2", label: "Kamera 3" },
+          ],
+          default: "0",
+          showIf: { option: "darstellung", value: "kamera" },
         },
         toggle("zahlenring", "Zahlenring"),
         toggle("darts", "Darts einzeichnen"),

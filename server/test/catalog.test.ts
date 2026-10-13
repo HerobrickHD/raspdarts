@@ -44,7 +44,7 @@ describe("Vorgaben", () => {
   test("Vorgaben wie in der Spec", () => {
     const c = modeDefaults("x01");
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", zahlenring: true, darts: true, letzterDart: true });
+    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, darts: true, letzterDart: true });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
     expect(c["spieler"]).toEqual({
@@ -200,13 +200,30 @@ describe("Hintergrund aus aelteren Profilen", () => {
 });
 
 describe("Darstellung der Scheibe", () => {
-  test("Reihenfolge: Gezeichnet, Linien, Nur Licht", () => {
+  test("Reihenfolge: Kamera, Gezeichnet, Linien, Nur Licht", () => {
     const scheibe = CATALOG.parts.find((p) => p.id === "scheibe")!;
     const darstellung = scheibe.options.find((o) => o.id === "darstellung");
     expect(darstellung?.type === "choice" && darstellung.choices.map((c) => c.label)).toEqual([
+      "Kamera",
       "Gezeichnet",
       "Linien",
       "Nur Licht",
     ]);
+  });
+
+  test("Kamera-Wahl 1 bis 3 (Autodarts-Kameras 0 bis 2), nur sichtbar bei Darstellung Kamera", () => {
+    const scheibe = CATALOG.parts.find((p) => p.id === "scheibe")!;
+    const kamera = scheibe.options.find((o) => o.id === "kamera")!;
+    expect(kamera.type === "choice" && kamera.choices.map((c) => [c.id, c.label])).toEqual([
+      ["0", "Kamera 1"],
+      ["1", "Kamera 2"],
+      ["2", "Kamera 3"],
+    ]);
+    expect(kamera.default).toBe("0");
+    expect(kamera.showIf).toEqual({ option: "darstellung", value: "kamera" });
+    expect(sanitizeModeContent({ scheibe: { darstellung: "kamera", kamera: "2" } }, "x01")["scheibe"]).toMatchObject({
+      darstellung: "kamera",
+      kamera: "2",
+    });
   });
 });

@@ -69,7 +69,7 @@ describe("contentAttributes", () => {
 
   test("jede Option wirkt im Stylesheet (Darstellung der Scheibe setzt app.js)", () => {
     const css = readFileSync("public/style.css", "utf8");
-    const handledInCode = ["data-scheibe-darstellung"];
+    const handledInCode = ["data-scheibe-darstellung", "data-scheibe-kamera"];
     for (const name of Object.keys(contentAttributes(CATALOG, defaultContent(), "x01"))) {
       if (handledInCode.includes(name)) continue;
       expect(css, name).toContain(`[${name}=`);

@@ -119,7 +119,7 @@ describe("sanitizeProfile", () => {
     const x01 = profile.spielarten["x01"]!;
     expect(x01.layout.board).toEqual(v3.layout.board);
     expect(x01.content["hintergrund"]).toEqual({ on: true, darstellung: "autodarts", rahmen: false });
-    expect(x01.content["scheibe"]).toEqual(v3.content.scheibe);
+    expect(x01.content["scheibe"]).toEqual({ ...v3.content.scheibe, kamera: "0" });
     expect(x01.content["aufnahme"]).toEqual(v3.content.aufnahme);
     expect(x01.content["spieler"]).toMatchObject({ verteilung: "beide", flaeche: false, average: false });
     expect(x01.content["spielinfo"]).toMatchObject({ on: false, spielart: false });
