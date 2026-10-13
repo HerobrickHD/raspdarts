@@ -23,6 +23,13 @@ export function applyLayout(viewer, layout) {
     if (!block) continue;
     el.style.left = `${block.x}%`;
     el.style.top = `${block.y}%`;
-    el.style.transform = `scale(${block.scale})`;
+    if ("w" in block) {
+      // Spielerbereich: feste Groesse, die Karten skaliert areas.js
+      el.style.width = `${block.w}vh`;
+      el.style.height = `${block.h}vh`;
+      el.style.transform = "none";
+    } else {
+      el.style.transform = `scale(${block.scale})`;
+    }
   }
 }

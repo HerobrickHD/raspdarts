@@ -142,6 +142,16 @@ body {
 
 /* --- Spielerkarten -------------------------------------------------------- */
 
+/* Bereich: Groesse aus dem Layout (vh), die Karten liegen darin frei (areas.js). */
+.area-block {
+  transform: none;
+}
+
+.card-slot {
+  position: absolute;
+  transform-origin: top left;
+}
+
 .card {
   width: 49vh;
   height: 34vh;
@@ -361,7 +371,7 @@ body {
 .viewer[data-scheibe="off"] .board-block,
 .viewer[data-aufnahme="off"] [data-block="aufnahme"],
 .viewer[data-spielinfo="off"] [data-block="spielinfo"],
-.viewer[data-spieler="off"] .player-block {
+.viewer[data-spieler="off"] .area-block {
   display: none;
 }
 
