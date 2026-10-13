@@ -100,6 +100,9 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
 | GET | `/api/cams` | Board-ID, Anzahl Kameras, Zähler der Bildabrufe bei Autodarts |
 | GET | `/api/cams/:n` | Standbild von Kamera n (JPEG); höchstens 1 Abruf pro Sekunde und Kamera bei Autodarts, `409` wenn das Board nicht läuft |
+| GET | `/api/board-camera` | Kamera-Ansicht: je Kamera Version des letzten Bilds und Entzerrung |
+| GET | `/api/board-camera/:n` | letztes Bild der Kamera n für die Kamera-Ansicht (ohne Abruf bei Autodarts) |
+| POST | `/api/board-camera/refresh` | `{cams}` – frische Bilder holen (gebremst, im Standby nicht) |
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
 | GET | `/api/profiles` | `{active, profiles:[{id, name}]}` |
@@ -156,8 +159,10 @@ ist; der Beamer zeigt sie unverändert.
 **In der Leiste:** Profil wählen, anlegen, umbenennen oder löschen; Format.
 Darunter die **Spielart** wählen (Zusatz „angepasst“ oder „Standard“) und ihre
 Bausteine einstellen: Hintergrund (Schwarz oder Autodarts, dazu Rahmen – weiße
-Linie am Bildrand zum Ausrichten des Beamers), Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
-Darts, Leuchten), Aufnahme, Spielinfo, Spielerkarten (mit Verteilung und Teilen).
+Linie am Bildrand zum Ausrichten des Beamers), Scheibe (Kamera, Gezeichnet, Linien,
+Nur Licht; Zahlenring, Darts, Leuchten). **Kamera** zeigt das echte, entzerrte Bild
+einer Autodarts-Kamera (Wahl über drei Vorschaubilder); ein neues Bild kommt nach
+jedem Pfeil und wenn die Pfeile heraus sind, nie im Standby, Aufnahme, Spielinfo, Spielerkarten (mit Verteilung und Teilen).
 „Auf Standard zurücksetzen“ verwirft die Anpassung dieser Spielart samt Lage der
 Scheibe; „Von: … Übernehmen“ kopiert Inhalte und Layout einer anderen Spielart.
 Das **i** unten zeigt alle Tastenkürzel. Rückfragen erscheinen als Dialog über
