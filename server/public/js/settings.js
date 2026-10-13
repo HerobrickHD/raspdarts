@@ -1,9 +1,9 @@
 /*
- * Einstellungen in zwei Schritten: "inhalte" (Seitenleiste) und "layout"
- * (Ausrichten, editor.js). Haelt Schritt, Spielart und Spielerzahl der
- * Vorschau, spricht mit dem Pi und meldet alles als editing - dann zeigen alle
- * Geraete Beispieldaten der gewaehlten Spielart, auch wenn ein Spiel laeuft;
- * im Layout-Schritt die Scheibe als Linien. Nach "Fertig" wieder das Spiel.
+ * Einstellungen: Seitenleiste rechts, und die Buehne daneben ist direkt
+ * bearbeitbar (editor.js). Haelt Spielart und Spielerzahl der Vorschau,
+ * spricht mit dem Pi und meldet alles als editing - dann zeigen alle Geraete
+ * Beispieldaten der gewaehlten Spielart, auch wenn ein Spiel laeuft. Nach dem
+ * Schliessen wieder das Spiel.
  */
 import { api } from "./profile-api.js";
 import { withContent, withFormat } from "./resolve-profile.js";
@@ -89,7 +89,6 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
       sync.flush();
       api("POST", path(id, "/reset"), { spielart: mode }).catch(report);
     },
-    onNext: () => open("layout"),
     onClose: () => open(null),
   });
 
@@ -105,8 +104,6 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
     const resolved = getResolved();
     if (!catalog || !profile || !resolved) return;
     panel.render({ catalog, profile, profiles, mode: preview.spielart, players: preview.spieler, resolved });
-    const label = catalog.modes.find((m) => m.id === preview.spielart)?.label ?? preview.spielart;
-    editor.setPreview(`${label} · ${preview.spieler} Spieler`, preview.spieler);
   }
 
   function open(next) {
@@ -131,7 +128,7 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
     refresh();
     onChange();
     // Erst nach dem Zeichnen: der Editor waehlt einen sichtbaren Block aus.
-    editor.setActive(step === "layout");
+    editor.setActive(step !== null);
   }
 
   window.addEventListener("pointermove", () => {
@@ -152,7 +149,6 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
 
   return {
     editing,
-    setPlayers,
     open,
     refresh,
     setStatus: (text) => panel.setStatus(text),

@@ -1,13 +1,14 @@
 /*
- * Schritt "Layout": Scheibe und Bloecke verschieben, skalieren, drehen;
- * Spielerbereiche verschieben und in Breite/Hoehe aendern.
+ * Ausrichten auf der Buehne, solange die Einstellungen offen sind: Scheibe
+ * und Bloecke verschieben, skalieren, drehen; Spielerbereiche verschieben und
+ * in Breite/Hoehe aendern.
  *
  * Jede Aenderung gilt sofort im eigenen Bild und geht gedrosselt an den Pi
  * (profile-sync.js), der sie an alle Viewer weiterreicht - so folgt der Beamer
  * live, waehrend man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
  * Die Scheibe gilt fuer alle Spielarten, Bloecke und Spielerbereiche fuer die
  * angezeigte (editor-changes.js).
- * Knopf, Seitenleiste und Lebenszeichen gehoeren zu settings.js.
+ * Knopf, Seitenleiste, Esc und Lebenszeichen gehoeren zu settings.js.
  */
 import { layoutChange } from "./editor-changes.js";
 import { snapRotation } from "./rotation.js";
@@ -59,6 +60,14 @@ function drag(layout, id, handle, start, move, anchor, stage) {
   } else if (handle === "resize") {
     block.scale = clamp(from.scale * ratio, 0.2, 4);
   }
+}
+
+/**
+ * Gehoert ein Tastendruck dem Editor? Nicht, wenn man gerade in der Leiste
+ * tippt oder auswaehlt - sonst schoebe ein Pfeil in einer Auswahl die Scheibe.
+ */
+export function isStageKey(event) {
+  return !event.target?.closest?.("#settings, input, select, textarea");
 }
 
 /** Feinschritte per Tastatur; null, wenn die Taste nichts bedeutet. */
@@ -134,13 +143,7 @@ export function createEditor({
   getLayout,
   getEditing,
   applyLocalProfile,
-  onBack,
-  onDone,
-  onPlayers,
 }) {
-  const toolbar = viewer.querySelector("#edit-toolbar");
-  const status = viewer.querySelector("#edit-status");
-  const preview = viewer.querySelector("#edit-preview");
   let editing = false;
   let selected = "scheibe";
 
@@ -179,22 +182,6 @@ export function createEditor({
     if (editing) selectVisible();
   }
 
-  /** Zeigt "X01 · 4 Spieler" und markiert die gewaehlte Spielerzahl. */
-  function setPreview(text, players) {
-    preview.textContent = text;
-    for (const button of toolbar.querySelectorAll("[data-players]")) {
-      button.setAttribute("aria-pressed", String(Number(button.dataset.players) === players));
-    }
-  }
-
-  toolbar.addEventListener("click", (event) => {
-    const players = event.target.closest("[data-players]")?.dataset.players;
-    if (players) onPlayers(Number(players));
-    const action = event.target.closest("[data-action]")?.dataset.action;
-    if (action === "back") onBack();
-    if (action === "done") onDone();
-  });
-
   viewer.addEventListener("pointerdown", (event) => {
     if (!editing || event.button !== 0) return;
     const block = event.target.closest(".block[data-block]");
@@ -202,6 +189,9 @@ export function createEditor({
     const startLayout = getLayout();
     if (!startLayout) return;
     event.preventDefault();
+    // preventDefault laesst den Fokus in der Leiste - dann gingen die Pfeile
+    // weiter an eine Auswahl dort statt an die Buehne.
+    if (document.activeElement?.closest?.("#settings")) document.activeElement.blur();
     const id = block.dataset.block;
     select(id);
 
@@ -244,11 +234,7 @@ export function createEditor({
   );
 
   window.addEventListener("keydown", (event) => {
-    if (!editing) return;
-    if (event.key === "Escape") {
-      onDone();
-      return;
-    }
+    if (!editing || !isStageKey(event)) return;
     const action = keyAction(event, selected);
     if (!action) return;
     event.preventDefault();
@@ -257,10 +243,6 @@ export function createEditor({
 
   return {
     setActive,
-    setPreview,
     isEditing: () => editing,
-    setStatus: (text) => {
-      status.textContent = text;
-    },
   };
 }

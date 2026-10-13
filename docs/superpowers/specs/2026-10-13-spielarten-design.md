@@ -319,6 +319,26 @@ Größen nur an der Höhe.
 - Tests: Prüfung/Übernahme/Anlegen/PUT des Formats; kein `vh` außer der
   Bühnengröße (`100vh`/`100vw`).
 
+## Ein Schritt statt zwei (Nachtrag 13.10.)
+
+Arnold: Die Leiste zeigt schon die Ansicht – ein eigener Layout-Schritt ist
+überflüssig. Deshalb:
+
+- Solange die Leiste offen ist, ist die Bühne daneben direkt bearbeitbar
+  (anklicken, ziehen, Größe, drehen, Tastatur wie bisher). Die Umrandungen
+  zeigt nur das Gerät mit offener Leiste.
+- „Weiter: Layout“ und die Werkzeugleiste entfallen; Spielerzahl über
+  „Vorschau“ in der Leiste, Bedienhinweise klein unten in der Leiste.
+- Keine Linien-Ansicht mehr beim Einstellen: Die Scheibe zeigt immer ihre
+  Darstellung; zum Ausrichten stellt man „Linien“ unter „Gemeinsam“ ein.
+- Tasten aus der Leiste (Eingabefelder, Auswahlen) bewegen nichts auf der
+  Bühne; ein Klick auf die Bühne nimmt der Leiste den Fokus.
+- Der Viewer schickt `editing.schritt` nur noch als `"inhalte"`; der Pi
+  kennt `"layout"` weiter (unschädlich).
+
+Die folgenden Abschnitte „Schritt Layout“ und die Werkzeugleiste sind damit
+überholt.
+
 ## Bedienung
 
 ### Schritt „Inhalte“

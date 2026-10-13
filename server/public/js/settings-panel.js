@@ -98,7 +98,12 @@ export function createPanel(root, handlers) {
     ]),
     modeList,
     status,
-    button("Weiter: Layout →", () => handlers.onNext(), { className: "settings-next" }),
+    node("p", {
+      className: "settings-hint",
+      textContent:
+        "Auf der Bühne: anklicken und ziehen = verschieben · Ecke = Größe · Kreis = Scheibe drehen (rastet bei 0°/90° ein, Alt: frei) · " +
+        "Mausrad = Scheibengröße · Pfeile, +/−, Q/E = fein (Umschalt: grob) · Strg+Pfeil = Bereich größer/kleiner · Esc = schließen",
+    }),
   );
 
   function buildOption(part, option) {

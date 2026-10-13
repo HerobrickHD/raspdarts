@@ -147,21 +147,22 @@ startet ein Spiel, zeigt der Viewer den Teil dieser Spielart.
 (Ganzes Fenster, 16:9, 16:10, 4:3). Bei einem festen Format zeichnet der Viewer
 eine Bühne genau dieser Form (Rest schwarz) – das Layout sieht dann auf jedem
 Monitor gleich aus. Bestehende Profile stehen auf „Ganzes Fenster“ (wie bisher);
-nach einem Wechsel einmal nachjustieren. Solange auf einem Gerät die Leiste oder
-die Werkzeugleiste offen ist, rückt dort die Bühne daneben (kleiner, unverzerrt),
-damit nichts verdeckt ist; der Beamer zeigt sie unverändert.
+nach einem Wechsel einmal nachjustieren. Solange auf einem Gerät die Leiste offen
+ist, rückt dort die Bühne daneben (kleiner, unverzerrt), damit nichts verdeckt
+ist; der Beamer zeigt sie unverändert.
 
-**Schritt 1 – Inhalte:** Profil wählen, anlegen, umbenennen oder löschen. Unter
+**In der Leiste:** Profil wählen, anlegen, umbenennen oder löschen. Unter
 „Gemeinsam“ Hintergrund und Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
 Darts, Leuchten). Darunter die **Spielart** wählen (Zusatz „angepasst“ oder
 „Standard“) und ihre Bausteine ein- und ausschalten: Spielerkarten (mit
 Verteilung und Teilen), Aufnahme, Spielinfo. „Auf Standard zurücksetzen“ verwirft
 die Anpassung dieser Spielart. Solange die Einstellungen offen
 sind, zeigen alle Geräte Beispieldaten (Spieler 1 … 6, Anzahl über „Vorschau“) –
-auch wenn gerade ein Spiel läuft. Nach „Fertig“ kommt wieder das echte Spiel.
+auch wenn gerade ein Spiel läuft. Nach dem Schließen kommt wieder das echte Spiel.
 
-**Schritt 2 – Layout** („Weiter: Layout“): Alle Geräte zeigen die Scheibe als
-Linien, so lässt sie sich auf die echten Drähte legen.
+**Auf der Bühne** (gleichzeitig, solange die Leiste offen ist): Bausteine
+anklicken und direkt ausrichten. Zum Ausrichten auf die echten Drähte unter
+„Gemeinsam“ die Darstellung der Scheibe auf „Linien“ stellen und danach zurück.
 
 - Scheibe (gilt für alle Spielarten): ziehen = verschieben, Ecke oder Mausrad =
   Größe, Kreis = drehen (rastet bei 0°, 90°, 180° ein; mit Alt frei); fein mit
@@ -171,7 +172,8 @@ Linien, so lässt sie sich auf die echten Drähte legen.
   (Platz 1, 3, 5 links; 2, 4, 6 rechts; je Bereich gleich groß), immer in der
   Reihenfolge, die Autodarts schickt. Mit den Spielerknöpfen 1–6 prüfen.
 - Spielinfo, Aufnahmeleiste: ziehen und an der Ecke skalieren.
-- „← Inhalte“ geht zurück, „Fertig“ oder Esc beendet.
+- Esc oder × schließt (ein offenes Formular in der Leiste zuerst). Tasten
+  wirken auf der Bühne erst, wenn man dort etwas angeklickt hat.
 
 Gespeichert wird automatisch unter `server/data/profiles/<id>.json`, das aktive
 Profil in `active.json`. Positionen sind Prozentwerte, Größen hängen an der

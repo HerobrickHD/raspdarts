@@ -29,7 +29,6 @@ const areaEls = {
 
 const stageEl = document.getElementById("stage");
 const panelEl = viewer.querySelector("#settings");
-const toolbarEl = viewer.querySelector("#edit-toolbar");
 
 const board = createBoard(boardSvg);
 
@@ -40,10 +39,7 @@ let lastMode = FALLBACK_MODE;
 const view = { catalog: null, profile: null, profiles: [], remoteEditing: null };
 
 const sync = createSync({
-  onStatus: (text) => {
-    editor.setStatus(text);
-    settings.setStatus(text);
-  },
+  onStatus: (text) => settings.setStatus(text),
 });
 
 /* Eigene Leiste oder die eines anderen Geraets: { schritt, spielart, spieler } oder null. */
@@ -84,9 +80,6 @@ const editor = createEditor({
   getLayout: () => resolved()?.layout ?? null,
   getEditing: () => settings.editing(),
   applyLocalProfile,
-  onBack: () => settings.open("inhalte"),
-  onDone: () => settings.open(null),
-  onPlayers: (count) => settings.setPlayers(count),
 });
 
 const settings = createSettings({
@@ -102,16 +95,14 @@ const settings = createSettings({
 
 /**
  * Lage der Buehne: Format des Profils, und auf diesem Geraet Platz fuer die
- * offene Seitenleiste bzw. Werkzeugleiste - so verdecken sie nichts. Andere
- * Geraete zeigen die Buehne unveraendert.
+ * offene Seitenleiste - so verdeckt sie nichts. Andere Geraete zeigen die
+ * Buehne unveraendert.
  */
 function placeStage() {
-  const step = settings.editing()?.schritt;
   const panel = panelEl.getBoundingClientRect();
-  const toolbar = toolbarEl.getBoundingClientRect();
   const reserve = {
-    right: step === "inhalte" && panel.width > 0 ? window.innerWidth - panel.left : 0,
-    bottom: step === "layout" && toolbar.height > 0 ? window.innerHeight - toolbar.top + 8 : 0,
+    right: settings.editing() && panel.width > 0 ? window.innerWidth - panel.left : 0,
+    bottom: 0,
   };
   const format = view.profile?.gemeinsam.format ?? "fenster";
   const { left, top, width, height } = fitStage({ width: window.innerWidth, height: window.innerHeight }, format, reserve);
@@ -121,18 +112,16 @@ function placeStage() {
 function render() {
   placeStage();
   const shown = shownState();
-  const edit = editing();
   const mode = shownMode();
   const current = resolved();
   viewer.dataset.phase = shown.phase;
   viewer.dataset.spielart = mode ?? "unbekannt";
-  viewer.classList.toggle("is-layout", edit?.schritt === "layout");
   if (current) {
     applyContent(viewer, view.catalog, current.content, mode);
     applyLayout(viewer, current.layout);
   }
   messageEl.textContent = shown.phase === "idle" ? "Warte auf ein Spiel" : "";
-  boardSvg.dataset.mode = edit?.schritt === "layout" ? "lines" : (current?.content.scheibe?.darstellung ?? "light");
+  boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
   board.render(shown);
   if (shown.phase === "playing" && current) {
     renderHead(headEl, shown.match, modeLabel(mode));
@@ -189,11 +178,10 @@ function connect() {
   });
 }
 
-/* Fenstergroesse, und Leiste/Werkzeugleiste gehen auf und zu (auch erst nach dem Zeichnen). */
+/* Fenstergroesse, und die Leiste geht auf und zu (auch erst nach dem Zeichnen). */
 window.addEventListener("resize", placeStage);
 const resizeWatch = new ResizeObserver(() => placeStage());
 resizeWatch.observe(panelEl);
-resizeWatch.observe(toolbarEl);
 
 render();
 connect();

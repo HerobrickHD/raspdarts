@@ -398,7 +398,7 @@ body {
 }
 
 /* Beim Ausrichten bleiben die Zahlen als Hilfe stehen. */
-.viewer[data-scheibe-zahlenring="off"]:not(.is-layout) .board-numbers {
+.viewer[data-scheibe-zahlenring="off"] .board-numbers {
   display: none;
 }
 
@@ -509,67 +509,6 @@ body {
 .viewer.is-settings .settings-toggle {
   border-color: var(--edit);
   color: var(--edit);
-}
-
-.edit-toolbar {
-  position: fixed;
-  left: 50%;
-  bottom: 2cqh;
-  transform: translateX(-50%);
-  z-index: 10;
-  display: none;
-  gap: 1cqh;
-  align-items: center;
-  background: #111;
-  border: 0.15cqh solid var(--edit);
-  border-radius: 0.8cqh;
-  padding: 0.8cqh 1.2cqh;
-  font-size: 1.6cqh;
-  color: #bbb;
-}
-
-.viewer.is-editing .edit-toolbar {
-  display: flex;
-}
-
-.edit-toolbar button {
-  background: #222;
-  color: #ddd;
-  border: 0.15cqh solid #444;
-  border-radius: 0.6cqh;
-  padding: 0.5cqh 1.2cqh;
-  font: 600 1.6cqh "Manrope", sans-serif;
-  cursor: pointer;
-}
-
-.edit-preview {
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-}
-
-.edit-players {
-  display: flex;
-  gap: 0.4cqh;
-}
-
-.edit-toolbar .edit-players button[aria-pressed="true"] {
-  background: var(--edit);
-  color: #000;
-}
-
-.edit-toolbar .edit-players button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.edit-status {
-  color: var(--red);
-  font-weight: 700;
-}
-
-.edit-status:empty {
-  display: none;
 }
 
 .viewer.is-editing .block {
@@ -804,11 +743,11 @@ fieldset.part-option legend {
   display: none;
 }
 
-.settings .settings-next {
+.settings-hint {
   margin-top: auto;
-  background: var(--edit);
-  border-color: var(--edit);
-  color: #000;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .settings-players {
