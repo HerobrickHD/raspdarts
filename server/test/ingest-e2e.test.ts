@@ -111,13 +111,13 @@ describe("/ws", () => {
       method: "POST",
       url: "/api/profiles",
       headers: { "x-raspdarts": "1" },
-      payload: { name: "TV", template: "fernseher" },
+      payload: { name: "TV" },
     });
 
     for (const viewer of [a, b]) {
       await vi.waitFor(() =>
         expect(profileMessages(viewer.messages).at(-1)).toMatchObject({
-          profile: { id: "tv", content: { hintergrund: { on: true } } },
+          profile: { id: "tv", version: 4, spielarten: {} },
           profiles: [{ id: "standard" }, { id: "tv" }],
         }),
       );

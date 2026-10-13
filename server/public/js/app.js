@@ -2,15 +2,18 @@
  * Viewer: verbindet sich mit dem Pi und zeichnet, was er schickt.
  *
  * Spielregeln kennt der Viewer nicht - Rest, Bust, Checkout und Sieger kommen
- * fertig vom Pi. Was angezeigt wird und wo, steht im aktiven Profil.
+ * fertig vom Pi. Was angezeigt wird und wo, steht im aktiven Profil: ein
+ * gemeinsamer Teil und je Spielart Inhalte und Layout (resolve-profile.js).
  */
+import { arrangeCards } from "./areas.js";
 import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
 import { createBoard } from "./board.js";
 import { applyContent } from "./content-view.js";
 import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
 import { createSync } from "./profile-sync.js";
-import { SAMPLE_STATE } from "./sample-state.js";
+import { FALLBACK_MODE, resolveProfile } from "./resolve-profile.js";
+import { sampleState } from "./sample-state.js";
 import { createSettings } from "./settings.js";
 
 const viewer = document.getElementById("viewer");
@@ -18,11 +21,16 @@ const boardSvg = document.getElementById("board-svg");
 const messageEl = document.getElementById("message");
 const headEl = viewer.querySelector('[data-block="spielinfo"] .head');
 const turnEl = viewer.querySelector('[data-block="aufnahme"] .turn');
-const playerSlots = [1, 2, 3, 4, 5, 6].map((n) => viewer.querySelector(`[data-block="spieler-${n}"]`));
+const areaEls = {
+  links: viewer.querySelector('[data-block="bereich-links"]'),
+  rechts: viewer.querySelector('[data-block="bereich-rechts"]'),
+};
 
 const board = createBoard(boardSvg);
 
 let state = { phase: "idle" };
+/* Spielart des letzten Spiels - bleibt nach dem Spiel stehen; vor dem ersten X01. */
+let lastMode = FALLBACK_MODE;
 /* Vom Pi: Katalog, aktives Profil, Profilliste und wer gerade einstellt. */
 const view = { catalog: null, profile: null, profiles: [], remoteEditing: null };
 
@@ -33,18 +41,53 @@ const sync = createSync({
   },
 });
 
+/* Eigene Leiste oder die eines anderen Geraets: { schritt, spielart, spieler } oder null. */
+const editing = () => settings.editing() ?? view.remoteEditing;
+
+/**
+ * Die Spielart, nach der gezeichnet wird: beim Einstellen die aus der Leiste,
+ * sonst die des Spiels (null = unbekannt), nach dem Spiel die letzte.
+ */
+function shownMode() {
+  const edit = editing();
+  if (edit) return edit.spielart;
+  if (state.phase === "playing") return state.mode;
+  return lastMode;
+}
+
+/* Beim Einstellen ohne Spiel - oder fuer eine andere Spielart als die laufende -
+   gaebe es sonst nichts Passendes zu sehen. */
+function shownState() {
+  const edit = editing();
+  const showsGame = state.phase === "playing" && (state.mode ?? FALLBACK_MODE) === edit?.spielart;
+  return edit && !showsGame ? sampleState(edit.spielart, edit.spieler) : state;
+}
+
+const resolved = () =>
+  view.catalog && view.profile ? resolveProfile(view.profile, view.catalog, shownMode()) : null;
+
+const modeLabel = (mode) =>
+  view.catalog?.modes.find((m) => m.id === mode)?.label ?? (state.phase === "playing" ? state.variant : "");
+
+/* Lokale Aenderung sofort ins eigene Bild; an den Pi geht sie ueber sync. */
+function applyLocalProfile(profile) {
+  view.profile = profile;
+  settings.refresh();
+  render();
+}
+
 const editor = createEditor({
   viewer,
   sync,
-  getProfileId: () => view.profile?.id,
-  getLayout: () => view.profile?.layout ?? null,
-  applyLocal: (layout) => {
-    view.profile = { ...view.profile, layout };
-    applyLayout(viewer, layout);
-    render();
-  },
+  getProfile: () => view.profile,
+  getCatalog: () => view.catalog,
+  getMode: () => shownMode() ?? FALLBACK_MODE,
+  getLayout: () => resolved()?.layout ?? null,
+  getEditing: () => settings.editing(),
+  applyLocalProfile,
   onBack: () => settings.open("inhalte"),
   onDone: () => settings.open(null),
+  onPlayers: (count) => settings.setPlayers(count),
 });
 
 const settings = createSettings({
@@ -52,57 +95,49 @@ const settings = createSettings({
   editor,
   sync,
   getView: () => view,
-  applyLocalContent: (content) => {
-    view.profile = { ...view.profile, content };
-    render();
-  },
+  getGameMode: () => (state.phase === "playing" ? (state.mode ?? FALLBACK_MODE) : null),
+  getResolved: resolved,
+  applyLocalProfile,
   onChange: () => render(),
 });
 
-/* null, "inhalte" oder "layout" - auf diesem Geraet oder einem anderen. */
-const editStep = () => settings.step() ?? view.remoteEditing;
-
-/* Beim Einstellen ohne laufendes Spiel gaebe es sonst nichts zu sehen. */
-function shownState() {
-  return editStep() && state.phase !== "playing" ? SAMPLE_STATE : state;
-}
-
 function render() {
   const shown = shownState();
-  const step = editStep();
+  const edit = editing();
+  const mode = shownMode();
+  const current = resolved();
   viewer.dataset.phase = shown.phase;
-  viewer.classList.toggle("is-layout", step === "layout");
-  if (view.catalog && view.profile) applyContent(viewer, view.catalog, view.profile.content);
-  messageEl.textContent =
-    shown.phase === "idle"
-      ? "Warte auf ein Spiel"
-      : shown.phase === "unsupported"
-        ? `${shown.variant} wird noch nicht unterstützt`
-        : "";
-  boardSvg.dataset.mode = step === "layout" ? "lines" : (view.profile?.content.scheibe?.darstellung ?? "light");
+  viewer.dataset.spielart = mode ?? "unbekannt";
+  viewer.classList.toggle("is-layout", edit?.schritt === "layout");
+  if (current) {
+    applyContent(viewer, view.catalog, current.content, mode);
+    applyLayout(viewer, current.layout);
+  }
+  messageEl.textContent = shown.phase === "idle" ? "Warte auf ein Spiel" : "";
+  boardSvg.dataset.mode = edit?.schritt === "layout" ? "lines" : (current?.content.scheibe?.darstellung ?? "light");
   board.render(shown);
-  if (shown.phase === "playing") {
-    renderHead(headEl, shown.match);
+  if (shown.phase === "playing" && current) {
+    renderHead(headEl, shown.match, modeLabel(mode));
     renderTurn(turnEl, shown.turn);
-    renderPlayers(playerSlots, shown.players);
+    const verteilung = current.content.spieler?.verteilung ?? "beide";
+    const areas = { links: current.layout.blocks["bereich-links"], rechts: current.layout.blocks["bereich-rechts"] };
+    renderPlayers(areaEls, shown.players, arrangeCards(shown.players.map((p) => p.seat), verteilung, areas));
   }
 }
 
 function onMessage(message) {
-  if (message.type === "state") state = message.state;
+  if (message.type === "state") {
+    state = message.state;
+    if (state.phase === "playing") lastMode = state.mode ?? FALLBACK_MODE;
+  }
   if (message.type === "catalog") view.catalog = message.catalog;
   if (message.type === "profile") {
-    // Solange eigene Aenderungen unterwegs sind, ist das Echo des Pi veraltet;
-    // beim Ausrichten gilt ohnehin das eigene Layout.
+    // Solange eigene Aenderungen unterwegs sind, ist das Echo des Pi veraltet -
+    // es wuerde neuere Klicks im eigenen Bild zuruecksetzen. Der Name gilt trotzdem.
     const same = message.profile.id === view.profile?.id;
-    const keepContent = same && sync.isBusy();
-    const keepLayout = same && (sync.isBusy() || editor.isEditing());
-    const layout = keepLayout ? view.profile.layout : message.profile.layout;
-    const content = keepContent ? view.profile.content : message.profile.content;
-    view.profile = { ...message.profile, layout, content };
+    view.profile = same && sync.isBusy() ? { ...view.profile, name: message.profile.name } : message.profile;
     view.profiles = message.profiles;
     view.remoteEditing = message.editing;
-    applyLayout(viewer, layout);
   }
   settings.refresh();
   render();

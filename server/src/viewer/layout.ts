@@ -3,21 +3,13 @@
  * gross er ist. Was angezeigt wird (und wie die Scheibe aussieht), steht in den
  * Inhalten des Profils (catalog.ts), nicht hier.
  *
+ * Die Lage der Scheibe gilt fuer alle Spielarten, Bloecke und Spielerbereiche
+ * je Spielart.
+ *
  * Positionen sind Prozentwerte der Bildflaeche, Groessen haengen an der
  * Bildhoehe - keine Pixel. Ein eingerichtetes Layout passt dadurch auch nach
  * einem Aufloesungswechsel des Beamers noch.
  */
-
-export const PLAYER_BLOCKS = [
-  "spieler-1",
-  "spieler-2",
-  "spieler-3",
-  "spieler-4",
-  "spieler-5",
-  "spieler-6",
-] as const;
-export const BLOCK_IDS = ["spielinfo", "aufnahme", ...PLAYER_BLOCKS] as const;
-export type BlockId = (typeof BLOCK_IDS)[number];
 
 export interface BlockLayout {
   /** Linke obere Ecke, Prozent der Breite. */
@@ -39,22 +31,36 @@ export interface BoardLayout {
   rotation: number;
 }
 
-export interface DisplayLayout {
-  board: BoardLayout;
-  blocks: Record<BlockId, BlockLayout>;
+/** Ein Spielerbereich: Position in Prozent, Groesse in vh (wie alle Groessen im Viewer). */
+export interface Area {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
-export const DEFAULT_LAYOUT: DisplayLayout = {
-  board: { cx: 50, cy: 51, diameter: 50, rotation: 0 },
+export interface ModeBlocks {
+  spielinfo: BlockLayout;
+  aufnahme: BlockLayout;
+  "bereich-links": Area;
+  "bereich-rechts": Area;
+}
+
+export interface ModeLayout {
+  blocks: ModeBlocks;
+}
+
+/** Grundgroesse einer Spielerkarte in vh (style.css: .card). */
+export const CARD = { w: 49, h: 34 } as const;
+
+export const DEFAULT_BOARD: BoardLayout = { cx: 50, cy: 51, diameter: 50, rotation: 0 };
+
+export const DEFAULT_MODE_LAYOUT: ModeLayout = {
   blocks: {
     spielinfo: { x: 2, y: 3, scale: 1 },
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
-    "spieler-1": { x: 1.4, y: 32.7, scale: 1 },
-    "spieler-2": { x: 71, y: 32.7, scale: 1 },
-    "spieler-3": { x: 1.4, y: 68, scale: 0.45 },
-    "spieler-4": { x: 85.5, y: 68, scale: 0.45 },
-    "spieler-5": { x: 1.4, y: 84, scale: 0.45 },
-    "spieler-6": { x: 85.5, y: 84, scale: 0.45 },
+    "bereich-links": { x: 1.4, y: 32.7, w: CARD.w, h: CARD.h },
+    "bereich-rechts": { x: 71, y: 32.7, w: CARD.w, h: CARD.h },
   },
 };
 
@@ -63,6 +69,8 @@ const LIMITS = {
   scale: [0.2, 4],
   diameter: [5, 400],
   rotation: [-180, 180],
+  w: [5, 300],
+  h: [5, 100],
 } as const;
 
 const clamp = (value: number, [min, max]: readonly [number, number]): number =>
@@ -89,29 +97,76 @@ function sanitizeBlock(stored: unknown, fallback: BlockLayout): BlockLayout {
 }
 
 /**
- * Macht aus beliebigem gespeichertem Inhalt ein brauchbares Layout.
- *
- * Der Inhalt kommt aus dem Browser und aus einer von Hand editierbaren Datei -
- * deshalb wird nichts geglaubt. Jeder Wert wird einzeln geprueft; eine kaputte
- * Datei darf den Viewer nie unbedienbar machen.
+ * Lage der Scheibe. Der Inhalt kommt aus dem Browser und aus einer von Hand
+ * editierbaren Datei - deshalb wird nichts geglaubt: jeder Wert einzeln
+ * begrenzt, Unbrauchbares aus fallback.
  */
-export function sanitizeLayout(stored: unknown): DisplayLayout {
-  const fresh = structuredClone(DEFAULT_LAYOUT);
-  const source = asRecord(stored);
-  const board = asRecord(source["board"]);
-  const blocks = asRecord(source["blocks"]);
-
-  const defaults = DEFAULT_LAYOUT.board;
-  fresh.board = {
-    cx: boardValue(board["cx"], defaults.cx, LIMITS.position),
-    cy: boardValue(board["cy"], defaults.cy, LIMITS.position),
-    diameter: boardValue(board["diameter"], defaults.diameter, LIMITS.diameter),
-    rotation: boardValue(board["rotation"], defaults.rotation, LIMITS.rotation),
+export function sanitizeBoard(stored: unknown, fallback: BoardLayout = DEFAULT_BOARD): BoardLayout {
+  const board = asRecord(stored);
+  return {
+    cx: boardValue(board["cx"], fallback.cx, LIMITS.position),
+    cy: boardValue(board["cy"], fallback.cy, LIMITS.position),
+    diameter: boardValue(board["diameter"], fallback.diameter, LIMITS.diameter),
+    rotation: boardValue(board["rotation"], fallback.rotation, LIMITS.rotation),
   };
-  for (const id of BLOCK_IDS) {
-    fresh.blocks[id] = sanitizeBlock(blocks[id], DEFAULT_LAYOUT.blocks[id]);
-  }
-  return fresh;
+}
+
+function sanitizeArea(stored: unknown, fallback: Area): Area {
+  const { x, y, w, h } = asRecord(stored);
+  if (!isNumber(x) || !isNumber(y) || !isNumber(w) || !isNumber(h)) return { ...fallback };
+  return {
+    x: clamp(x, LIMITS.position),
+    y: clamp(y, LIMITS.position),
+    w: clamp(w, LIMITS.w),
+    h: clamp(h, LIMITS.h),
+  };
+}
+
+/**
+ * Bloecke und Bereiche einer Spielart; jeder Wert einzeln geprueft,
+ * Unbrauchbares aus fallback. Eine kaputte Datei darf den Viewer nie
+ * unbedienbar machen.
+ */
+export function sanitizeModeLayout(stored: unknown, fallback: ModeLayout = DEFAULT_MODE_LAYOUT): ModeLayout {
+  const blocks = asRecord(asRecord(stored)["blocks"]);
+  return {
+    blocks: {
+      spielinfo: sanitizeBlock(blocks["spielinfo"], fallback.blocks.spielinfo),
+      aufnahme: sanitizeBlock(blocks["aufnahme"], fallback.blocks.aufnahme),
+      "bereich-links": sanitizeArea(blocks["bereich-links"], fallback.blocks["bereich-links"]),
+      "bereich-rechts": sanitizeArea(blocks["bereich-rechts"], fallback.blocks["bereich-rechts"]),
+    },
+  };
+}
+
+/** Eine alte Karte (Position + Skalierung) als Bereich, in den sie genau passt. */
+function cardToArea(stored: unknown, fallback: Area): Area {
+  const { x, y, scale } = asRecord(stored);
+  if (!isNumber(x) || !isNumber(y) || !isNumber(scale)) return { ...fallback };
+  const block = sanitizeBlock(stored, { x: 0, y: 0, scale: 1 });
+  return sanitizeArea({ x: block.x, y: block.y, w: CARD.w * block.scale, h: CARD.h * block.scale }, fallback);
+}
+
+/**
+ * Layout aus Profil-Version 3 (bis Oktober 2026): Scheibe, Spielinfo,
+ * Aufnahme und sechs feste Kartenplaetze. Karte 1 und 2 werden die Bereiche,
+ * in die sie mit 2 Spielern genau passen - das Bild bleibt gleich.
+ */
+export function splitLegacyLayout(stored: unknown): { board: BoardLayout; layout: ModeLayout } {
+  const source = asRecord(stored);
+  const blocks = asRecord(source["blocks"]);
+  const defaults = DEFAULT_MODE_LAYOUT.blocks;
+  return {
+    board: sanitizeBoard(source["board"]),
+    layout: sanitizeModeLayout({
+      blocks: {
+        spielinfo: blocks["spielinfo"],
+        aufnahme: blocks["aufnahme"],
+        "bereich-links": cardToArea(blocks["spieler-1"], defaults["bereich-links"]),
+        "bereich-rechts": cardToArea(blocks["spieler-2"], defaults["bereich-rechts"]),
+      },
+    }),
+  };
 }
 
 /** Darstellung der Scheibe in den alten Layout-Dateien. */
@@ -124,13 +179,13 @@ export type LegacyBoardMode = "light" | "drawn";
  */
 export function fromLegacyLayout(
   stored: unknown,
-): { layout: DisplayLayout; boardMode: LegacyBoardMode } | null {
+): { board: BoardLayout; layout: ModeLayout; boardMode: LegacyBoardMode } | null {
   const source = asRecord(stored);
   if (source["version"] !== 2) return null;
   const blocks = { ...asRecord(source["blocks"]) };
   if (!("spielinfo" in blocks) && "kopf" in blocks) blocks["spielinfo"] = blocks["kopf"];
   return {
-    layout: sanitizeLayout({ board: source["board"], blocks }),
+    ...splitLegacyLayout({ board: source["board"], blocks }),
     boardMode: source["boardMode"] === "drawn" ? "drawn" : "light",
   };
 }

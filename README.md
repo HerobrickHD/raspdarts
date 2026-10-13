@@ -94,7 +94,7 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/` | Viewer (zeigt das aktive Profil) |
-| WS | `/ws` | Viewer: `{type:"catalog", catalog}`, `{type:"state", state}`, `{type:"profile", profile, profiles, editing}` |
+| WS | `/ws` | Viewer: `{type:"catalog", catalog}` (Bausteine, Spielarten, Standards), `{type:"state", state}` (mit `mode`), `{type:"profile", profile, profiles, editing}` |
 | WS | `/ingest` | Spieldaten von der Extension |
 | POST | `/api/ingest/reset` | Viewer auf „Warte auf Spieldaten“ (Extension beim Ausschalten der Weitergabe) |
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
@@ -103,10 +103,10 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
 | GET | `/api/profiles` | `{active, profiles:[{id, name}]}` |
-| GET | `/api/profiles/:id` | ein Profil (Name, Inhalte, Layout) |
-| POST | `/api/profiles` | `{name, template}` – neues Profil aus Vorlage, wird aktiv |
-| PUT | `/api/profiles/:id` | Teile ändern: `{name?, content?, layout?, editing?}`; live an alle Viewer |
-| POST | `/api/profiles/:id/reset` | `{template}` – Inhalte zurücksetzen, Layout bleibt |
+| GET | `/api/profiles/:id` | ein Profil (Version 4: Name, `gemeinsam`, angepasste `spielarten`) |
+| POST | `/api/profiles` | `{name}` – neues Profil, alle Spielarten im Standard, Scheibe wie im aktiven; wird aktiv |
+| PUT | `/api/profiles/:id` | Teile ändern: `{name?, gemeinsam?: {content?, board?}, spielart?: {id, content?, layout?}, editing?}`; live an alle Viewer. `editing`: `{schritt, spielart, spieler}` oder `null` |
+| POST | `/api/profiles/:id/reset` | `{spielart}` – Spielart auf ihren Standard zurücksetzen, Scheibe bleibt |
 | DELETE | `/api/profiles/:id` | löschen (nicht das letzte) |
 | PUT | `/api/active-profile` | `{id}` – aktives Profil wechseln |
 
@@ -136,25 +136,45 @@ Den Viewer am Laptop öffnen (`http://raspdarts.local:8743/`). Bei Mausbewegung
 erscheint unten rechts **Einstellungen**. Alle Geräte zeigen dasselbe, nämlich das
 **aktive Profil**, und folgen jeder Änderung live.
 
-**Schritt 1 – Inhalte:** Profil wählen, anlegen (aus einer Vorlage: Projektion,
-Fernseher, Minimal), umbenennen oder löschen. Darunter ein- und ausschalten, was
-erscheint: Hintergrund, Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring, Darts,
-Leuchten), Aufnahme, Spielinfo, Spielerkarten mit ihren Teilen. Eine Vorlage
-anzuklicken setzt die Inhalte zurück, das Layout bleibt.
+**Spielarten:** X01, Cricket / Taktik, Count Up, Around The Clock, Zufälliges
+Checkout, Round the World, Segmenttraining, Bob's 27, Shanghai, Gotcha, Bermuda
+(121 und Killer nicht). Jedes Profil hat einen **gemeinsamen Teil** – Hintergrund,
+Scheibe und ihre Lage, gilt für alle Spielarten – und je Spielart Inhalte und
+Layout. Eine Spielart, die man nie angepasst hat, folgt ihrem **Standard**;
+startet ein Spiel, zeigt der Viewer den Teil dieser Spielart.
+
+**Schritt 1 – Inhalte:** Profil wählen, anlegen, umbenennen oder löschen. Unter
+„Gemeinsam“ Hintergrund und Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
+Darts, Leuchten). Darunter die **Spielart** wählen (Zusatz „angepasst“ oder
+„Standard“) und ihre Bausteine ein- und ausschalten: Spielerkarten (mit
+Verteilung und Teilen), Aufnahme, Spielinfo. „Auf Standard zurücksetzen“ verwirft
+die Anpassung dieser Spielart. „Vorschau“ zeigt ohne Spiel Beispieldaten mit 1–6
+Spielern; läuft ein Spiel, zeigt sie das echte.
 
 **Schritt 2 – Layout** („Weiter: Layout“): Alle Geräte zeigen die Scheibe als
 Linien, so lässt sie sich auf die echten Drähte legen.
 
-- Scheibe: ziehen = verschieben, Ecke oder Mausrad = Größe, Kreis = drehen
-  (rastet bei 0°, 90°, 180° ein; mit Alt frei); fein mit Pfeiltasten, +/− und
-  Q/E (mit Umschalt grob).
-- Karten, Spielinfo, Aufnahmeleiste: ziehen und an der Ecke skalieren.
+- Scheibe (gilt für alle Spielarten): ziehen = verschieben, Ecke oder Mausrad =
+  Größe, Kreis = drehen (rastet bei 0°, 90°, 180° ein; mit Alt frei); fein mit
+  Pfeiltasten, +/− und Q/E (mit Umschalt grob).
+- Spielerbereiche links und rechts: ziehen, am Griff unten rechts oder mit
+  Strg+Pfeil Breite und Höhe ändern. Die Karten ordnen sich darin selbst an
+  (Platz 1, 3, 5 links; 2, 4, 6 rechts; je Bereich gleich groß), immer in der
+  Reihenfolge, die Autodarts schickt. Mit den Spielerknöpfen 1–6 prüfen.
+- Spielinfo, Aufnahmeleiste: ziehen und an der Ecke skalieren.
 - „← Inhalte“ geht zurück, „Fertig“ oder Esc beendet.
 
 Gespeichert wird automatisch unter `server/data/profiles/<id>.json`, das aktive
 Profil in `active.json`. Positionen sind Prozentwerte, Größen hängen an der
-Bildhöhe, damit das Layout bei jeder Auflösung passt. Beim ersten Start wird ein
-vorhandenes `server/data/layouts/standard.json` zum Profil „Standard“.
+Bildhöhe, damit das Layout bei jeder Auflösung passt. Profile der Version 3
+werden beim Laden umgebaut (Karte 1/2 → Bereiche, alles außer der Scheibe →
+angepasstes X01) und beim nächsten Ändern als Version 4 gespeichert.
+
+**Neue Spielart prüfen:** Die `variant`-Werte außer X01 sind geschätzt. Ein
+Spiel mitschneiden (`server/data/sessions/`), `variants` in
+`server/src/viewer/catalog.ts` korrigieren und `verified: true` setzen. Eine
+unbekannte Spielart meldet der Dienst einmal im Log und zeigt sie mit dem
+allgemeinen Teil.
 
 ## Hinweis
 

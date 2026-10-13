@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { contentAttributes } from "../public/js/content-view.js";
-import { CATALOG, defaultContent, sanitizeContent } from "../src/viewer/catalog.ts";
+import { CATALOG, modeDefaults, sanitizeModeContent, sanitizeShared, sharedDefaults } from "../src/viewer/catalog.ts";
+
+const defaultContent = () => ({ ...sharedDefaults(), ...modeDefaults("x01") });
+const sanitizeContent = (stored) => ({ ...sanitizeShared(stored), ...sanitizeModeContent(stored, "x01") });
 
 describe("contentAttributes", () => {
   test("setzt fuer jeden Baustein und jede Option ein Merkmal", () => {
-    const attrs = contentAttributes(CATALOG, defaultContent());
+    const attrs = contentAttributes(CATALOG, defaultContent(), "x01");
 
     expect(attrs).toMatchObject({
       "data-hintergrund": "off",
@@ -25,27 +28,43 @@ describe("contentAttributes", () => {
       spieler: { flaeche: false },
     });
 
-    expect(contentAttributes(CATALOG, content)).toMatchObject({
+    expect(contentAttributes(CATALOG, content, "x01")).toMatchObject({
       "data-hintergrund": "on",
       "data-scheibe-darstellung": "drawn",
       "data-spieler-flaeche": "off",
     });
   });
 
+  test("Optionen und Bausteine ausserhalb der Spielart gelten als aus", () => {
+    expect(contentAttributes(CATALOG, defaultContent(), "gotcha")).toMatchObject({
+      "data-spieler-checkout": "off",
+      "data-spieler-average": "off",
+      "data-spielinfo-punktzahl": "off",
+      "data-spieler-name": "on",
+    });
+  });
+
+  test("unbekannte Spielart: nur was es ueberall gibt", () => {
+    expect(contentAttributes(CATALOG, defaultContent(), null)).toMatchObject({
+      "data-spieler-legs": "off",
+      "data-spieler-rest": "on",
+    });
+  });
+
   test("Merkmalnamen sind klein geschrieben", () => {
-    for (const name of Object.keys(contentAttributes(CATALOG, defaultContent()))) {
+    for (const name of Object.keys(contentAttributes(CATALOG, defaultContent(), "x01"))) {
       expect(name).toBe(name.toLowerCase());
     }
   });
 
   test("fehlende Werte gelten wie die Vorgaben", () => {
-    expect(contentAttributes(CATALOG, {})).toEqual(contentAttributes(CATALOG, defaultContent()));
+    expect(contentAttributes(CATALOG, {}, "x01")).toEqual(contentAttributes(CATALOG, defaultContent(), "x01"));
   });
 
   test("jede Option wirkt im Stylesheet (Darstellung der Scheibe setzt app.js)", () => {
     const css = readFileSync("public/style.css", "utf8");
     const handledInCode = ["data-scheibe-darstellung"];
-    for (const name of Object.keys(contentAttributes(CATALOG, defaultContent()))) {
+    for (const name of Object.keys(contentAttributes(CATALOG, defaultContent(), "x01"))) {
       if (handledInCode.includes(name)) continue;
       expect(css, name).toContain(`[${name}=`);
     }

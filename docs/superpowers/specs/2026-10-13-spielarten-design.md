@@ -200,7 +200,8 @@ Beim Lesen eines Profils mit `version: 3`:
 1. `gemeinsam.content` ← `content.hintergrund`, `content.scheibe`;
    `gemeinsam.board` ← `layout.board`.
 2. `spielarten.x01` wird angelegt: `content` ← übrige Bausteine (Spielinfo,
-   Aufnahme, Spielerkarten; `verteilung: "beide"`), `layout.blocks` ←
+   Aufnahme, Spielerkarten; neue Optionen so, dass das Bild gleich bleibt:
+   `verteilung: "beide"`, `spielinfo.spielart: false`), `layout.blocks` ←
    `spielinfo` und `aufnahme` unverändert.
 3. Bereiche aus den Karten 1 und 2: `bereich-links` ← `spieler-1` mit
    `x`, `y` wie gespeichert, `w = 49 · scale`, `h = 34 · scale`;
@@ -231,10 +232,14 @@ Lage jeder Karte:
   bündig (zum Bildrand hin).
 - **Größe:** `n` = Kartenzahl im volleren Bereich. Für jeden sichtbaren
   Bereich mit Breite `w` und Höhe `h`:
-  `s = min(w / 49, (h − 1,5 · (n − 1)) / (34 · n))`. Es gilt das kleinere `s`
-  der sichtbaren Bereiche; alle Karten sind gleich groß. 49 vh × 34 vh ist
-  die Grundgröße einer Karte (`style.css`); beide Zahlen stehen als
-  Konstanten in `areas.js`.
+  `s = min(w / 49, (h − 1,5 · (n − 1)) / (34 · n))`. Jeder Bereich hat sein
+  eigenes `s`; innerhalb eines Bereichs sind alle Karten gleich groß, gleich
+  große Bereiche ergeben gleich große Karten. (Geändert nach dem Review:
+  Arnolds Pi-Profil hat links Skalierung 1, rechts 0,76 – mit einem
+  gemeinsamen `s` wäre die linke Karte nach dem Update geschrumpft. So kann
+  man die Seiten auch bewusst verschieden groß machen, etwa bei schräg
+  stehendem Beamer.) 49 vh × 34 vh ist die Grundgröße einer Karte
+  (`style.css`); beide Zahlen stehen als Konstanten in `areas.js`.
 - Die Größe hängt nur von der Spielerzahl ab und ändert sich im Spiel nicht.
   Der aktive Spieler wird hervorgehoben wie bisher, nicht vergrößert.
 - Verteilt wird nach dem **Platz** des Spielers (siehe unten).

@@ -142,6 +142,16 @@ body {
 
 /* --- Spielerkarten -------------------------------------------------------- */
 
+/* Bereich: Groesse aus dem Layout (vh), die Karten liegen darin frei (areas.js). */
+.area-block {
+  transform: none;
+}
+
+.card-slot {
+  position: absolute;
+  transform-origin: top left;
+}
+
 .card {
   width: 49vh;
   height: 34vh;
@@ -361,7 +371,7 @@ body {
 .viewer[data-scheibe="off"] .board-block,
 .viewer[data-aufnahme="off"] [data-block="aufnahme"],
 .viewer[data-spielinfo="off"] [data-block="spielinfo"],
-.viewer[data-spieler="off"] .player-block {
+.viewer[data-spieler="off"] .area-block {
   display: none;
 }
 
@@ -381,9 +391,16 @@ body {
   visibility: hidden;
 }
 
+.viewer[data-spielinfo-spielart="off"] [data-chip="spielart"],
 .viewer[data-spielinfo-punktzahl="off"] [data-chip="punktzahl"],
 .viewer[data-spielinfo-legs="off"] [data-chip="legs"],
 .viewer[data-spielinfo-modus="off"] [data-chip="modus"] {
+  display: none;
+}
+
+/* Verteilung: der nicht benutzte Bereich verschwindet ganz, auch beim Ausrichten. */
+.viewer[data-spieler-verteilung="links"] [data-block="bereich-rechts"],
+.viewer[data-spieler-verteilung="rechts"] [data-block="bereich-links"] {
   display: none;
 }
 
@@ -506,6 +523,27 @@ body {
   padding: 0.5vh 1.2vh;
   font: 600 1.6vh "Manrope", sans-serif;
   cursor: pointer;
+}
+
+.edit-preview {
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.edit-players {
+  display: flex;
+  gap: 0.4vh;
+}
+
+.edit-toolbar .edit-players button[aria-pressed="true"] {
+  background: var(--edit);
+  color: #000;
+}
+
+.edit-toolbar .edit-players button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .edit-status {
@@ -754,4 +792,25 @@ fieldset.part-option legend {
   background: var(--edit);
   border-color: var(--edit);
   color: #000;
+}
+
+.settings-players {
+  gap: 4px;
+  align-items: center;
+}
+
+.settings .settings-player[aria-pressed="true"] {
+  background: var(--edit);
+  border-color: var(--edit);
+  color: #000;
+}
+
+.settings .settings-player:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.settings-mode-state {
+  flex: 1;
+  color: #aaa;
 }

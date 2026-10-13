@@ -60,6 +60,21 @@ describe("createFramePipeline", () => {
     expect(hub.state.phase).toBe("playing");
   });
 
+  test("meldet eine unbekannte Spielart einmal je Wert und zeigt sie trotzdem", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const hub = newHub();
+    const handle = createFramePipeline(hub, null);
+    const killer = { ...MATCH_FRAME, data: { ...MATCH_FRAME.data, variant: "Killer" } };
+
+    handle(killer);
+    handle(killer);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain("Killer");
+    expect(hub.state).toMatchObject({ phase: "playing", mode: null, variant: "Killer" });
+    warn.mockRestore();
+  });
+
   test("bleibt idle ohne Spielstand", () => {
     const hub = newHub();
     createFramePipeline(hub, null)({ irgendwas: 1 });

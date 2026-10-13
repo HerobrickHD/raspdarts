@@ -9,14 +9,19 @@
  * Ausrichten kommen bis zu zehn Aenderungen pro Sekunde; die gelten sofort,
  * auf die SD-Karte geht es gebuendelt und atomar (erst .tmp, dann umbenennen),
  * damit ein Stromausfall nie eine halbe Datei hinterlaesst.
+ *
+ * Profile der Version 3 werden beim Laden umgebaut und erst beim naechsten
+ * Aendern als Version 4 geschrieben - bis dahin bleibt die alte Datei der
+ * Rueckweg.
  */
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { sanitizeContent, templateContent } from "./catalog.js";
-import { fromLegacyLayout, sanitizeLayout } from "./layout.js";
+import { isMode, sanitizeShared } from "./catalog.js";
+import { fromLegacyLayout, sanitizeBoard } from "./layout.js";
 import {
   VALID_ID,
   newProfile,
+  sanitizeModeEntry,
   sanitizeName,
   sanitizeProfile,
   uniqueId,
@@ -24,8 +29,9 @@ import {
   type ProfileSummary,
   type ProfileWithId,
 } from "./profile.js";
+import { standardFor } from "./standards.js";
 
-export type ProfileErrorCode = "invalid-id" | "not-found" | "last-profile" | "invalid-template";
+export type ProfileErrorCode = "invalid-id" | "not-found" | "last-profile" | "invalid-mode";
 
 /** Fehler des Aufrufers; http.ts macht daraus 400/404/409. */
 export class ProfileError extends Error {
@@ -39,9 +45,14 @@ export class ProfileError extends Error {
 
 export interface ProfilePatch {
   name?: unknown;
-  content?: unknown;
-  layout?: unknown;
+  /** { content?, board? } */
+  gemeinsam?: unknown;
+  /** { id, content?, layout? } */
+  spielart?: unknown;
 }
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
 
 const ACTIVE_FILE = "active.json";
 /** Waere der Dateiname des aktiven Profils - als Profil-id gesperrt. */
@@ -90,12 +101,10 @@ export class ProfileStore {
     return this.read(this.#active);
   }
 
-  /** Neues Profil aus einer Vorlage; es wird sofort aktiv. */
-  create(name: unknown, template: unknown): ProfileWithId {
-    if (templateContent(template) === null) {
-      throw new ProfileError("invalid-template", "Unbekannte Vorlage");
-    }
-    const profile = newProfile(name, template);
+  /** Neues Profil, alle Spielarten im Standard; die Scheibe liegt wie im aktiven (derselbe Beamer). */
+  create(name: unknown): ProfileWithId {
+    const board = this.#profiles.get(this.#active)?.gemeinsam.board;
+    const profile = newProfile(name, board);
     const id = uniqueId(profile.name, (candidate) => candidate === RESERVED_ID || this.#profiles.has(candidate));
     this.#profiles.set(id, profile);
     this.#markDirty(id);
@@ -103,25 +112,59 @@ export class ProfileStore {
     return this.read(id);
   }
 
-  /** Aendert nur, was mitgeschickt wird; Unbrauchbares behaelt den bisherigen Wert. */
+  /**
+   * Aendert nur, was mitgeschickt wird; Unbrauchbares behaelt den bisherigen
+   * Wert. Die erste Aenderung an einer Spielart legt ihren Eintrag aus dem
+   * Standard an - ab dann ist sie "angepasst".
+   */
   update(id: string, patch: ProfilePatch): ProfileWithId {
     const current = this.#get(id);
-    this.#profiles.set(id, {
-      ...current,
-      name: patch.name === undefined ? current.name : sanitizeName(patch.name),
-      content: patch.content === undefined ? current.content : sanitizeContent(patch.content, current.content),
-      layout: patch.layout === undefined ? current.layout : sanitizeLayout(patch.layout),
-    });
+    const next: Profile = structuredClone(current);
+    let changed = false;
+
+    if (patch.name !== undefined) {
+      next.name = sanitizeName(patch.name);
+      changed = true;
+    }
+    if (patch.gemeinsam !== undefined) {
+      const gemeinsam = asRecord(patch.gemeinsam);
+      if (gemeinsam["content"] !== undefined) {
+        next.gemeinsam.content = sanitizeShared(gemeinsam["content"], current.gemeinsam.content);
+        changed = true;
+      }
+      if (gemeinsam["board"] !== undefined) {
+        next.gemeinsam.board = sanitizeBoard(gemeinsam["board"], current.gemeinsam.board);
+        changed = true;
+      }
+    }
+    if (patch.spielart !== undefined) {
+      const spielart = asRecord(patch.spielart);
+      const mode = spielart["id"];
+      if (!isMode(mode)) throw new ProfileError("invalid-mode", "Unbekannte Spielart");
+      if (spielart["content"] !== undefined || spielart["layout"] !== undefined) {
+        const base = current.spielarten[mode] ?? standardFor(mode);
+        next.spielarten[mode] = sanitizeModeEntry(
+          { content: spielart["content"] ?? base.content, layout: spielart["layout"] ?? base.layout },
+          mode,
+          base,
+        );
+        changed = true;
+      }
+    }
+
+    if (!changed) return this.read(id); // Lebenszeichen: nichts auf die SD-Karte
+    this.#profiles.set(id, next);
     this.#markDirty(id);
     return this.read(id);
   }
 
-  /** Inhalte auf eine Vorlage zuruecksetzen; das Layout bleibt. */
-  resetContent(id: string, template: unknown): ProfileWithId {
+  /** Spielart auf ihren Standard zuruecksetzen: der Eintrag faellt weg. */
+  resetMode(id: string, mode: unknown): ProfileWithId {
     const current = this.#get(id);
-    const content = templateContent(template);
-    if (!content) throw new ProfileError("invalid-template", "Unbekannte Vorlage");
-    this.#profiles.set(id, { ...current, content });
+    if (!isMode(mode)) throw new ProfileError("invalid-mode", "Unbekannte Spielart");
+    const next = structuredClone(current);
+    delete next.spielarten[mode];
+    this.#profiles.set(id, next);
     this.#markDirty(id);
     return this.read(id);
   }
@@ -191,11 +234,14 @@ export class ProfileStore {
 
   /** Erster Start: das bisher ausgerichtete Layout wird zum Profil "Standard". */
   #createFirst(legacyDir: string | null): void {
-    const profile = newProfile("Standard");
     const legacy = legacyDir === null ? null : fromLegacyLayout(this.#readJson(join(legacyDir, "standard.json")));
+    const profile = newProfile("Standard", legacy?.board);
     if (legacy) {
-      profile.layout = legacy.layout;
-      profile.content = sanitizeContent({ scheibe: { darstellung: legacy.boardMode } }, profile.content);
+      profile.gemeinsam.content = sanitizeShared(
+        { scheibe: { darstellung: legacy.boardMode } },
+        profile.gemeinsam.content,
+      );
+      profile.spielarten["x01"] = { content: standardFor("x01").content, layout: legacy.layout };
     }
     this.#profiles.set(FIRST_ID, profile);
     this.#pending.add(FIRST_ID);

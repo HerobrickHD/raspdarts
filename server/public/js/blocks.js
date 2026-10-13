@@ -32,14 +32,12 @@ function dartIcon() {
   return svg;
 }
 
-/* Reihenfolge wie matchChips; die Schluessel sind die Optionen der Spielinfo im Katalog. */
-const CHIP_KEYS = ["punktzahl", "legs", "modus"];
-
-export function renderHead(el, match) {
+/* Die Schluessel der Chips sind die Optionen der Spielinfo im Katalog. */
+export function renderHead(el, match, modeLabel) {
   el.replaceChildren(
-    ...matchChips(match).map((text, index) => {
+    ...matchChips(match, modeLabel).map(({ key, text }) => {
       const chip = node("span", "chip", text);
-      chip.dataset.chip = CHIP_KEYS[index];
+      chip.dataset.chip = key;
       return chip;
     }),
   );
@@ -130,20 +128,36 @@ function updateCard(parts, player) {
   parts.dartsCount.textContent = String(player.dartsThrown);
 }
 
-const cards = new WeakMap();
+/* Je Platz eine Karte, einmal gebaut - sonst blitzten die Bilder bei jedem Wurf. */
+const slots = new Map();
 
-/** slots: die sechs Bloecke spieler-1 … spieler-6; ueberzaehlige werden versteckt. */
-export function renderPlayers(slots, players) {
-  slots.forEach((slot, index) => {
-    const player = players[index];
-    slot.hidden = !player;
-    if (!player) return;
-    let parts = cards.get(slot);
-    if (!parts) {
-      parts = buildCard();
-      cards.set(slot, parts);
-      slot.prepend(parts.card);
+/**
+ * areas: { links, rechts } - die Bereichs-Elemente; arrangement aus
+ * areas.js. Karten ohne Platz in der Anordnung werden versteckt.
+ */
+export function renderPlayers(areas, players, arrangement) {
+  const bySeat = new Map(players.map((player) => [player.seat, player]));
+  const placed = new Set(arrangement.cards.map((card) => card.seat));
+  for (const [seat, entry] of slots) if (!placed.has(seat)) entry.slot.hidden = true;
+
+  for (const card of arrangement.cards) {
+    const player = bySeat.get(card.seat);
+    if (!player) continue;
+    let entry = slots.get(card.seat);
+    if (!entry) {
+      const parts = buildCard();
+      const slot = node("div", "card-slot");
+      slot.append(parts.card);
+      entry = { slot, parts };
+      slots.set(card.seat, entry);
     }
-    updateCard(parts, player);
-  });
+    const area = areas[card.side];
+    // vor den Griff, damit der Griff oben liegt
+    if (entry.slot.parentElement !== area) area.prepend(entry.slot);
+    entry.slot.hidden = false;
+    entry.slot.style.left = `${card.left}vh`;
+    entry.slot.style.top = `${card.top}vh`;
+    entry.slot.style.transform = `scale(${card.scale})`;
+    updateCard(entry.parts, player);
+  }
 }

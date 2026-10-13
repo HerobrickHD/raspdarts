@@ -29,6 +29,7 @@ describe("toViewerState mit dem Mitschnitt", () => {
     const state = playingAt(106);
 
     expect(state.variant).toBe("X01");
+    expect(state.mode).toBe("x01");
     expect(state.match).toEqual({
       baseScore: 301,
       legsToWin: 1,
@@ -37,6 +38,7 @@ describe("toViewerState mit dem Mitschnitt", () => {
       outMode: "Straight",
     });
     expect(state.players[0]).toEqual({
+      seat: 1,
       name: "testuser01",
       avatarUrl: GRAVATAR,
       country: "de",
@@ -51,6 +53,7 @@ describe("toViewerState mit dem Mitschnitt", () => {
       checkout: null,
     });
     expect(state.players[1]).toMatchObject({
+      seat: 2,
       name: "TEST",
       avatarUrl: null,
       country: null,
@@ -142,11 +145,6 @@ describe("toViewerState mit Ersatzwerten", () => {
     expect(toViewerState({ irgendwas: true })).toEqual(IDLE);
   });
 
-  test("andere Spielarten werden als nicht unterstuetzt gemeldet", () => {
-    expect(
-      toViewerState({ variant: "Cricket", players: [{ name: "A" }], gameScores: [0] }),
-    ).toEqual({ phase: "unsupported", variant: "Cricket" });
-  });
 
   test("drei Spieler ohne turns, stats und settings", () => {
     const state = toViewerState({
@@ -160,6 +158,7 @@ describe("toViewerState mit Ersatzwerten", () => {
     if (state.phase !== "playing") throw new Error("unerreichbar");
     expect(state.players).toHaveLength(3);
     expect(state.players[1]).toEqual({
+      seat: 2,
       name: "Spieler 2",
       avatarUrl: null,
       country: null,
@@ -174,12 +173,13 @@ describe("toViewerState mit Ersatzwerten", () => {
       checkout: null,
     });
     expect(state.players[2]).toMatchObject({ name: "C", score: 0, isActive: true });
+    // ohne settings: nichts geraten
     expect(state.match).toEqual({
-      baseScore: 0,
+      baseScore: null,
       legsToWin: 1,
       setsToWin: null,
-      inMode: "Straight",
-      outMode: "Straight",
+      inMode: null,
+      outMode: null,
     });
     expect(state.turn).toEqual({ darts: [], points: 0, busted: false });
   });
@@ -245,5 +245,60 @@ describe("toField", () => {
     expect(toField({ number: 21, multiplier: 1 })).toEqual(MISS);
     expect(toField({ number: 25, multiplier: 3 })).toEqual(MISS);
     expect(toField({ number: 20, multiplier: 4 })).toEqual(MISS);
+  });
+});
+
+/** Ein Frame aus dem Mitschnitt, umgebaut. */
+function rewritten(index: number, change: (state: Record<string, unknown>) => void): unknown {
+  const frame = structuredClone(FRAMES[index]) as Record<string, unknown>;
+  const state = (frame["data"] ?? frame) as Record<string, unknown>;
+  change(state);
+  return frame;
+}
+
+describe("andere Spielarten", () => {
+  test("Cricket: allgemeiner Stand mit Spielern, Aufnahme und Spielart", () => {
+    const state = toViewerState(
+      rewritten(106, (s) => {
+        s["variant"] = "Cricket";
+        s["settings"] = {};
+      }),
+    );
+    if (state.phase !== "playing") throw new Error("kein Spiel");
+    expect(state.mode).toBe("cricket");
+    expect(state.variant).toBe("Cricket");
+    expect(state.players).toHaveLength(2);
+    expect(state.players[0]?.name).toBe("testuser01");
+    expect(state.turn.darts).toHaveLength(1);
+    expect(state.match).toEqual({ baseScore: null, legsToWin: 1, setsToWin: null, inMode: null, outMode: null });
+  });
+
+  test("unbekannte Spielart: mode null, trotzdem ein Spiel", () => {
+    const state = toViewerState(rewritten(106, (s) => (s["variant"] = "Killer")));
+    expect(state.phase).toBe("playing");
+    if (state.phase === "playing") expect(state.mode).toBeNull();
+  });
+});
+
+describe("Reihenfolge", () => {
+  test("seat folgt der Reihenfolge, die Autodarts schickt - auch wenn sie sich aendert", () => {
+    const swapped = rewritten(106, (s) => {
+      // wie ein neues Leg, in dem Autodarts die Spieler umstellt
+      for (const key of ["players", "gameScores", "scores", "stats"]) {
+        if (Array.isArray(s[key])) (s[key] as unknown[]).reverse();
+      }
+    });
+    const before = playingAt(106);
+    const after = toViewerState(swapped);
+    if (after.phase !== "playing") throw new Error("kein Spiel");
+
+    expect(before.players.map((p) => [p.name, p.seat])).toEqual([
+      ["testuser01", 1],
+      ["TEST", 2],
+    ]);
+    expect(after.players.map((p) => [p.name, p.seat])).toEqual([
+      ["TEST", 1],
+      ["testuser01", 2],
+    ]);
   });
 });

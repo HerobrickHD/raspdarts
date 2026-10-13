@@ -6,7 +6,13 @@
  * Spielregeln (Rest, Bust, Checkout-Weg, Sieger) entscheidet Autodarts; hier
  * wird nur uebersetzt, nie gerechnet. Felder geprueft am Mitschnitt vom
  * 8. Oktober 2026 (docs/referenz/autodarts-spielansicht/).
+ *
+ * Ausser X01 sind die Felder der Spielarten ungeprueft: uebersetzt wird, was
+ * in allen gleich aussieht (Spieler, Punktestand, Aufnahme); was fehlt, bleibt
+ * leer statt geraten. Die Reihenfolge der Spieler ist immer die von Autodarts -
+ * man sieht, wer werfen muss.
  */
+import { modeForVariant } from "./catalog.js";
 
 /** Ein Feld der Scheibe. multiplier 0 / number 0 = daneben. */
 export interface Field {
@@ -19,14 +25,17 @@ export interface Field {
 export type Mode = "Straight" | "Double" | "Master";
 
 export interface MatchInfo {
-  baseScore: number;
+  /** Startpunkte bei X01; sonst null. */
+  baseScore: number | null;
   legsToWin: number;
   setsToWin: number | null;
-  inMode: Mode;
-  outMode: Mode;
+  inMode: Mode | null;
+  outMode: Mode | null;
 }
 
 export interface PlayerView {
+  /** Platz 1-6 = Stelle in den Autodarts-Daten dieses Stands (Wurfreihenfolge). */
+  seat: number;
   name: string;
   avatarUrl: string | null;
   country: string | null;
@@ -55,10 +64,12 @@ export interface Highlight {
 
 export type ViewerState =
   | { phase: "idle" }
-  | { phase: "unsupported"; variant: string }
   | {
       phase: "playing";
-      variant: "X01";
+      /** Roher Wert von Autodarts. */
+      variant: string;
+      /** id aus dem Katalog; null = unbekannte Spielart. */
+      mode: string | null;
       match: MatchInfo;
       players: PlayerView[];
       turn: { darts: TurnDart[]; points: number; busted: boolean };
@@ -131,7 +142,7 @@ export function toViewerState(raw: unknown): ViewerState {
   if (players.length === 0 || gameScores.length === 0) return IDLE;
 
   const variant = asText(state["variant"]) ?? "X01";
-  if (variant !== "X01") return { phase: "unsupported", variant };
+  const mode = modeForVariant(variant);
 
   const activeIndex = asNumber(state["player"], -1);
   const winner = asNumber(state["winner"], -1);
@@ -153,6 +164,7 @@ export function toViewerState(raw: unknown): ViewerState {
         ? inner["checkoutGuide"]
         : null;
     return {
+      seat: index + 1,
       name: asText(player["name"]) ?? `Spieler ${index + 1}`,
       avatarUrl: asText(player["avatarUrl"]),
       country: asText(asObject(player["user"])["country"]),
@@ -178,15 +190,17 @@ export function toViewerState(raw: unknown): ViewerState {
 
   const settings = asObject(state["settings"]);
   const sets = state["sets"];
+  const optionalMode = (v: unknown): Mode | null => (v === undefined ? null : toMode(v));
   return {
     phase: "playing",
-    variant: "X01",
+    variant,
+    mode,
     match: {
-      baseScore: asNumber(settings["baseScore"]),
+      baseScore: typeof settings["baseScore"] === "number" ? settings["baseScore"] : null,
       legsToWin: asNumber(state["legs"], 1),
       setsToWin: typeof sets === "number" ? sets : null,
-      inMode: toMode(settings["inMode"]),
-      outMode: toMode(settings["outMode"]),
+      inMode: optionalMode(settings["inMode"]),
+      outMode: optionalMode(settings["outMode"]),
     },
     players: playerViews,
     turn: { darts, points: asNumber(state["turnScore"]), busted: turnBusted },

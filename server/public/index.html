@@ -36,12 +36,9 @@
         <span class="handle handle-rotate" data-handle="rotate"></span>
       </section>
 
-      <section class="block player-block" data-block="spieler-1"><span class="handle handle-resize" data-handle="resize"></span></section>
-      <section class="block player-block" data-block="spieler-2"><span class="handle handle-resize" data-handle="resize"></span></section>
-      <section class="block player-block" data-block="spieler-3"><span class="handle handle-resize" data-handle="resize"></span></section>
-      <section class="block player-block" data-block="spieler-4"><span class="handle handle-resize" data-handle="resize"></span></section>
-      <section class="block player-block" data-block="spieler-5"><span class="handle handle-resize" data-handle="resize"></span></section>
-      <section class="block player-block" data-block="spieler-6"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <!-- Spielerbereiche: die Karten ordnen sich darin selbst an (areas.js). -->
+      <section class="block area-block" data-block="bereich-links"><span class="handle handle-resize" data-handle="resize"></span></section>
+      <section class="block area-block" data-block="bereich-rechts"><span class="handle handle-resize" data-handle="resize"></span></section>
 
       <p id="message" class="message"></p>
       <p class="offline">Keine Verbindung zum Raspdarts-Dienst</p>
@@ -54,10 +51,20 @@
       <!-- Schritt "Layout" -->
       <div id="edit-toolbar" class="edit-toolbar">
         <button type="button" data-action="back">← Inhalte</button>
+        <span id="edit-preview" class="edit-preview"></span>
+        <span class="edit-players" role="group" aria-label="Spieler in der Vorschau">
+          <button type="button" data-players="1">1</button>
+          <button type="button" data-players="2">2</button>
+          <button type="button" data-players="3">3</button>
+          <button type="button" data-players="4">4</button>
+          <button type="button" data-players="5">5</button>
+          <button type="button" data-players="6">6</button>
+        </span>
         <span id="edit-status" class="edit-status" role="status"></span>
         <span class="edit-hint">
-          Ziehen: verschieben · Ecke: Größe · Kreis: drehen (rastet bei 0°/90° ein, Alt: frei) ·
-          Mausrad: Größe · Pfeile, +/−, Q/E: fein (Umschalt: grob) · Esc: fertig
+          Scheibe gilt für alle Spielarten · Ziehen: verschieben · Ecke: Größe · Kreis: drehen (rastet bei
+          0°/90° ein, Alt: frei) · Mausrad: Größe · Pfeile, +/−, Q/E: fein (Umschalt: grob) ·
+          Strg+Pfeil: Bereich größer/kleiner · Esc: fertig
         </span>
         <button type="button" data-action="done">Fertig</button>
       </div>
