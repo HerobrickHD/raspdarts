@@ -29,8 +29,6 @@ export function createPanel(root, handlers) {
   let profilesKey = "";
   let mode = "x01";
   let players = 2;
-  /* Die Vorschau zeigt das laufende Spiel - Spielerzahl gesperrt. */
-  let gameRunning = false;
   /* Inhalte des Profils fuer die gewaehlte Spielart (resolve-profile.js). */
   let resolved = null;
   let modesKey = "";
@@ -210,7 +208,6 @@ export function createPanel(root, handlers) {
     modeState.textContent = resolved.angepasst ? "angepasst" : "Standard";
     resetButton.hidden = !resolved.angepasst;
     for (const [index, b] of playerButtons.entries()) {
-      b.disabled = gameRunning;
       b.setAttribute("aria-pressed", String(index + 1 === players));
     }
   }
@@ -275,7 +272,6 @@ export function createPanel(root, handlers) {
       profiles = next.profiles;
       mode = next.mode;
       players = next.players;
-      gameRunning = next.gameRunning;
       resolved = next.resolved;
       if (freshCatalog) buildShared();
       if (freshCatalog || freshMode) buildModeList();

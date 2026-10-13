@@ -13,7 +13,7 @@ import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
 import { createSync } from "./profile-sync.js";
 import { FALLBACK_MODE, resolveProfile } from "./resolve-profile.js";
-import { sampleState } from "./sample-state.js";
+import { previewState } from "./sample-state.js";
 import { createSettings } from "./settings.js";
 
 const viewer = document.getElementById("viewer");
@@ -55,13 +55,7 @@ function shownMode() {
   return lastMode;
 }
 
-/* Beim Einstellen ohne Spiel - oder fuer eine andere Spielart als die laufende -
-   gaebe es sonst nichts Passendes zu sehen. */
-function shownState() {
-  const edit = editing();
-  const showsGame = state.phase === "playing" && (state.mode ?? FALLBACK_MODE) === edit?.spielart;
-  return edit && !showsGame ? sampleState(edit.spielart, edit.spieler) : state;
-}
+const shownState = () => previewState(state, editing());
 
 const resolved = () =>
   view.catalog && view.profile ? resolveProfile(view.profile, view.catalog, shownMode()) : null;

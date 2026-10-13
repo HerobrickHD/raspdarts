@@ -2,8 +2,8 @@
  * Einstellungen in zwei Schritten: "inhalte" (Seitenleiste) und "layout"
  * (Ausrichten, editor.js). Haelt Schritt, Spielart und Spielerzahl der
  * Vorschau, spricht mit dem Pi und meldet alles als editing - dann zeigen alle
- * Geraete die gewaehlte Spielart, ohne Spiel mit Beispieldaten, im
- * Layout-Schritt die Scheibe als Linien.
+ * Geraete Beispieldaten der gewaehlten Spielart, auch wenn ein Spiel laeuft;
+ * im Layout-Schritt die Scheibe als Linien. Nach "Fertig" wieder das Spiel.
  */
 import { api } from "./profile-api.js";
 import { withContent } from "./resolve-profile.js";
@@ -28,8 +28,6 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
   const path = (id, suffix = "") => `/api/profiles/${encodeURIComponent(id)}${suffix}`;
   const report = (error) => panel.setStatus(`Fehlgeschlagen: ${error.message}`);
   const editing = () => (step ? { schritt: step, spielart: preview.spielart, spieler: preview.spieler } : null);
-  /* Zeigt die Vorschau gerade das laufende Spiel (gleiche Spielart)? Dann gilt dessen Spielerzahl. */
-  const showsGame = () => getGameMode() !== null && getGameMode() === preview.spielart;
 
   function announce() {
     sync.queue(profileId(), { editing: editing() });
@@ -91,7 +89,6 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
   });
 
   function setPlayers(count) {
-    if (showsGame()) return;
     preview.spieler = count;
     announce();
     refresh();
@@ -102,19 +99,14 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
     const { catalog, profile, profiles } = getView();
     const resolved = getResolved();
     if (!catalog || !profile || !resolved) return;
-    const gameRunning = showsGame();
-    panel.render({ catalog, profile, profiles, mode: preview.spielart, players: preview.spieler, gameRunning, resolved });
+    panel.render({ catalog, profile, profiles, mode: preview.spielart, players: preview.spieler, resolved });
     const label = catalog.modes.find((m) => m.id === preview.spielart)?.label ?? preview.spielart;
-    editor.setPreview(
-      gameRunning ? `${label} · laufendes Spiel` : `${label} · ${preview.spieler} Spieler`,
-      preview.spieler,
-      gameRunning,
-    );
+    editor.setPreview(`${label} · ${preview.spieler} Spieler`, preview.spieler);
   }
 
   function open(next) {
     if (!getView().profile) return; // noch kein Profil vom Pi
-    // Laeuft ein Spiel, stellt man beim Oeffnen dessen Spielart ein.
+    // Laeuft ein Spiel, schlaegt die Leiste beim Oeffnen dessen Spielart vor - nur als Startpunkt.
     if (next && !step && getGameMode() !== null) preview.spielart = getGameMode();
     step = next;
     root.hidden = step !== "inhalte";

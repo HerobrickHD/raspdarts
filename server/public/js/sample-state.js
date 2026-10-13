@@ -54,3 +54,12 @@ export function sampleState(mode, count) {
     highlights: [{ field: field(1, 1, "outer"), kind: "last-dart" }],
   };
 }
+
+/**
+ * Was die Geraete zeigen: Beim Einstellen haben sie mit dem laufenden Spiel
+ * nichts zu tun - immer Beispieldaten der gewaehlten Spielart und
+ * Spielerzahl. Nach "Fertig" wieder das echte Spiel.
+ */
+export function previewState(state, editing) {
+  return editing ? sampleState(editing.spielart, editing.spieler) : state;
+}

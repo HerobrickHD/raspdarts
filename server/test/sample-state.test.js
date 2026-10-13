@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { sampleState } from "../public/js/sample-state.js";
+import { previewState, sampleState } from "../public/js/sample-state.js";
 import { MODES } from "../src/viewer/catalog.ts";
 
 describe("sampleState", () => {
@@ -26,5 +26,21 @@ describe("sampleState", () => {
   test("ausserhalb 1-6 wird begrenzt", () => {
     expect(sampleState("x01", 0).players).toHaveLength(1);
     expect(sampleState("x01", 9).players).toHaveLength(6);
+  });
+});
+
+describe("previewState", () => {
+  const game = { phase: "playing", mode: "x01", players: [{ seat: 1, name: "testuser01" }, { seat: 2, name: "TEST" }] };
+
+  test("bei offener Leiste immer Beispieldaten - auch wenn ein Spiel dieser Spielart laeuft", () => {
+    const shown = previewState(game, { schritt: "inhalte", spielart: "x01", spieler: 4 });
+    expect(shown.players.map((p) => p.name)).toEqual(["Spieler 1", "Spieler 2", "Spieler 3", "Spieler 4"]);
+    expect(shown.mode).toBe("x01");
+  });
+
+  test("ohne Einstellen das echte Spiel, ohne Spiel idle", () => {
+    expect(previewState(game, null)).toBe(game);
+    const idle = { phase: "idle" };
+    expect(previewState(idle, null)).toBe(idle);
   });
 });

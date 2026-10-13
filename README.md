@@ -148,8 +148,9 @@ startet ein Spiel, zeigt der Viewer den Teil dieser Spielart.
 Darts, Leuchten). Darunter die **Spielart** wählen (Zusatz „angepasst“ oder
 „Standard“) und ihre Bausteine ein- und ausschalten: Spielerkarten (mit
 Verteilung und Teilen), Aufnahme, Spielinfo. „Auf Standard zurücksetzen“ verwirft
-die Anpassung dieser Spielart. „Vorschau“ zeigt ohne Spiel Beispieldaten mit 1–6
-Spielern; läuft ein Spiel, zeigt sie das echte.
+die Anpassung dieser Spielart. Solange die Einstellungen offen
+sind, zeigen alle Geräte Beispieldaten (Spieler 1 … 6, Anzahl über „Vorschau“) –
+auch wenn gerade ein Spiel läuft. Nach „Fertig“ kommt wieder das echte Spiel.
 
 **Schritt 2 – Layout** („Weiter: Layout“): Alle Geräte zeigen die Scheibe als
 Linien, so lässt sie sich auf die echten Drähte legen.

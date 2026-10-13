@@ -317,10 +317,12 @@ Vorschau mit Spielern: [1] [2] [3] [4] [5] [6]
 - **Spielart-Auswahl** gruppiert nach Spiele / Training / Party; jede mit
   dem Zusatz „angepasst“ oder „Standard“. Darunter nur die Bausteine und
   Optionen dieser Spielart.
-- **Vorschau:** Ohne laufendes Spiel zeigen alle Geräte Beispieldaten der
-  gewählten Spielart mit der gewählten Spielerzahl. Läuft ein Spiel, steht
-  die Auswahl beim Öffnen auf dessen Spielart, die Vorschau zeigt das echte
-  Spiel und die Spielerzahl-Knöpfe sind gesperrt.
+- **Vorschau:** Bei offenen Einstellungen zeigen alle Geräte immer
+  Beispieldaten (Spieler 1 … 6) der gewählten Spielart mit der gewählten
+  Spielerzahl – auch wenn gerade ein Spiel läuft (Arnold, 13.10.: beim
+  Einstellen geht es um Anzeige und Layout, nicht ums laufende Spiel). Läuft
+  ein Spiel, schlägt die Leiste beim Öffnen dessen Spielart vor. Nach
+  „Fertig“ wieder das echte Spiel mit den neuen Einstellungen.
 - Spielart und Spielerzahl gehen als `editing` an den Pi und von dort an
   alle Geräte.
 - **Auf Standard zurücksetzen** (nur bei angepassten Spielarten) fragt in
@@ -331,8 +333,8 @@ Vorschau mit Spielern: [1] [2] [3] [4] [5] [6]
 
 ### Schritt „Layout“
 
-- Werkzeugleiste: „X01 · 4 Spieler“, Spielerzahl-Knöpfe 1–6 (gesperrt bei
-  laufendem Spiel), Hinweistext, „← Inhalte“, „Fertig“. Esc = Fertig.
+- Werkzeugleiste: „X01 · 4 Spieler“, Spielerzahl-Knöpfe 1–6, Hinweistext,
+  „← Inhalte“, „Fertig“. Esc = Fertig.
 - **Bereiche** erscheinen als Rahmen mit den Karten der Vorschau darin. Man
   verschiebt sie durch Ziehen und ändert Breite und Höhe am Griff unten
   rechts (Mindestmaß wie die Grenzen). Tastatur: Pfeile verschieben wie

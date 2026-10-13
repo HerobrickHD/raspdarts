@@ -179,11 +179,10 @@ export function createEditor({
     if (editing) selectVisible();
   }
 
-  /** Zeigt "X01 · 4 Spieler" und sperrt die Spielerzahl, solange das laufende Spiel gezeigt wird. */
-  function setPreview(text, players, locked) {
+  /** Zeigt "X01 · 4 Spieler" und markiert die gewaehlte Spielerzahl. */
+  function setPreview(text, players) {
     preview.textContent = text;
     for (const button of toolbar.querySelectorAll("[data-players]")) {
-      button.disabled = locked;
       button.setAttribute("aria-pressed", String(Number(button.dataset.players) === players));
     }
   }
