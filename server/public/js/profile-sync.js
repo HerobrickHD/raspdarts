@@ -10,6 +10,17 @@ import { api } from "./profile-api.js";
 
 const SEND_INTERVAL_MS = 100;
 
+/* Eine Ebene tief zusammenfassen: gemeinsam immer, spielart nur bei gleicher id. */
+export function mergeBody(a, b) {
+  const merged = { ...a, ...b };
+  if (a.gemeinsam && b.gemeinsam) merged.gemeinsam = { ...a.gemeinsam, ...b.gemeinsam };
+  if (a.spielart && b.spielart) merged.spielart = { ...a.spielart, ...b.spielart };
+  return merged;
+}
+
+/* Aenderungen zweier Spielarten passen nicht in eine Anfrage. */
+export const canMerge = (a, b) => !(a.spielart && b.spielart && a.spielart.id !== b.spielart.id);
+
 export function createSync({ onStatus }) {
   /* Sammelt Aenderungen fuer ein Profil, bis gesendet wird. */
   let collecting = null; // { id, body }
@@ -36,7 +47,7 @@ export function createSync({ onStatus }) {
 
   function enqueue(item) {
     const last = outbox.at(-1);
-    if (last && last.id === item.id) last.body = { ...last.body, ...item.body };
+    if (last && last.id === item.id && canMerge(last.body, item.body)) last.body = mergeBody(last.body, item.body);
     else outbox.push(item);
   }
 
@@ -50,13 +61,13 @@ export function createSync({ onStatus }) {
 
   function queue(id, patch) {
     if (!id) return; // noch kein Profil vom Pi
-    if (collecting && collecting.id !== id) {
-      // Aenderungen am bisherigen Profil zuerst
+    if (collecting && (collecting.id !== id || !canMerge(collecting.body, patch))) {
+      // Bisheriges zuerst - anderes Profil oder andere Spielart
       enqueue(collecting);
       collecting = null;
       pump();
     }
-    collecting = { id, body: { ...collecting?.body, ...patch } };
+    collecting = { id, body: collecting ? mergeBody(collecting.body, patch) : { ...patch } };
     if (!timer) timer = setTimeout(flush, Math.max(0, SEND_INTERVAL_MS - (Date.now() - lastSent)));
   }
 

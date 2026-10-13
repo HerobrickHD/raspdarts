@@ -1,20 +1,28 @@
 /*
- * Schritt "Layout": Scheibe und Bloecke verschieben, skalieren, drehen.
+ * Schritt "Layout": Scheibe und Bloecke verschieben, skalieren, drehen;
+ * Spielerbereiche verschieben und in Breite/Hoehe aendern.
  *
  * Jede Aenderung gilt sofort im eigenen Bild und geht gedrosselt an den Pi
  * (profile-sync.js), der sie an alle Viewer weiterreicht - so folgt der Beamer
  * live, waehrend man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
+ * Die Scheibe gilt fuer alle Spielarten, Bloecke und Spielerbereiche fuer die
+ * angezeigte (editor-changes.js).
  * Knopf, Seitenleiste und Lebenszeichen gehoeren zu settings.js.
  */
+import { layoutChange } from "./editor-changes.js";
 import { snapRotation } from "./rotation.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const normalizeAngle = (deg) => ((((deg + 180) % 360) + 360) % 360) - 180;
 const distance = (x, y, p) => Math.hypot(x - p.x, y - p.y);
 const angle = (x, y, p) => (Math.atan2(y - p.y, x - p.x) * 180) / Math.PI;
+/* Spielerbereiche haben Breite und Hoehe statt einer Skalierung. */
+const isArea = (block) => "w" in block;
 
 const PLUS_KEYS = ["+", "*", "="];
 const MINUS_KEYS = ["-", "_"];
+/* Bereichsgroesse per Tastatur in vh: 1 fein, 10 mit Umschalt. */
+const AREA_STEP = 10;
 
 /** Aenderung durch Ziehen an einem Block oder Griff. */
 function drag(layout, id, handle, start, move, anchor) {
@@ -42,6 +50,12 @@ function drag(layout, id, handle, start, move, anchor) {
   if (handle === "move") {
     block.x = clamp(from.x + dx, 0, 100);
     block.y = clamp(from.y + dy, 0, 100);
+  } else if (handle === "resize" && isArea(block)) {
+    // Groesse in vh: Mausweg relativ zur Bildhoehe
+    const dw = ((move.clientX - start.x) / window.innerHeight) * 100;
+    const dh = ((move.clientY - start.y) / window.innerHeight) * 100;
+    block.w = clamp(from.w + dw, 5, 300);
+    block.h = clamp(from.h + dh, 5, 100);
   } else if (handle === "resize") {
     block.scale = clamp(from.scale * ratio, 0.2, 4);
   }
@@ -56,6 +70,17 @@ function keyAction(event, selected) {
     ArrowUp: [0, -step],
     ArrowDown: [0, step],
   }[event.key];
+
+  if (offset && event.ctrlKey) {
+    // Strg+Pfeil: Groesse eines Bereichs; bei anderem nichts (Browser-Kuerzel bleiben)
+    if (selected === "scheibe") return null;
+    return (layout) => {
+      const block = layout.blocks[selected];
+      if (!isArea(block)) return;
+      block.w = clamp(block.w + offset[0] * AREA_STEP, 5, 300);
+      block.h = clamp(block.h + offset[1] * AREA_STEP, 5, 100);
+    };
+  }
   if (offset) {
     return (layout) => {
       if (selected === "scheibe") {
@@ -79,8 +104,13 @@ function keyAction(event, selected) {
     return (layout) => {
       if (selected === "scheibe") {
         layout.board.diameter = clamp(layout.board.diameter + grow * step, 5, 400);
+        return;
+      }
+      const block = layout.blocks[selected];
+      if (isArea(block)) {
+        block.w = clamp(block.w + grow * step * AREA_STEP, 5, 300);
+        block.h = clamp(block.h + grow * step * AREA_STEP, 5, 100);
       } else {
-        const block = layout.blocks[selected];
         block.scale = clamp(block.scale + (grow * step) / 10, 0.2, 4);
       }
     };
@@ -95,17 +125,35 @@ function keyAction(event, selected) {
   return null;
 }
 
-export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal, onBack, onDone }) {
+export function createEditor({
+  viewer,
+  sync,
+  getProfile,
+  getCatalog,
+  getMode,
+  getLayout,
+  getEditing,
+  applyLocalProfile,
+  onBack,
+  onDone,
+  onPlayers,
+}) {
   const toolbar = viewer.querySelector("#edit-toolbar");
   const status = viewer.querySelector("#edit-status");
+  const preview = viewer.querySelector("#edit-preview");
   let editing = false;
   let selected = "scheibe";
 
   function change(mutate) {
-    const layout = structuredClone(getLayout());
-    mutate(layout);
-    applyLocal(layout);
-    sync.queue(getProfileId(), { layout, editing: "layout" });
+    const before = getLayout();
+    if (!before) return;
+    const after = structuredClone(before);
+    mutate(after);
+    const profile = getProfile();
+    const { profile: next, patch } = layoutChange(profile, getCatalog(), getMode(), before, after);
+    if (Object.keys(patch).length === 0) return;
+    applyLocalProfile(next);
+    sync.queue(profile.id, { ...patch, editing: getEditing() });
   }
 
   function select(id) {
@@ -131,7 +179,18 @@ export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal
     if (editing) selectVisible();
   }
 
+  /** Zeigt "X01 · 4 Spieler" und sperrt die Spielerzahl, solange das laufende Spiel gezeigt wird. */
+  function setPreview(text, players, locked) {
+    preview.textContent = text;
+    for (const button of toolbar.querySelectorAll("[data-players]")) {
+      button.disabled = locked;
+      button.setAttribute("aria-pressed", String(Number(button.dataset.players) === players));
+    }
+  }
+
   toolbar.addEventListener("click", (event) => {
+    const players = event.target.closest("[data-players]")?.dataset.players;
+    if (players) onPlayers(Number(players));
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (action === "back") onBack();
     if (action === "done") onDone();
@@ -141,12 +200,14 @@ export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal
     if (!editing || event.button !== 0) return;
     const block = event.target.closest(".block[data-block]");
     if (!block) return;
+    const startLayout = getLayout();
+    if (!startLayout) return;
     event.preventDefault();
     const id = block.dataset.block;
     select(id);
 
     const handle = event.target.closest("[data-handle]")?.dataset.handle ?? "move";
-    const start = { x: event.clientX, y: event.clientY, layout: structuredClone(getLayout()) };
+    const start = { x: event.clientX, y: event.clientY, layout: structuredClone(startLayout) };
     const rect = block.getBoundingClientRect();
     const anchor =
       id === "scheibe"
@@ -196,6 +257,7 @@ export function createEditor({ viewer, sync, getProfileId, getLayout, applyLocal
 
   return {
     setActive,
+    setPreview,
     isEditing: () => editing,
     setStatus: (text) => {
       status.textContent = text;

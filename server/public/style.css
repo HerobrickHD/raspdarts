@@ -525,6 +525,27 @@ body {
   cursor: pointer;
 }
 
+.edit-preview {
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.edit-players {
+  display: flex;
+  gap: 0.4vh;
+}
+
+.edit-toolbar .edit-players button[aria-pressed="true"] {
+  background: var(--edit);
+  color: #000;
+}
+
+.edit-toolbar .edit-players button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .edit-status {
   color: var(--red);
   font-weight: 700;
@@ -771,4 +792,25 @@ fieldset.part-option legend {
   background: var(--edit);
   border-color: var(--edit);
   color: #000;
+}
+
+.settings-players {
+  gap: 4px;
+  align-items: center;
+}
+
+.settings .settings-player[aria-pressed="true"] {
+  background: var(--edit);
+  border-color: var(--edit);
+  color: #000;
+}
+
+.settings .settings-player:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.settings-mode-state {
+  flex: 1;
+  color: #aaa;
 }

@@ -1,7 +1,8 @@
 /*
- * Seitenleiste, Schritt "Inhalte": Profil, Vorlagen und die Liste der
- * Bausteine. Die Liste entsteht aus dem Katalog vom Pi - eine neue Option im
- * Katalog erscheint hier ohne Aenderung an dieser Datei.
+ * Seitenleiste, Schritt "Inhalte": Profil, gemeinsame Bausteine (gelten fuer
+ * alle Spielarten), Spielart mit Vorschau und die Liste ihrer Bausteine. Die
+ * Listen entstehen aus dem Katalog vom Pi - eine neue Option im Katalog
+ * erscheint hier ohne Aenderung an dieser Datei.
  *
  * Kennt den Pi nicht: alles, was der Nutzer tut, geht an die handlers.
  */
@@ -19,16 +20,25 @@ function button(text, onClick, props = {}) {
   return el;
 }
 
+const availableIn = (item, mode) => !item.modes || item.modes.includes(mode);
+
 export function createPanel(root, handlers) {
   let catalog = null;
   let profile = null;
   let profiles = [];
   let profilesKey = "";
+  let mode = "x01";
+  let players = 2;
+  /* Die Vorschau zeigt das laufende Spiel - Spielerzahl gesperrt. */
+  let gameRunning = false;
+  /* Inhalte des Profils fuer die gewaehlte Spielart (resolve-profile.js). */
+  let resolved = null;
+  let modesKey = "";
   /* Offenes Formular oder offene Rueckfrage: { kind: "new" | "rename" | "confirm", ... }.
      Sie merkt sich das Profil, das sie nennt - wechselt inzwischen ein anderes
      Geraet das aktive Profil, darf "Ja" nicht das neue treffen. */
   let ask = null;
-  const expanded = new Set(["scheibe"]);
+  const expanded = new Set(["scheibe", "spieler"]);
 
   const select = node("select", { className: "settings-grow" });
   select.setAttribute("aria-label", "Aktives Profil");
@@ -42,9 +52,27 @@ export function createPanel(root, handlers) {
     setAsk({ kind: "confirm", text: `Profil „${profile.name}“ löschen?`, yes: handlers.onDelete.bind(null, profile.id) }),
   );
 
+  const modeSelect = node("select", { className: "settings-grow" });
+  modeSelect.setAttribute("aria-label", "Spielart");
+  modeSelect.addEventListener("change", () => handlers.onMode(modeSelect.value));
+
+  const modeState = node("span", { className: "settings-mode-state" });
+  const resetButton = button("Auf Standard zurücksetzen", () => {
+    const label = catalog.modes.find((m) => m.id === mode)?.label ?? mode;
+    setAsk({
+      kind: "confirm",
+      text: `${label} in „${profile.name}“ auf den Standard zurücksetzen? Inhalte und Layout dieser Spielart gehen verloren, die Scheibe bleibt.`,
+      yes: handlers.onReset.bind(null, profile.id, mode),
+    });
+  });
+
+  const playerButtons = [1, 2, 3, 4, 5, 6].map((n) =>
+    button(String(n), () => handlers.onPlayers(n), { className: "settings-player" }),
+  );
+
   const askArea = node("div", { className: "settings-ask", hidden: true });
-  const templates = node("div", { className: "settings-row" });
-  const list = node("div", { className: "settings-list" });
+  const sharedList = node("div", { className: "settings-list" });
+  const modeList = node("div", { className: "settings-list" });
   const status = node("p", { className: "settings-status" });
   status.setAttribute("role", "status");
 
@@ -53,10 +81,16 @@ export function createPanel(root, handlers) {
     node("div", { className: "settings-row" }, [select]),
     node("div", { className: "settings-row" }, [button("Neu", () => setAsk({ kind: "new" })), renameButton, deleteButton]),
     askArea,
-    node("h2", { textContent: "Vorlage" }),
-    templates,
-    node("h2", { textContent: "Anpassen" }),
-    list,
+    node("h2", { textContent: "Gemeinsam – gilt für alle Spielarten" }),
+    sharedList,
+    node("h2", { textContent: "Spielart" }),
+    node("div", { className: "settings-row" }, [modeSelect]),
+    node("div", { className: "settings-row" }, [modeState, resetButton]),
+    node("div", { className: "settings-row settings-players" }, [
+      node("span", { textContent: "Vorschau:", title: "Spieler in der Vorschau" }),
+      ...playerButtons,
+    ]),
+    modeList,
     status,
     button("Weiter: Layout →", () => handlers.onNext(), { className: "settings-next" }),
   );
@@ -79,12 +113,13 @@ export function createPanel(root, handlers) {
     const toggle = node("input", { type: "checkbox" });
     toggle.dataset.part = part.id;
     const head = node("div", { className: "part-head" }, [node("label", {}, [toggle, ` ${part.label}`])]);
+    const shown = part.options.filter((option) => part.scope === "gemeinsam" || availableIn(option, mode));
     const options = node(
       "div",
       { className: "part-options", hidden: !expanded.has(part.id) },
-      part.options.map((option) => buildOption(part, option)),
+      shown.map((option) => buildOption(part, option)),
     );
-    if (part.options.length > 0) {
+    if (shown.length > 0) {
       const expand = button(options.hidden ? "▸" : "▾", () => {
         if (expanded.has(part.id)) expanded.delete(part.id);
         else expanded.add(part.id);
@@ -98,33 +133,52 @@ export function createPanel(root, handlers) {
     }
     const section = node("section", { className: "part" }, [head, options]);
     section.dataset.part = part.id;
+    section.dataset.scope = part.scope;
     return section;
   }
 
-  function buildCatalog() {
-    templates.replaceChildren(
-      ...catalog.templates.map((template) =>
-        button(template.label, () =>
-          setAsk({
-            kind: "confirm",
-            text: `Inhalte von „${profile.name}“ auf „${template.label}“ zurücksetzen? Das Layout bleibt.`,
-            yes: handlers.onTemplate.bind(null, profile.id, template.id),
-          }),
+  function buildShared() {
+    sharedList.replaceChildren(...catalog.parts.filter((p) => p.scope === "gemeinsam").map(buildPart));
+  }
+
+  function buildModeList() {
+    modeList.replaceChildren(
+      ...catalog.parts.filter((p) => p.scope === "spielart" && availableIn(p, mode)).map(buildPart),
+    );
+  }
+
+  /* Gruppiert nach Spiele/Training/Party, jede mit "angepasst" oder "Standard". */
+  function buildModeSelect() {
+    modeSelect.replaceChildren(
+      ...Object.entries(catalog.groups).map(([groupId, groupLabel]) =>
+        node(
+          "optgroup",
+          { label: groupLabel },
+          catalog.modes
+            .filter((m) => m.group === groupId)
+            .map((m) =>
+              node("option", {
+                value: m.id,
+                textContent: `${m.label} · ${Object.hasOwn(profile.spielarten, m.id) ? "angepasst" : "Standard"}`,
+              }),
+            ),
         ),
       ),
     );
-    list.replaceChildren(...catalog.parts.map(buildPart));
   }
 
-  list.addEventListener("change", (event) => {
+  function onListChange(event) {
     const input = event.target;
     const { part, option } = input.dataset;
-    if (!part || !profile) return;
-    const content = structuredClone(profile.content);
+    if (!part || !resolved) return;
+    const content = structuredClone(resolved.content);
     if (!option) content[part].on = input.checked;
     else content[part][option] = input.type === "radio" ? input.value : input.checked;
-    handlers.onContent(content);
-  });
+    if (input.closest(".part")?.dataset.scope === "gemeinsam") handlers.onShared(content);
+    else handlers.onModeContent(content);
+  }
+  sharedList.addEventListener("change", onListChange);
+  modeList.addEventListener("change", onListChange);
 
   function update() {
     // Die Auswahl nur neu bauen, wenn sich die Liste aendert - sonst klappt
@@ -138,18 +192,26 @@ export function createPanel(root, handlers) {
     deleteButton.disabled = profiles.length <= 1;
     deleteButton.title = deleteButton.disabled ? "Das letzte Profil bleibt" : "";
 
-    for (const input of list.querySelectorAll("input")) {
-      const value = profile.content[input.dataset.part];
+    for (const input of root.querySelectorAll(".settings-list input")) {
+      const value = resolved.content[input.dataset.part];
       if (!value) continue;
       const option = input.dataset.option;
       if (!option) input.checked = value.on;
       else if (input.type === "radio") input.checked = value[option] === input.value;
       else input.checked = value[option] === true;
     }
-    for (const section of list.querySelectorAll(".part")) {
-      const on = profile.content[section.dataset.part]?.on ?? true;
+    for (const section of root.querySelectorAll(".settings-list .part")) {
+      const on = resolved.content[section.dataset.part]?.on ?? true;
       section.classList.toggle("is-off", !on);
       for (const input of section.querySelectorAll(".part-options input")) input.disabled = !on;
+    }
+
+    modeSelect.value = mode;
+    modeState.textContent = resolved.angepasst ? "angepasst" : "Standard";
+    resetButton.hidden = !resolved.angepasst;
+    for (const [index, b] of playerButtons.entries()) {
+      b.disabled = gameRunning;
+      b.setAttribute("aria-pressed", String(index + 1 === players));
     }
   }
 
@@ -186,18 +248,8 @@ export function createPanel(root, handlers) {
       value: kind === "rename" ? profile.name : "",
       placeholder: "Name",
     });
-    const fieldsList = [node("label", {}, ["Name ", name])];
-    let template = null;
-    if (kind === "new") {
-      template = node(
-        "select",
-        {},
-        catalog.templates.map((t) => node("option", { value: t.id, textContent: t.label })),
-      );
-      fieldsList.push(node("label", {}, ["Vorlage ", template]));
-    }
     const form = node("form", {}, [
-      ...fieldsList,
+      node("label", {}, ["Name ", name]),
       node("div", { className: "settings-row" }, [
         node("button", { type: "submit", textContent: kind === "new" ? "Anlegen" : "Speichern" }),
         button("Abbrechen", () => setAsk(null)),
@@ -206,7 +258,7 @@ export function createPanel(root, handlers) {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       setAsk(null);
-      if (kind === "new") handlers.onCreate(name.value, template.value);
+      if (kind === "new") handlers.onCreate(name.value);
       else handlers.onRename(id, name.value);
     });
     askArea.replaceChildren(form);
@@ -214,13 +266,24 @@ export function createPanel(root, handlers) {
   }
 
   return {
-    render(nextCatalog, nextProfile, nextProfiles) {
-      if (profile && nextProfile.id !== profile.id) setAsk(null); // gehoerte zum alten Profil
-      const freshCatalog = nextCatalog !== catalog;
-      catalog = nextCatalog;
-      profile = nextProfile;
-      profiles = nextProfiles;
-      if (freshCatalog) buildCatalog();
+    render(next) {
+      if (profile && next.profile.id !== profile.id) setAsk(null); // gehoerte zum alten Profil
+      const freshCatalog = next.catalog !== catalog;
+      const freshMode = next.mode !== mode;
+      catalog = next.catalog;
+      profile = next.profile;
+      profiles = next.profiles;
+      mode = next.mode;
+      players = next.players;
+      gameRunning = next.gameRunning;
+      resolved = next.resolved;
+      if (freshCatalog) buildShared();
+      if (freshCatalog || freshMode) buildModeList();
+      const key = JSON.stringify(Object.keys(profile.spielarten).sort());
+      if (freshCatalog || key !== modesKey) {
+        modesKey = key;
+        buildModeSelect();
+      }
       update();
     },
     /** Schliesst ein offenes Formular oder eine Rueckfrage; true, wenn eins offen war. */

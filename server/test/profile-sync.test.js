@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { createSync } from "../public/js/profile-sync.js";
+import { canMerge, createSync, mergeBody } from "../public/js/profile-sync.js";
 
 let calls;
 let answer;
@@ -154,5 +154,43 @@ describe("createSync", () => {
     sync.queue("standard", { layout: 2 });
     sync.flush();
     await vi.waitFor(() => expect(status.at(-1)).toBe(""));
+  });
+
+  test("Aenderungen an zwei Spielarten gehen als zwei Anfragen raus, der Reihe nach", async () => {
+    const sync = createSync({ onStatus: () => {} });
+    sync.queue("standard", { spielart: { id: "x01", content: 1 } });
+    sync.queue("standard", { spielart: { id: "cricket", content: 2 } });
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(calls.map((c) => c.body.spielart.id)).toEqual(["x01", "cricket"]);
+  });
+
+  test("Inhalte und Layout derselben Spielart kurz nacheinander: beides kommt an", async () => {
+    const sync = createSync({ onStatus: () => {} });
+    sync.queue("standard", { spielart: { id: "x01", content: 1 } });
+    sync.queue("standard", { spielart: { id: "x01", layout: 2 } });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(calls[0].body.spielart).toEqual({ id: "x01", content: 1, layout: 2 });
+  });
+});
+
+describe("mergeBody", () => {
+  test("gemeinsam und dieselbe Spielart werden eine Ebene tief zusammengefasst", () => {
+    expect(
+      mergeBody(
+        { gemeinsam: { content: 1 }, spielart: { id: "x01", content: 2 } },
+        { gemeinsam: { board: 3 }, spielart: { id: "x01", layout: 4 }, editing: 5 },
+      ),
+    ).toEqual({
+      gemeinsam: { content: 1, board: 3 },
+      spielart: { id: "x01", content: 2, layout: 4 },
+      editing: 5,
+    });
+  });
+
+  test("zwei Spielarten lassen sich nicht zusammenfassen", () => {
+    expect(canMerge({ spielart: { id: "x01" } }, { spielart: { id: "cricket" } })).toBe(false);
+    expect(canMerge({ spielart: { id: "x01" } }, { gemeinsam: {} })).toBe(true);
   });
 });
