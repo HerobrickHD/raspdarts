@@ -17,6 +17,8 @@ export function createFramePipeline(
   hub: DisplayHub,
   recorder: FrameSink | null,
 ): (frame: unknown) => void {
+  /* Jede unbekannte Spielart nur einmal ins Log - sonst bei jedem Wurf. */
+  const reported = new Set<string>();
   return (frame) => {
     try {
       recorder?.write(frame);
@@ -31,6 +33,11 @@ export function createFramePipeline(
       console.warn(`Nachricht nicht auswertbar, uebersprungen: ${(error as Error).message}`);
       return;
     }
-    if (state !== IDLE) hub.broadcast(state);
+    if (state === IDLE) return;
+    if (state.phase === "playing" && state.mode === null && !reported.has(state.variant)) {
+      reported.add(state.variant);
+      console.warn(`Spielart "${state.variant}" unbekannt - allgemeine Darstellung`);
+    }
+    hub.broadcast(state);
   };
 }
