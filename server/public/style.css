@@ -381,9 +381,16 @@ body {
   visibility: hidden;
 }
 
+.viewer[data-spielinfo-spielart="off"] [data-chip="spielart"],
 .viewer[data-spielinfo-punktzahl="off"] [data-chip="punktzahl"],
 .viewer[data-spielinfo-legs="off"] [data-chip="legs"],
 .viewer[data-spielinfo-modus="off"] [data-chip="modus"] {
+  display: none;
+}
+
+/* Verteilung: der nicht benutzte Bereich verschwindet ganz, auch beim Ausrichten. */
+.viewer[data-spieler-verteilung="links"] [data-block="bereich-rechts"],
+.viewer[data-spieler-verteilung="rechts"] [data-block="bereich-links"] {
   display: none;
 }
 
