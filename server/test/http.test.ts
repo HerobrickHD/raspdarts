@@ -149,7 +149,7 @@ describe("Profil-API", () => {
       id: "standard",
       version: 4,
       name: "Standard",
-      gemeinsam: { content: sharedStandard(), board: DEFAULT_BOARD },
+      gemeinsam: { content: sharedStandard(), board: DEFAULT_BOARD, format: "fenster" },
       spielarten: {},
     });
   });

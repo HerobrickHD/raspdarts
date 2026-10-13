@@ -45,3 +45,14 @@ describe("Standards", () => {
     expect(catalog).not.toHaveProperty("templates");
   });
 });
+
+describe("Formate im Katalog", () => {
+  test("ganzes Fenster und die drei festen Formate mit Beschriftung", () => {
+    expect(viewerCatalog().formats).toEqual([
+      { id: "fenster", label: "Ganzes Fenster" },
+      { id: "16:9", label: "16:9" },
+      { id: "16:10", label: "16:10" },
+      { id: "4:3", label: "4:3" },
+    ]);
+  });
+});

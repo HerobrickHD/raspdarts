@@ -56,7 +56,7 @@ describe("erster Start", () => {
       id: "standard",
       version: 4,
       name: "Standard",
-      gemeinsam: { content: sharedStandard(), board: DEFAULT_BOARD },
+      gemeinsam: { content: sharedStandard(), board: DEFAULT_BOARD, format: "fenster" },
       spielarten: {},
     });
     expect(onDisk("standard.json").name).toBe("Standard");
@@ -337,5 +337,19 @@ describe("Speichern", () => {
 
     expect(warn).toHaveBeenCalledTimes(1);
     expect(store.active().name).toBe("B");
+  });
+});
+
+describe("Format im Speicher", () => {
+  test("PUT gemeinsam.format setzt es, Unsinn behaelt den bisherigen Wert", () => {
+    const store = new ProfileStore(dir);
+    expect(store.update("standard", { gemeinsam: { format: "16:10" } }).gemeinsam.format).toBe("16:10");
+    expect(store.update("standard", { gemeinsam: { format: "disco" } }).gemeinsam.format).toBe("16:10");
+  });
+
+  test("ein neues Profil uebernimmt das Format des aktiven (derselbe Bildschirm)", () => {
+    const store = new ProfileStore(dir);
+    store.update("standard", { gemeinsam: { format: "4:3" } });
+    expect(store.create("Zweites").gemeinsam.format).toBe("4:3");
   });
 });

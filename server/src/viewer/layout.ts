@@ -50,6 +50,24 @@ export interface ModeLayout {
   blocks: ModeBlocks;
 }
 
+/**
+ * Seitenverhaeltnis der Buehne. "fenster" = das ganze Fenster wie bisher; bei
+ * einem festen Format zeichnet der Viewer eine Buehne genau dieser Form (Rest
+ * schwarz), so sieht das Layout auf jedem Bildschirm gleich aus.
+ */
+export const FORMATS = [
+  { id: "fenster", label: "Ganzes Fenster" },
+  { id: "16:9", label: "16:9" },
+  { id: "16:10", label: "16:10" },
+  { id: "4:3", label: "4:3" },
+] as const;
+export type Format = (typeof FORMATS)[number]["id"];
+export const DEFAULT_FORMAT: Format = "fenster";
+
+export function sanitizeFormat(raw: unknown, fallback: Format = DEFAULT_FORMAT): Format {
+  return FORMATS.some((f) => f.id === raw) ? (raw as Format) : fallback;
+}
+
 /** Grundgroesse einer Spielerkarte in vh (style.css: .card). */
 export const CARD = { w: 49, h: 34 } as const;
 

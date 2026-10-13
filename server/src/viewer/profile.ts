@@ -7,10 +7,13 @@
 import { isMode, sanitizeModeContent, sanitizeShared, type Content } from "./catalog.js";
 import {
   DEFAULT_BOARD,
+  DEFAULT_FORMAT,
   sanitizeBoard,
+  sanitizeFormat,
   sanitizeModeLayout,
   splitLegacyLayout,
   type BoardLayout,
+  type Format,
   type ModeLayout,
 } from "./layout.js";
 import { sharedStandard, standardFor } from "./standards.js";
@@ -33,7 +36,7 @@ export interface ModeEntry {
 export interface Profile {
   version: 4;
   name: string;
-  gemeinsam: { content: Content; board: BoardLayout };
+  gemeinsam: { content: Content; board: BoardLayout; format: Format };
   /** Nur angepasste Spielarten. */
   spielarten: Record<string, ModeEntry>;
 }
@@ -58,11 +61,15 @@ export function sanitizeName(raw: unknown): string {
 }
 
 /** Neues Profil: gemeinsamer Standard, alle Spielarten im Standard. */
-export function newProfile(name: unknown, board: BoardLayout = DEFAULT_BOARD): Profile {
+export function newProfile(
+  name: unknown,
+  board: BoardLayout = DEFAULT_BOARD,
+  format: Format = DEFAULT_FORMAT,
+): Profile {
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(name),
-    gemeinsam: { content: sharedStandard(), board: { ...board } },
+    gemeinsam: { content: sharedStandard(), board: { ...board }, format },
     spielarten: {},
   };
 }
@@ -89,6 +96,7 @@ function sanitizeV4(source: Record<string, unknown>): Profile {
     gemeinsam: {
       content: sanitizeShared(gemeinsam["content"], sharedStandard()),
       board: sanitizeBoard(gemeinsam["board"]),
+      format: sanitizeFormat(gemeinsam["format"]),
     },
     spielarten,
   };
@@ -112,7 +120,8 @@ export function fromV3(source: Record<string, unknown>): Profile {
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
-    gemeinsam: { content: sanitizeShared(content, sharedStandard()), board },
+    // Ganzes Fenster wie bisher - am Pi verschiebt sich nach dem Update nichts.
+    gemeinsam: { content: sanitizeShared(content, sharedStandard()), board, format: DEFAULT_FORMAT },
     spielarten: {
       x01: { content: sanitizeModeContent(x01Content, "x01", standardFor("x01").content), layout },
     },

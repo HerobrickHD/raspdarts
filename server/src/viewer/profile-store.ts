@@ -17,7 +17,7 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMode, sanitizeShared } from "./catalog.js";
-import { fromLegacyLayout, sanitizeBoard } from "./layout.js";
+import { fromLegacyLayout, sanitizeBoard, sanitizeFormat } from "./layout.js";
 import {
   VALID_ID,
   newProfile,
@@ -45,7 +45,7 @@ export class ProfileError extends Error {
 
 export interface ProfilePatch {
   name?: unknown;
-  /** { content?, board? } */
+  /** { content?, board?, format? } */
   gemeinsam?: unknown;
   /** { id, content?, layout? } */
   spielart?: unknown;
@@ -101,10 +101,10 @@ export class ProfileStore {
     return this.read(this.#active);
   }
 
-  /** Neues Profil, alle Spielarten im Standard; die Scheibe liegt wie im aktiven (derselbe Beamer). */
+  /** Neues Profil, alle Spielarten im Standard; Scheibe und Format wie im aktiven (derselbe Beamer). */
   create(name: unknown): ProfileWithId {
-    const board = this.#profiles.get(this.#active)?.gemeinsam.board;
-    const profile = newProfile(name, board);
+    const active = this.#profiles.get(this.#active)?.gemeinsam;
+    const profile = newProfile(name, active?.board, active?.format);
     const id = uniqueId(profile.name, (candidate) => candidate === RESERVED_ID || this.#profiles.has(candidate));
     this.#profiles.set(id, profile);
     this.#markDirty(id);
@@ -134,6 +134,10 @@ export class ProfileStore {
       }
       if (gemeinsam["board"] !== undefined) {
         next.gemeinsam.board = sanitizeBoard(gemeinsam["board"], current.gemeinsam.board);
+        changed = true;
+      }
+      if (gemeinsam["format"] !== undefined) {
+        next.gemeinsam.format = sanitizeFormat(gemeinsam["format"], current.gemeinsam.format);
         changed = true;
       }
     }

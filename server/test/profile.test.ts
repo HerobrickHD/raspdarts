@@ -35,7 +35,7 @@ describe("newProfile", () => {
     expect(newProfile("Wohnzimmer", board)).toEqual({
       version: 4,
       name: "Wohnzimmer",
-      gemeinsam: { content: sharedStandard(), board },
+      gemeinsam: { content: sharedStandard(), board, format: "fenster" },
       spielarten: {},
     });
   });
@@ -176,5 +176,25 @@ describe("uniqueId", () => {
     const id = uniqueId(long, (candidate) => candidate === slugify(long));
     expect(id).toBe(`${"a".repeat(30)}-2`);
     expect(VALID_ID.test(id)).toBe(true);
+  });
+});
+
+describe("Format", () => {
+  test("neues Profil: Format wie mitgegeben, sonst ganzes Fenster", () => {
+    expect(newProfile("A").gemeinsam.format).toBe("fenster");
+    expect(newProfile("A", undefined, "4:3").gemeinsam.format).toBe("4:3");
+  });
+
+  test("Version 4 ohne oder mit unbekanntem Format: ganzes Fenster; gueltige bleiben", () => {
+    const base = { version: 4, name: "P", gemeinsam: {}, spielarten: {} };
+    expect(sanitizeProfile(base).gemeinsam.format).toBe("fenster");
+    expect(sanitizeProfile({ ...base, gemeinsam: { format: "21:9" } }).gemeinsam.format).toBe("fenster");
+    for (const format of ["16:9", "16:10", "4:3"]) {
+      expect(sanitizeProfile({ ...base, gemeinsam: { format } }).gemeinsam.format).toBe(format);
+    }
+  });
+
+  test("Version 3 bekommt ganzes Fenster - am Pi verschiebt sich nichts", () => {
+    expect(sanitizeProfile({ version: 3, name: "S", content: {}, layout: {} }).gemeinsam.format).toBe("fenster");
   });
 });

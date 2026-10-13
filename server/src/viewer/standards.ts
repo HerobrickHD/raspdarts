@@ -19,7 +19,7 @@ import {
   type ModeGroup,
   type Part,
 } from "./catalog.js";
-import { DEFAULT_MODE_LAYOUT, sanitizeModeLayout, type ModeBlocks, type ModeLayout } from "./layout.js";
+import { DEFAULT_MODE_LAYOUT, FORMATS, sanitizeModeLayout, type ModeBlocks, type ModeLayout } from "./layout.js";
 
 export interface ModeStandard {
   mode: string;
@@ -50,6 +50,7 @@ export interface ViewerCatalog {
   groups: Record<ModeGroup, string>;
   standards: Record<string, { content: Content; layout: ModeLayout }>;
   shared: Content;
+  formats: { id: string; label: string }[];
 }
 
 /** Was der Viewer braucht, um Liste und Profil selbst auszuwerten. */
@@ -60,5 +61,6 @@ export function viewerCatalog(): ViewerCatalog {
     groups: GROUP_LABELS,
     standards: Object.fromEntries(MODES.map((mode) => [mode.id, standardFor(mode.id)])),
     shared: sharedStandard(),
+    formats: FORMATS.map((f) => ({ ...f })),
   };
 }
