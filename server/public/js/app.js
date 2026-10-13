@@ -8,6 +8,8 @@
 import { arrangeCards } from "./areas.js";
 import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
 import { createBoard } from "./board.js";
+import { createCameraFeed } from "./camera-feed.js";
+import { cameraMatrix3d, scaleHomography } from "./camera-view.js";
 import { applyContent } from "./content-view.js";
 import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
@@ -30,7 +32,18 @@ const areaEls = {
 const stageEl = document.getElementById("stage");
 const panelEl = viewer.querySelector("#settings");
 
+const boardBlock = viewer.querySelector('[data-block="scheibe"]');
+const cameraImg = document.getElementById("board-camera-img");
+
 const board = createBoard(boardSvg);
+const camera = createCameraFeed({
+  onChange: () => {
+    settings.refresh();
+    render();
+  },
+});
+/* Je Kamera nur einmal von sich aus nachfragen, wenn noch kein Bild da ist. */
+const cameraAsked = new Set();
 
 let state = { phase: "idle" };
 /* Spielart des letzten Spiels - bleibt nach dem Spiel stehen; vor dem ersten X01. */
@@ -91,6 +104,8 @@ const settings = createSettings({
   getResolved: resolved,
   applyLocalProfile,
   onChange: () => render(),
+  cameraUrl: (n) => camera.url(n),
+  refreshCameras: () => camera.refresh([0, 1, 2]),
 });
 
 /**
@@ -122,6 +137,7 @@ function render() {
   }
   messageEl.textContent = shown.phase === "idle" ? "Warte auf ein Spiel" : "";
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
+  renderCamera(current);
   board.render(shown);
   if (shown.phase === "playing" && current) {
     renderHead(headEl, shown.match, modeLabel(mode));
@@ -132,7 +148,25 @@ function render() {
   }
 }
 
+/** Ansicht "Kamera": letztes Bild der gewaehlten Kamera, entzerrt auf die Scheibe. */
+function renderCamera(current) {
+  const scheibe = current?.content.scheibe;
+  if (scheibe?.darstellung !== "kamera") return;
+  const cam = Number(scheibe.kamera ?? 0);
+  const url = camera.url(cam);
+  const matrix = camera.matrix(cam);
+  if (!url && !cameraAsked.has(cam)) {
+    cameraAsked.add(cam);
+    camera.refresh([cam]);
+  }
+  if (url && cameraImg.getAttribute("src") !== url) cameraImg.src = url;
+  cameraImg.hidden = !url || !matrix;
+  // offsetWidth: Groesse der Scheibe ohne ihre Drehung - die dreht das Bild mit.
+  if (matrix) cameraImg.style.transform = cameraMatrix3d(scaleHomography(matrix, boardBlock.offsetWidth));
+}
+
 function onMessage(message) {
+  if (message.type === "camera") camera.update(message.cam, message.version);
   if (message.type === "state") {
     state = message.state;
     if (state.phase === "playing") lastMode = state.mode ?? FALLBACK_MODE;
@@ -159,6 +193,7 @@ function connect() {
 
   socket.addEventListener("open", () => {
     retryDelay = 500;
+    void camera.loadInfo();
     viewer.classList.remove("is-offline");
   });
 

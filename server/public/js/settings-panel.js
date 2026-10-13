@@ -70,6 +70,8 @@ export function createPanel(root, handlers) {
   /* Inhalte des Profils fuer die gewaehlte Spielart (resolve-profile.js). */
   let resolved = null;
   let modesKey = "";
+  /* Objekt-URL des letzten Bilds einer Kamera (camera-feed.js) - fuer die Vorschaubilder. */
+  let cameraUrl = () => null;
   /* Offener Dialog - er merkt sich das Profil, das er nennt: Wechselt
      inzwischen ein anderes Geraet das aktive Profil, darf "Ja" nicht das neue
      treffen. */
@@ -220,7 +222,27 @@ export function createPanel(root, handlers) {
 
   const partList = node("div", { className: "parts" });
 
+  /* Kamera-Wahl: drei Vorschaubilder zum Anklicken statt Segmente. */
+  function buildCameraPicks(part, option) {
+    const picks = option.choices.map((choice) => {
+      const input = node("input", { type: "radio", name: `${part.id}-${option.id}`, value: choice.id });
+      Object.assign(input.dataset, { part: part.id, option: option.id });
+      const img = node("img", { alt: "" });
+      img.dataset.cam = choice.id;
+      return node("label", { className: "camera-pick" }, [input, img, node("span", { textContent: choice.label })]);
+    });
+    return node("div", { className: "camera-picks" }, picks);
+  }
+
   function buildOption(part, option) {
+    const element = buildOptionElement(part, option);
+    // Nur sichtbar, wenn eine andere Option den passenden Wert hat (z. B. Kamera-Wahl bei Darstellung Kamera).
+    if (option.showIf) Object.assign(element.dataset, { showIfPart: part.id, showIfOption: option.showIf.option, showIfValue: option.showIf.value });
+    return element;
+  }
+
+  function buildOptionElement(part, option) {
+    if (part.id === "scheibe" && option.id === "kamera") return buildCameraPicks(part, option);
     if (option.type === "toggle") {
       return node("label", { className: "option-row" }, [
         node("span", { textContent: option.label }),
@@ -366,6 +388,16 @@ export function createPanel(root, handlers) {
       for (const input of section.querySelectorAll(".part-options input")) input.disabled = !on;
     }
 
+    for (const element of partList.querySelectorAll("[data-show-if-option]")) {
+      const { showIfPart, showIfOption, showIfValue } = element.dataset;
+      element.hidden = resolved.content[showIfPart]?.[showIfOption] !== showIfValue;
+    }
+    for (const img of partList.querySelectorAll(".camera-pick img")) {
+      const url = cameraUrl(Number(img.dataset.cam));
+      if (url && img.getAttribute("src") !== url) img.src = url;
+      img.classList.toggle("is-empty", !url);
+    }
+
     modeSelect.value = mode;
     modeState.textContent = resolved.angepasst ? "Angepasst" : "Standard";
     modeState.classList.toggle("is-custom", resolved.angepasst);
@@ -386,6 +418,7 @@ export function createPanel(root, handlers) {
       mode = next.mode;
       players = next.players;
       resolved = next.resolved;
+      cameraUrl = next.cameraUrl ?? cameraUrl;
       if (freshCatalog) buildFormats();
       if (freshCatalog || freshMode) buildParts();
       const key = JSON.stringify(Object.keys(profile.spielarten).sort());

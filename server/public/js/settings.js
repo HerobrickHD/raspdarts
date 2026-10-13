@@ -15,7 +15,18 @@ const KEEPALIVE_MS = 30_000;
 /* Der Knopf wuerde sonst an die Wand projiziert: nur bei Mausbewegung zeigen. */
 const BUTTON_HIDE_MS = 3000;
 
-export function createSettings({ viewer, editor, sync, getView, getGameMode, getResolved, applyLocalProfile, onChange }) {
+export function createSettings({
+  viewer,
+  editor,
+  sync,
+  getView,
+  getGameMode,
+  getResolved,
+  applyLocalProfile,
+  onChange,
+  cameraUrl,
+  refreshCameras,
+}) {
   const button = viewer.querySelector("#settings-toggle");
   const root = viewer.querySelector("#settings");
   let step = null;
@@ -103,13 +114,15 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
     const { catalog, profile, profiles } = getView();
     const resolved = getResolved();
     if (!catalog || !profile || !resolved) return;
-    panel.render({ catalog, profile, profiles, mode: preview.spielart, players: preview.spieler, resolved });
+    panel.render({ catalog, profile, profiles, mode: preview.spielart, players: preview.spieler, resolved, cameraUrl });
   }
 
   function open(next) {
     if (!getView().profile) return; // noch kein Profil vom Pi
     // Laeuft ein Spiel, schlaegt die Leiste beim Oeffnen dessen Spielart vor - nur als Startpunkt.
     if (next && !step && getGameMode() !== null) preview.spielart = getGameMode();
+    // Frische Vorschaubilder fuer die Kamera-Wahl - einmal je Oeffnen.
+    if (next && !step) refreshCameras();
     step = next;
     root.hidden = step !== "inhalte";
     if (step !== "inhalte") panel.cancelAsk(); // keine alte Rueckfrage beim naechsten Oeffnen

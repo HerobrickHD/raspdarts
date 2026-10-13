@@ -303,6 +303,8 @@ body {
 }
 
 .board-svg {
+  /* relative: liegt ueber dem Kamerabild (.board-camera ist absolut) */
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
@@ -361,6 +363,34 @@ body {
   }
 }
 
+/* Ansicht "Kamera": entzerrtes Kamerabild, rund ausgeschnitten, darueber nur Darts und Leuchten. */
+.board-camera {
+  position: absolute;
+  inset: 0;
+  display: none;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.viewer[data-scheibe-darstellung="kamera"] .board-camera {
+  display: block;
+}
+
+.board-camera img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  transform-origin: 0 0;
+}
+
+.board-camera img[hidden] {
+  display: none;
+}
+
+.board-svg[data-mode="kamera"] .board-fields,
+.board-svg[data-mode="kamera"] .board-numbers,
+.board-svg[data-mode="kamera"] .board-wires,
 .board-svg[data-mode="light"] .board-fields,
 .board-svg[data-mode="light"] .board-numbers,
 .board-svg[data-mode="light"] .board-wires,
@@ -1040,4 +1070,62 @@ body {
 .shortcuts td {
   padding: 4px 0;
   color: #c8cdd6;
+}
+
+/* Kamera-Wahl: drei Vorschaubilder zum Anklicken */
+.camera-picks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.camera-picks[hidden] {
+  display: none;
+}
+
+.camera-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--ad-line);
+  border-radius: 10px;
+  color: var(--ad-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.camera-pick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.camera-pick img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--ad-field);
+}
+
+.camera-pick img.is-empty {
+  visibility: hidden;
+}
+
+.camera-pick:has(input:checked) {
+  border-color: var(--ad-blue);
+  color: var(--ad-text);
+}
+
+.camera-pick:has(input:focus-visible) {
+  outline: 2px solid var(--ad-blue-hover);
+}
+
+/* Ausgeblendete Optionen (showIf) - gewinnt gegen display: flex der Zeilen. */
+.panel-body [hidden] {
+  display: none;
 }
