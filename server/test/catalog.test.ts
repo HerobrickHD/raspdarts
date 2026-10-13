@@ -198,3 +198,15 @@ describe("Hintergrund aus aelteren Profilen", () => {
     expect(sanitizeModeContent({ hintergrund: { on: false, darstellung: "schwarz" } }, "x01")["hintergrund"]?.on).toBe(true);
   });
 });
+
+describe("Darstellung der Scheibe", () => {
+  test("Reihenfolge: Gezeichnet, Linien, Nur Licht", () => {
+    const scheibe = CATALOG.parts.find((p) => p.id === "scheibe")!;
+    const darstellung = scheibe.options.find((o) => o.id === "darstellung");
+    expect(darstellung?.type === "choice" && darstellung.choices.map((c) => c.label)).toEqual([
+      "Gezeichnet",
+      "Linien",
+      "Nur Licht",
+    ]);
+  });
+});

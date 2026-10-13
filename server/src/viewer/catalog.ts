@@ -180,9 +180,9 @@ export const CATALOG: Catalog = {
           label: "Darstellung",
           type: "choice",
           choices: [
-            { id: "light", label: "Nur Licht" },
             { id: "drawn", label: "Gezeichnet" },
             { id: "lines", label: "Linien" },
+            { id: "light", label: "Nur Licht" },
           ],
           default: "light",
         },
