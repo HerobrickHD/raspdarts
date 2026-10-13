@@ -21,9 +21,12 @@ describe("Katalog", () => {
     }
   });
 
-  test("alle Bausteine gehoeren zur Spielart, Rahmen direkt unter Hintergrund", () => {
-    expect(CATALOG.parts.map((p) => p.id)).toEqual(["hintergrund", "rahmen", "scheibe", "aufnahme", "spielinfo", "spieler"]);
+  test("alle Bausteine gehoeren zur Spielart; Hintergrund ist immer da, mit Darstellung und Rahmen", () => {
+    expect(CATALOG.parts.map((p) => p.id)).toEqual(["hintergrund", "scheibe", "aufnahme", "spielinfo", "spieler"]);
     for (const part of CATALOG.parts) expect(part, part.id).not.toHaveProperty("scope");
+    const hintergrund = CATALOG.parts[0]!;
+    expect(hintergrund.fixed).toBe(true);
+    expect(hintergrund.options.map((o) => o.id)).toEqual(["darstellung", "rahmen"]);
   });
 });
 
@@ -40,8 +43,7 @@ describe("Vorgaben", () => {
 
   test("Vorgaben wie in der Spec", () => {
     const c = modeDefaults("x01");
-    expect(c["hintergrund"]).toEqual({ on: false });
-    expect(c["rahmen"]).toEqual({ on: false });
+    expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
     expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", zahlenring: true, darts: true, letzterDart: true });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
@@ -68,7 +70,7 @@ describe("Vorgaben", () => {
 
   test("modeDefaults enthaelt nur, was es in der Spielart gibt", () => {
     const gotcha = modeDefaults("gotcha");
-    expect(Object.keys(gotcha)).toEqual(["hintergrund", "rahmen", "scheibe", "aufnahme", "spielinfo", "spieler"]);
+    expect(Object.keys(gotcha)).toEqual(["hintergrund", "scheibe", "aufnahme", "spielinfo", "spieler"]);
     expect(gotcha["spieler"]).not.toHaveProperty("checkout");
     expect(gotcha["spieler"]).not.toHaveProperty("average");
     expect(gotcha["spieler"]).not.toHaveProperty("legs");
@@ -99,11 +101,10 @@ describe("Pruefung der Inhalte", () => {
 
   test("uebernimmt gueltige Werte, Optionen anderer Spielarten fallen weg", () => {
     const c = sanitizeModeContent(
-      { hintergrund: { on: true }, rahmen: { on: true }, scheibe: { darstellung: "lines" }, spieler: { checkout: false } },
+      { hintergrund: { darstellung: "autodarts", rahmen: true }, scheibe: { darstellung: "lines" }, spieler: { checkout: false } },
       "gotcha",
     );
-    expect(c["hintergrund"]?.on).toBe(true);
-    expect(c["rahmen"]?.on).toBe(true);
+    expect(c["hintergrund"]).toEqual({ on: true, darstellung: "autodarts", rahmen: true });
     expect(c["scheibe"]?.["darstellung"]).toBe("lines");
     expect(c["spieler"]).not.toHaveProperty("checkout");
   });
@@ -176,5 +177,24 @@ describe("availableIn", () => {
     expect(availableIn({ modes: ["x01"] }, "x01")).toBe(true);
     expect(availableIn({ modes: ["x01"] }, "cricket")).toBe(false);
     expect(availableIn({ modes: ["x01"] }, null)).toBe(false);
+  });
+});
+
+describe("Hintergrund aus aelteren Profilen", () => {
+  test("Hintergrund an wird Darstellung Autodarts, aus wird Schwarz", () => {
+    expect(sanitizeModeContent({ hintergrund: { on: true } }, "x01")["hintergrund"]).toEqual({
+      on: true,
+      darstellung: "autodarts",
+      rahmen: false,
+    });
+    expect(sanitizeModeContent({ hintergrund: { on: false } }, "x01")["hintergrund"]?.["darstellung"]).toBe("schwarz");
+  });
+
+  test("der fruehere Baustein Rahmen wird zur Option im Hintergrund", () => {
+    expect(sanitizeModeContent({ rahmen: { on: true } }, "x01")["hintergrund"]?.["rahmen"]).toBe(true);
+  });
+
+  test("Hintergrund laesst sich nicht ausschalten", () => {
+    expect(sanitizeModeContent({ hintergrund: { on: false, darstellung: "schwarz" } }, "x01")["hintergrund"]?.on).toBe(true);
   });
 });

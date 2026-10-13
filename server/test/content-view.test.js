@@ -11,13 +11,13 @@ describe("contentAttributes", () => {
     const attrs = contentAttributes(CATALOG, defaultContent(), "x01");
 
     expect(attrs).toMatchObject({
-      "data-hintergrund": "off",
+      "data-hintergrund-darstellung": "schwarz",
       "data-scheibe": "on",
       "data-scheibe-darstellung": "light",
       "data-scheibe-letzterdart": "on",
       "data-spieler-profilbild": "on",
     });
-    const count = CATALOG.parts.reduce((n, part) => n + 1 + part.options.length, 0);
+    const count = CATALOG.parts.reduce((n, part) => n + (part.fixed ? 0 : 1) + part.options.length, 0);
     expect(Object.keys(attrs)).toHaveLength(count);
   });
 
@@ -29,7 +29,7 @@ describe("contentAttributes", () => {
     });
 
     expect(contentAttributes(CATALOG, content, "x01")).toMatchObject({
-      "data-hintergrund": "on",
+      "data-hintergrund-darstellung": "autodarts",
       "data-scheibe-darstellung": "drawn",
       "data-spieler-flaeche": "off",
     });
@@ -49,6 +49,12 @@ describe("contentAttributes", () => {
       "data-spieler-legs": "off",
       "data-spieler-rest": "on",
     });
+  });
+
+  test("feste Bausteine (Hintergrund) bekommen kein an/aus-Merkmal, nur ihre Optionen", () => {
+    const attrs = contentAttributes(CATALOG, defaultContent(), "x01");
+    expect(attrs).not.toHaveProperty("data-hintergrund");
+    expect(attrs).toMatchObject({ "data-hintergrund-darstellung": "schwarz", "data-hintergrund-rahmen": "off" });
   });
 
   test("Merkmalnamen sind klein geschrieben", () => {

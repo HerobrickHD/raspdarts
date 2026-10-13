@@ -47,8 +47,11 @@ describe("lokale Aenderungen", () => {
     const resolved = resolveProfile(base, catalog, "x01");
     expect(withContent(base, catalog, "x01", structuredClone(resolved.content))).toBe(base);
 
-    const changed = withContent(base, catalog, "x01", { ...resolved.content, hintergrund: { on: true } });
-    expect(changed.spielarten.x01.content.hintergrund.on).toBe(true);
+    const changed = withContent(base, catalog, "x01", {
+      ...resolved.content,
+      hintergrund: { ...resolved.content.hintergrund, rahmen: true },
+    });
+    expect(changed.spielarten.x01.content.hintergrund.rahmen).toBe(true);
     expect(changed.spielarten.x01.layout).toEqual(catalog.standards.x01.layout);
   });
 

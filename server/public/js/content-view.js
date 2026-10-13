@@ -17,7 +17,8 @@ export function contentAttributes(catalog, content, mode) {
   for (const part of catalog.parts) {
     const value = content[part.id] ?? {};
     const partOn = availableIn(part, mode) && (value.on ?? part.default);
-    attrs[`data-${part.id}`.toLowerCase()] = partOn ? "on" : "off";
+    // Feste Bausteine (Hintergrund) sind immer da - nur ihre Optionen zaehlen.
+    if (!part.fixed) attrs[`data-${part.id}`.toLowerCase()] = partOn ? "on" : "off";
     for (const option of part.options) {
       const raw = value[option.id] ?? option.default;
       const name = `data-${part.id}-${option.id}`.toLowerCase();

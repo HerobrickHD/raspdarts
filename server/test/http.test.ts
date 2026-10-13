@@ -170,7 +170,7 @@ describe("Profil-API", () => {
     const response = await call("PUT", "/api/profiles/standard", {
       name: "Beamer",
       format: "4:3",
-      spielart: { id: "cricket", content: { hintergrund: { on: true }, aufnahme: { on: false } } },
+      spielart: { id: "cricket", content: { hintergrund: { darstellung: "autodarts" }, aufnahme: { on: false } } },
       editing: { schritt: "inhalte", spielart: "cricket", spieler: 3 },
     });
 
@@ -178,7 +178,7 @@ describe("Profil-API", () => {
     const profile = response.json();
     expect(profile.name).toBe("Beamer");
     expect(profile.format).toBe("4:3");
-    expect(profile.spielarten.cricket.content.hintergrund.on).toBe(true);
+    expect(profile.spielarten.cricket.content.hintergrund.darstellung).toBe("autodarts");
     expect(profile.spielarten.cricket.content.aufnahme.on).toBe(false);
     expect(deps.hub.editing).toEqual({ schritt: "inhalte", spielart: "cricket", spieler: 3 });
   });

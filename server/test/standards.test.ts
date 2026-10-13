@@ -18,8 +18,7 @@ describe("Standards", () => {
 
   test("zu Beginn: wie die alte Vorlage Projektion, Scheibe in der Mitte, Bereiche wie die alten Karten", () => {
     const x01 = standardFor("x01");
-    expect(x01.content["hintergrund"]?.on).toBe(false);
-    expect(x01.content["rahmen"]?.on).toBe(false);
+    expect(x01.content["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
     expect(x01.content["scheibe"]).toMatchObject({ on: true, darstellung: "light", zahlenring: false });
     expect(x01.content["spielinfo"]?.on).toBe(false);
     expect(x01.content["spieler"]?.on).toBe(true);

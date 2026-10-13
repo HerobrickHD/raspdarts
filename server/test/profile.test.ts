@@ -118,8 +118,7 @@ describe("sanitizeProfile", () => {
     expect(Object.keys(profile.spielarten)).toEqual(["x01"]);
     const x01 = profile.spielarten["x01"]!;
     expect(x01.layout.board).toEqual(v3.layout.board);
-    expect(x01.content["hintergrund"]).toEqual({ on: true });
-    expect(x01.content["rahmen"]).toEqual({ on: false });
+    expect(x01.content["hintergrund"]).toEqual({ on: true, darstellung: "autodarts", rahmen: false });
     expect(x01.content["scheibe"]).toEqual(v3.content.scheibe);
     expect(x01.content["aufnahme"]).toEqual(v3.content.aufnahme);
     expect(x01.content["spieler"]).toMatchObject({ verteilung: "beide", flaeche: false, average: false });
@@ -162,7 +161,7 @@ describe("sanitizeProfile", () => {
     for (const mode of ["x01", "gotcha"]) {
       const entry = profile.spielarten[mode]!;
       expect(entry.layout.board, mode).toEqual(gemeinsam.board);
-      expect(entry.content["hintergrund"]?.on, mode).toBe(true);
+      expect(entry.content["hintergrund"]?.["darstellung"], mode).toBe("autodarts");
       expect(entry.content["scheibe"]?.["darstellung"], mode).toBe("drawn");
     }
     expect(profile.spielarten["gotcha"]?.content["aufnahme"]?.on).toBe(false);

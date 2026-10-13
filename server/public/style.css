@@ -377,7 +377,7 @@ body {
 
 /* Hintergrund wie die Autodarts-Spielansicht, eigener Nachbau: dunkles Blau
    mit Verlauf und grossen, schwachen Winkeln. Aus = schwarz, kein Licht. */
-.viewer[data-hintergrund="on"] .stage {
+.viewer[data-hintergrund-darstellung="autodarts"] .stage {
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90' preserveAspectRatio='xMidYMid slice'><polygon points='-10,0 18,0 50,45 18,90 -10,90 22,45' fill='rgba(70,120,255,0.07)'/><polygon points='112,90 140,90 172,45 140,0 112,0 144,45' fill='rgba(70,120,255,0.04)'/></svg>")
       center / cover no-repeat,
@@ -386,7 +386,7 @@ body {
 }
 
 /* Rahmen: weisse Linie innen am Rand der Buehne - zum Ausrichten des Beamers. */
-.viewer[data-rahmen="on"] .stage::after {
+.viewer[data-hintergrund-rahmen="on"] .stage::after {
   content: "";
   position: absolute;
   inset: 0;

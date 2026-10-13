@@ -336,12 +336,12 @@ describe("Uebernehmen von einer anderen Spielart", () => {
   test("kopiert Inhalte und Layout einer angepassten Spielart, das Ziel ist danach angepasst", () => {
     const store = new ProfileStore(dir);
     const board = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
-    store.update("standard", { spielart: { id: "x01", content: { hintergrund: { on: true } }, layout: { board } } });
+    store.update("standard", { spielart: { id: "x01", content: { hintergrund: { darstellung: "autodarts" } }, layout: { board } } });
 
     const profile = store.copyMode("standard", "x01", "cricket");
 
     expect(profile.spielarten["cricket"]?.layout.board).toEqual(board);
-    expect(profile.spielarten["cricket"]?.content["hintergrund"]?.on).toBe(true);
+    expect(profile.spielarten["cricket"]?.content["hintergrund"]?.["darstellung"]).toBe("autodarts");
     expect(profile.spielarten["x01"]?.layout.board).toEqual(board);
   });
 

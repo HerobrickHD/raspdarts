@@ -39,6 +39,8 @@ export interface Part {
   label: string;
   /** an/aus */
   default: boolean;
+  /** Immer an, ohne eigenen Schalter (Hintergrund) - nur seine Optionen zaehlen. */
+  fixed?: boolean;
   modes?: string[];
   /** Einzelteile, in der Liste aufgeklappt sichtbar */
   options: Option[];
@@ -148,9 +150,26 @@ const X01 = ["x01"];
 
 export const CATALOG: Catalog = {
   parts: [
-    { id: "hintergrund", label: "Hintergrund", default: false, options: [] },
-    // Weisse Linie innen am Rand der Buehne - zum Ausrichten des Beamers.
-    { id: "rahmen", label: "Rahmen (Bildrand)", default: false, options: [] },
+    {
+      id: "hintergrund",
+      label: "Hintergrund",
+      default: true,
+      fixed: true,
+      options: [
+        {
+          id: "darstellung",
+          label: "Darstellung",
+          type: "choice",
+          choices: [
+            { id: "schwarz", label: "Schwarz" },
+            { id: "autodarts", label: "Autodarts" },
+          ],
+          default: "schwarz",
+        },
+        // Weisse Linie innen am Rand der Buehne - zum Ausrichten des Beamers.
+        toggle("rahmen", "Rahmen (Bildrand)", false),
+      ],
+    },
     {
       id: "scheibe",
       label: "Scheibe",
@@ -248,7 +267,7 @@ function sanitizeParts(parts: Part[], stored: unknown, fallback: Content, mode: 
     const given = asRecord(source[part.id]);
     const base = fallback[part.id] ?? partDefaults(part);
     const on = given["on"];
-    const value: PartContent = { on: typeof on === "boolean" ? on : base.on };
+    const value: PartContent = { on: part.fixed ? true : typeof on === "boolean" ? on : base.on };
     for (const option of part.options) {
       if (!availableIn(option, mode)) continue;
       const raw = given[option.id];
@@ -263,7 +282,24 @@ const modeParts = (mode: string): Part[] => CATALOG.parts.filter((part) => avail
 
 export const modeDefaults = (mode: string): Content => sanitizeParts(modeParts(mode), null, {}, mode);
 
+/**
+ * Fruehere Form des Hintergrunds (bis 13.10.): an/aus statt Darstellung, und
+ * der Rahmen war ein eigener Baustein.
+ */
+function upgradeContent(stored: unknown): unknown {
+  const source = asRecord(stored);
+  const hintergrund = asRecord(source["hintergrund"]);
+  const rahmen = asRecord(source["rahmen"])["on"];
+  if (hintergrund["darstellung"] !== undefined && rahmen === undefined) return stored;
+  const upgraded = { ...hintergrund };
+  if (upgraded["darstellung"] === undefined && typeof hintergrund["on"] === "boolean") {
+    upgraded["darstellung"] = hintergrund["on"] ? "autodarts" : "schwarz";
+  }
+  if (upgraded["rahmen"] === undefined && typeof rahmen === "boolean") upgraded["rahmen"] = rahmen;
+  return { ...source, hintergrund: upgraded };
+}
+
 /** Bausteine einer Spielart; Optionen, die es dort nicht gibt, fallen weg. */
 export function sanitizeModeContent(stored: unknown, mode: string, fallback: Content = modeDefaults(mode)): Content {
-  return sanitizeParts(modeParts(mode), stored, fallback, mode);
+  return sanitizeParts(modeParts(mode), upgradeContent(stored), fallback, mode);
 }
