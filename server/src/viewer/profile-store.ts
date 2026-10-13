@@ -194,7 +194,9 @@ export class ProfileStore {
     const profile = newProfile("Standard");
     const legacy = legacyDir === null ? null : fromLegacyLayout(this.#readJson(join(legacyDir, "standard.json")));
     if (legacy) {
-      profile.layout = legacy.layout;
+      // Zwischenstand bis Profil-Version 4 (naechste Aufgabe): nur Scheibe, Spielinfo, Aufnahme
+      const { spielinfo, aufnahme } = legacy.layout.blocks;
+      profile.layout = { board: legacy.board, blocks: { ...profile.layout.blocks, spielinfo, aufnahme } };
       profile.content = sanitizeContent({ scheibe: { darstellung: legacy.boardMode } }, profile.content);
     }
     this.#profiles.set(FIRST_ID, profile);
