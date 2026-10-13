@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Jedes Profil bekommt einen gemeinsamen Teil (Scheibe, Hintergrund) und einen Teil je Spielart (nur angepasste Spielarten, der Rest folgt ihrem Standard). Der Viewer zeichnet nach der laufenden Spielart, und die Spieler (1–6) ordnen sich in zwei Bereichen links und rechts selbst an, mit festen Plätzen für das ganze Match.
+**Goal:** Jedes Profil bekommt einen gemeinsamen Teil (Scheibe, Hintergrund) und einen Teil je Spielart (nur angepasste Spielarten, der Rest folgt ihrem Standard). Der Viewer zeichnet nach der laufenden Spielart, und die Spieler (1–6) ordnen sich in zwei Bereichen links und rechts selbst an, immer in der Reihenfolge von Autodarts (wer werfen muss).
 
-**Architecture:** Der Katalog (`catalog.ts`) kennt die elf Spielarten und sagt je Baustein/Option, wo es sie gibt; `standards.ts` liefert den Standard je Spielart. Der Pi prüft und speichert Profile in Version 4 (`profile.ts`, `profile-store.ts`), erkennt die Spielart aus `variant` und vergibt feste Plätze (`game-state.ts`, `seats.ts`). Der Viewer wertet das Profil für die angezeigte Spielart selbst aus (`resolve-profile.js`) und verteilt die Karten mit einer reinen Funktion (`areas.js`).
+**Architecture:** Der Katalog (`catalog.ts`) kennt die elf Spielarten und sagt je Baustein/Option, wo es sie gibt; `standards.ts` liefert den Standard je Spielart. Der Pi prüft und speichert Profile in Version 4 (`profile.ts`, `profile-store.ts`), erkennt die Spielart aus `variant` (`game-state.ts`); die Reihenfolge der Spieler ist immer die von Autodarts. Der Viewer wertet das Profil für die angezeigte Spielart selbst aus (`resolve-profile.js`) und verteilt die Karten mit einer reinen Funktion (`areas.js`).
 
 **Tech Stack:** Server: TypeScript, Fastify 5, @fastify/websocket, Vitest. Viewer: HTML, CSS, SVG und ES-Module ohne Build-Schritt (`server/public/`).
 
@@ -34,7 +34,7 @@
 1. **Update auf dem Pi mit vorhandenem Profil „Standard“ (Version 3):** X01 mit 2 Spielern muss danach genauso aussehen (Scheibe, Karten, Aufnahme). → Task 3, Test „Version 3 wird umgebaut …“; Task 5, Test „Bereiche aus der Übernahme ergeben die alten Karten“; Task 8, Pi-Vergleich mit Bildschirmfoto.
 2. **Scheibe verschieben in einer Spielart, die auf Standard steht:** Die Spielart darf dadurch **nicht** „angepasst“ werden, und die neue Lage gilt in allen Spielarten. → Task 7, Test in `editor-changes.test.js` und Step 9, Punkt 5.
 3. **Schnell nacheinander Inhalte und Layout ändern, oder zwei Spielarten hintereinander:** Die gebündelte Anfrage darf keine Teiländerung verschlucken und nie Änderungen zweier Spielarten vermischen. → Task 7, Tests `mergeBody`/`queue` in `profile-sync.test.js`.
-4. **Best of 3, Autodarts stellt die Spieler im zweiten Leg anders auf:** Keine Karte wechselt die Seite. → Task 4, Test „gleiche Spieler in anderer Reihenfolge behalten ihren Platz“.
+4. **Best of 3, Autodarts stellt die Spieler im zweiten Leg anders auf:** Die Karten folgen der neuen Reihenfolge (auch über die Seiten), die Karte von Platz 1 zeigt den neuen ersten Spieler mit dessen Bild. → Task 4, Test „seat folgt der Reihenfolge …“; Task 6 baut Karten je Platz und setzt Bilder nur bei geänderter Quelle (`setImage`).
 5. **Ein Spiel läuft, während jemand die Leiste offen hat:** Die Vorschau zeigt das echte Spiel und dessen Spielart, die Spielerzahl-Knöpfe sind gesperrt. → Task 7, Step 9, Punkt 7.
 
 ---
@@ -50,9 +50,8 @@
 | `server/src/viewer/profile-store.ts` | Anlegen, Ändern (gemeinsam/Spielart), Zurücksetzen je Spielart |
 | `server/src/viewer/display-hub.ts` | `editing` mit Spielart und Spielerzahl, Katalog mit Spielarten |
 | `server/src/http.ts` | Profil-Endpunkte mit neuen Feldern |
-| `server/src/viewer/game-state.ts` | Spielart erkennen, allgemeiner Stand, `id`/`seat` je Spieler |
-| `server/src/viewer/seats.ts` (neu) | Feste Plätze je Match |
-| `server/src/viewer/pipeline.ts` | Plätze anwenden, unbekannte Spielart melden |
+| `server/src/viewer/game-state.ts` | Spielart erkennen, allgemeiner Stand, `seat` je Spieler (Wurfreihenfolge) |
+| `server/src/viewer/pipeline.ts` | unbekannte Spielart melden |
 | `server/public/js/areas.js` (neu) | Karten in den Bereichen anordnen |
 | `server/public/js/resolve-profile.js` (neu) | Profil + Spielart → Inhalte und Layout; lokale Änderungen einbauen |
 | `server/public/js/content-view.js` | Merkmale je Spielart |
@@ -1676,41 +1675,43 @@ git commit -m "Profil Version 4: gemeinsamer Teil und angepasste Spielarten, Vor
 
 ---
 
-### Task 4: Spielart erkennen und feste Plätze
+### Task 4: Spielart erkennen, Reihenfolge wie bei Autodarts
 
 **Files:**
 - Modify: `server/src/viewer/game-state.ts`, `server/src/viewer/pipeline.ts`
-- Create: `server/src/viewer/seats.ts`
-- Test: `server/test/game-state.test.ts`, Create: `server/test/seats.test.ts`, `server/test/pipeline.test.ts`, ggf. `server/test/ingest-e2e.test.ts`
+- Test: `server/test/game-state.test.ts`, `server/test/pipeline.test.ts`, ggf. `server/test/ingest-e2e.test.ts`, `server/test/display-hub.test.ts`
 
 **Interfaces:**
 - Consumes: `modeForVariant` (Task 1)
 - Produces:
   - `MatchInfo { baseScore: number | null; legsToWin: number; setsToWin: number | null; inMode: Mode | null; outMode: Mode | null }`
-  - `PlayerView` zusätzlich `id: string | null; seat: number` (1–6; ohne Plätze = Stelle + 1)
-  - `ViewerState = { phase: "idle" } | { phase: "playing"; variant: string; mode: string | null; matchId: string | null; match; players; turn; highlights }` – `unsupported` entfällt
-  - `class SeatKeeper { apply(state: ViewerState): ViewerState }`
+  - `PlayerView` zusätzlich `seat: number` (1–6) = Stelle in den Autodarts-Daten dieses Stands
+  - `ViewerState = { phase: "idle" } | { phase: "playing"; variant: string; mode: string | null; match; players; turn; highlights }` – `unsupported` entfällt
 
-- [ ] **Step 1: Tests für die Erkennung schreiben**
+- [ ] **Step 1: Tests schreiben**
 
 In `server/test/game-state.test.ts`:
-- Die erwarteten Spielerobjekte im Test „ein Dart …“ (und alle anderen `toEqual` auf ganze Spieler) um `id` und `seat` ergänzen: Spieler 0 `id: "01a11b7b-1625-7871-93d0-60bbb3f4de83", seat: 1`, Spieler 1 `id: "01a11b7b-162b-76ae-a770-78b8913b79e3", seat: 2` (ab Frame 106; Frames 9–88 haben das erste Match mit `01a11b79-…`).
-- `expect(state.variant).toBe("X01")` ergänzen um `expect(state.mode).toBe("x01"); expect(state.matchId).toBe(<id des Matches aus dem Frame>)`. Die id holt der Test aus dem Frame, damit sie nicht abgeschrieben werden muss.
+- Die erwarteten Spielerobjekte (alle `toEqual` auf ganze Spieler) um `seat` ergänzen: Spieler 0 `seat: 1`, Spieler 1 `seat: 2`.
+- Nach `expect(state.variant).toBe("X01")` ergänzen: `expect(state.mode).toBe("x01");`.
 - Den Test zu `unsupported` ersetzen:
 
 ```ts
-describe("andere Spielarten", () => {
-  /** Ein X01-Frame aus dem Mitschnitt, umgeschrieben auf eine andere variant, ohne X01-Einstellungen. */
-  function otherVariant(variant: string): unknown {
-    const frame = structuredClone(FRAMES[106]) as Record<string, unknown>;
-    const state = (frame["data"] ?? frame) as Record<string, unknown>;
-    state["variant"] = variant;
-    state["settings"] = {};
-    return frame;
-  }
+/** Ein Frame aus dem Mitschnitt, umgebaut: andere variant, ohne X01-Einstellungen. */
+function rewritten(index: number, change: (state: Record<string, unknown>) => void): unknown {
+  const frame = structuredClone(FRAMES[index]) as Record<string, unknown>;
+  const state = (frame["data"] ?? frame) as Record<string, unknown>;
+  change(state);
+  return frame;
+}
 
+describe("andere Spielarten", () => {
   test("Cricket: allgemeiner Stand mit Spielern, Aufnahme und Spielart", () => {
-    const state = toViewerState(otherVariant("Cricket"));
+    const state = toViewerState(
+      rewritten(106, (s) => {
+        s["variant"] = "Cricket";
+        s["settings"] = {};
+      }),
+    );
     if (state.phase !== "playing") throw new Error("kein Spiel");
     expect(state.mode).toBe("cricket");
     expect(state.variant).toBe("Cricket");
@@ -1721,124 +1722,46 @@ describe("andere Spielarten", () => {
   });
 
   test("unbekannte Spielart: mode null, trotzdem ein Spiel", () => {
-    const state = toViewerState(otherVariant("Killer"));
+    const state = toViewerState(rewritten(106, (s) => (s["variant"] = "Killer")));
     expect(state.phase).toBe("playing");
     if (state.phase === "playing") expect(state.mode).toBeNull();
   });
 });
-```
 
-Falls `FRAMES[106]` die Daten nicht unter `data` trägt, nimmt `otherVariant` das Objekt selbst (siehe `frame["data"] ?? frame`).
+describe("Reihenfolge", () => {
+  test("seat folgt der Reihenfolge, die Autodarts schickt - auch wenn sie sich aendert", () => {
+    const swapped = rewritten(106, (s) => {
+      // wie ein neues Leg, in dem Autodarts die Spieler umstellt
+      for (const key of ["players", "gameScores", "scores", "stats"]) {
+        if (Array.isArray(s[key])) (s[key] as unknown[]).reverse();
+      }
+    });
+    const before = playingAt(106);
+    const after = toViewerState(swapped);
+    if (after.phase !== "playing") throw new Error("kein Spiel");
 
-- [ ] **Step 2: Tests für die Plätze schreiben**
-
-`server/test/seats.test.ts`:
-
-```ts
-import { describe, expect, test } from "vitest";
-import type { PlayerView, ViewerState } from "../src/viewer/game-state.js";
-import { SeatKeeper } from "../src/viewer/seats.js";
-
-const player = (id: string | null, name = id ?? "?"): PlayerView => ({
-  id,
-  seat: 0,
-  name,
-  avatarUrl: null,
-  country: null,
-  score: 0,
-  legs: 0,
-  sets: 0,
-  average: { leg: 0, match: 0 },
-  dartsThrown: 0,
-  isActive: false,
-  isWinner: false,
-  busted: false,
-  checkout: null,
-});
-
-function playing(matchId: string | null, players: PlayerView[]): ViewerState {
-  return {
-    phase: "playing",
-    variant: "X01",
-    mode: "x01",
-    matchId,
-    match: { baseScore: 501, legsToWin: 2, setsToWin: null, inMode: "Straight", outMode: "Double" },
-    players,
-    turn: { darts: [], points: 0, busted: false },
-    highlights: [],
-  };
-}
-
-const seatsOf = (state: ViewerState) =>
-  state.phase === "playing" ? state.players.map((p) => [p.name, p.seat]) : [];
-
-describe("SeatKeeper", () => {
-  test("erster Stand eines Matches: Plaetze in der Reihenfolge der Daten", () => {
-    const keeper = new SeatKeeper();
-    expect(seatsOf(keeper.apply(playing("m1", [player("a"), player("b"), player("c")])))).toEqual([
-      ["a", 1],
-      ["b", 2],
-      ["c", 3],
+    expect(before.players.map((p) => [p.name, p.seat])).toEqual([
+      ["testuser01", 1],
+      ["TEST", 2],
     ]);
-  });
-
-  test("gleiche Spieler in anderer Reihenfolge behalten ihren Platz (naechstes Leg)", () => {
-    const keeper = new SeatKeeper();
-    keeper.apply(playing("m1", [player("a"), player("b"), player("c")]));
-    expect(seatsOf(keeper.apply(playing("m1", [player("b"), player("c"), player("a")])))).toEqual([
-      ["b", 2],
-      ["c", 3],
-      ["a", 1],
+    expect(after.players.map((p) => [p.name, p.seat])).toEqual([
+      ["TEST", 1],
+      ["testuser01", 2],
     ]);
-  });
-
-  test("neues Match ordnet neu", () => {
-    const keeper = new SeatKeeper();
-    keeper.apply(playing("m1", [player("a"), player("b")]));
-    expect(seatsOf(keeper.apply(playing("m2", [player("b"), player("a")])))).toEqual([
-      ["b", 1],
-      ["a", 2],
-    ]);
-  });
-
-  test("neuer Spieler im Match bekommt den naechsten freien Platz", () => {
-    const keeper = new SeatKeeper();
-    keeper.apply(playing("m1", [player("a"), player("b")]));
-    expect(seatsOf(keeper.apply(playing("m1", [player("c"), player("a"), player("b")])))).toEqual([
-      ["c", 3],
-      ["a", 1],
-      ["b", 2],
-    ]);
-  });
-
-  test("ohne Spieler-id zaehlt die Stelle, ohne Match-id bleibt alles bei der Stelle", () => {
-    const keeper = new SeatKeeper();
-    expect(seatsOf(keeper.apply(playing("m1", [player(null, "x"), player(null, "y")])))).toEqual([
-      ["x", 1],
-      ["y", 2],
-    ]);
-    expect(seatsOf(keeper.apply(playing(null, [player("b"), player("a")])))).toEqual([
-      ["b", 1],
-      ["a", 2],
-    ]);
-  });
-
-  test("idle bleibt unveraendert", () => {
-    const keeper = new SeatKeeper();
-    const idle: ViewerState = { phase: "idle" };
-    expect(keeper.apply(idle)).toBe(idle);
   });
 });
 ```
 
-- [ ] **Step 3: Tests laufen rot**
+Falls `FRAMES[106]` die Daten nicht unter `data` trägt, nimmt `rewritten` das Objekt selbst (siehe `frame["data"] ?? frame`).
 
-Run: `cd server && npx vitest run test/game-state.test.ts test/seats.test.ts`
-Expected: FAIL.
+- [ ] **Step 2: Tests laufen rot**
 
-- [ ] **Step 4: `game-state.ts` umbauen**
+Run: `cd server && npx vitest run test/game-state.test.ts`
+Expected: FAIL (`mode`/`seat` fehlen, Cricket ergibt `unsupported`).
 
-Kopfkommentar: „Spielregeln (Rest, Bust, Checkout-Weg, Sieger) entscheidet Autodarts“ bleibt; ergänzen: „Ausser X01 sind die Felder der Spielarten ungeprueft: uebersetzt wird, was in allen gleich aussieht (Spieler, Punktestand, Aufnahme); was fehlt, bleibt leer statt geraten.“
+- [ ] **Step 3: `game-state.ts` umbauen**
+
+Kopfkommentar ergänzen: „Ausser X01 sind die Felder der Spielarten ungeprueft: uebersetzt wird, was in allen gleich aussieht (Spieler, Punktestand, Aufnahme); was fehlt, bleibt leer statt geraten. Die Reihenfolge der Spieler ist immer die von Autodarts - man sieht, wer werfen muss.“
 
 Typen:
 
@@ -1853,9 +1776,7 @@ export interface MatchInfo {
 }
 
 export interface PlayerView {
-  /** Spieler-id von Autodarts; Grundlage fuer feste Plaetze im Match. */
-  id: string | null;
-  /** Platz 1-6, fest fuer das ganze Match (seats.ts); hier zunaechst die Stelle in den Daten. */
+  /** Platz 1-6 = Stelle in den Autodarts-Daten dieses Stands (Wurfreihenfolge). */
   seat: number;
   name: string;
   // ... Rest unveraendert
@@ -1869,7 +1790,6 @@ export type ViewerState =
       variant: string;
       /** id aus dem Katalog; null = unbekannte Spielart. */
       mode: string | null;
-      matchId: string | null;
       match: MatchInfo;
       players: PlayerView[];
       turn: { darts: TurnDart[]; points: number; busted: boolean };
@@ -1877,14 +1797,14 @@ export type ViewerState =
     };
 ```
 
-In `toViewerState`:
+In `toViewerState` statt der Zeile mit `unsupported`:
 
 ```ts
   const variant = asText(state["variant"]) ?? "X01";
   const mode = modeForVariant(variant);
 ```
 
-(statt der Zeile mit `unsupported`). In `players.map` `id: asText(player["id"]), seat: index + 1,` vorn ergänzen. Rückgabe:
+In `players.map` vorn `seat: index + 1,` ergänzen. Rückgabe:
 
 ```ts
   const settings = asObject(state["settings"]);
@@ -1894,7 +1814,6 @@ In `toViewerState`:
     phase: "playing",
     variant,
     mode,
-    matchId: asText(state["id"]),
     match: {
       baseScore: typeof settings["baseScore"] === "number" ? settings["baseScore"] : null,
       legsToWin: asNumber(state["legs"], 1),
@@ -1910,47 +1829,11 @@ In `toViewerState`:
 
 Import: `import { modeForVariant } from "./catalog.js";`
 
-- [ ] **Step 5: `seats.ts` schreiben**
+Run: `cd server && npx vitest run test/game-state.test.ts` → PASS.
 
-```ts
-/**
- * Feste Plaetze im Match: Bei mehreren Legs kann Autodarts die Reihenfolge der
- * Spieler aendern. Damit niemand mitten im Match die Seite wechselt, behaelt
- * jeder Spieler den Platz aus dem ersten Stand, den der Pi vom Match sieht.
- * Gemerkt wird nur das laufende Match, im Speicher.
- */
-import type { ViewerState } from "./game-state.js";
+- [ ] **Step 4: Pipeline meldet unbekannte Spielarten**
 
-export class SeatKeeper {
-  #matchId: string | null = null;
-  readonly #seats = new Map<string, number>();
-
-  apply(state: ViewerState): ViewerState {
-    if (state.phase !== "playing" || state.matchId === null) return state;
-    if (state.matchId !== this.#matchId) {
-      this.#matchId = state.matchId;
-      this.#seats.clear();
-    }
-    const taken = new Set(this.#seats.values());
-    const players = state.players.map((player, index) => {
-      if (player.id === null) return { ...player, seat: index + 1 };
-      let seat = this.#seats.get(player.id);
-      if (seat === undefined) {
-        seat = 1;
-        while (taken.has(seat)) seat++;
-        this.#seats.set(player.id, seat);
-        taken.add(seat);
-      }
-      return { ...player, seat };
-    });
-    return { ...state, players };
-  }
-}
-```
-
-- [ ] **Step 6: Pipeline: Plätze anwenden, unbekannte Spielart melden**
-
-Test in `server/test/pipeline.test.ts` ergänzen (Hilfen der Datei nutzen):
+Test in `server/test/pipeline.test.ts` ergänzen (Hilfen der Datei nutzen; `FRAMES` wie in `game-state.test.ts` laden, falls die Datei es noch nicht tut):
 
 ```ts
   test("meldet eine unbekannte Spielart einmal je Wert", () => {
@@ -1965,24 +1848,20 @@ Test in `server/test/pipeline.test.ts` ergänzen (Hilfen der Datei nutzen):
 
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0]?.[0]).toContain("Killer");
+    expect(hub.broadcast).toHaveBeenCalledTimes(2);
     warn.mockRestore();
   });
 ```
 
-(`FRAMES` wie in `game-state.test.ts` laden, falls die Datei es noch nicht tut.)
-
 `pipeline.ts`:
 
 ```ts
-import { SeatKeeper } from "./seats.js";
-
 export function createFramePipeline(hub: DisplayHub, recorder: FrameSink | null): (frame: unknown) => void {
-  const seats = new SeatKeeper();
+  /* Jede unbekannte Spielart nur einmal ins Log - sonst bei jedem Wurf. */
   const reported = new Set<string>();
   return (frame) => {
     // ... Aufzeichnen und Uebersetzen wie bisher ...
     if (state === IDLE) return;
-    state = seats.apply(state);
     if (state.phase === "playing" && state.mode === null && !reported.has(state.variant)) {
       reported.add(state.variant);
       console.warn(`Spielart "${state.variant}" unbekannt - allgemeine Darstellung`);
@@ -1992,19 +1871,18 @@ export function createFramePipeline(hub: DisplayHub, recorder: FrameSink | null)
 }
 ```
 
-- [ ] **Step 7: Tests grün, übrige anpassen**
+- [ ] **Step 5: Übrige Tests anpassen, Gesamtlauf**
 
 Run: `cd server && npm test`
-Expected: Fehlschläge nur dort, wo ganze Stände verglichen werden (`ingest-e2e.test.ts`, `display-hub.test.ts`): erwartete Spieler um `id`/`seat` und Stände um `mode`/`matchId` ergänzen bzw. auf `toMatchObject` umstellen. Danach grün.
+Expected: Fehlschläge nur dort, wo ganze Stände verglichen werden (`ingest-e2e.test.ts`, `display-hub.test.ts`): erwartete Spieler um `seat`, Stände um `mode` ergänzen bzw. auf `toMatchObject` umstellen. Danach grün.
 
-Run: `cd server && npm run typecheck`
-Expected: Fehler in keiner Server-Datei.
+Run: `cd server && npm run typecheck` → keine Fehler in Server-Dateien.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add server/src/viewer/game-state.ts server/src/viewer/seats.ts server/src/viewer/pipeline.ts server/test
-git commit -m "Spielart aus variant erkennen, allgemeiner Stand fuer alle Spielarten, feste Plaetze im Match"
+git add server/src/viewer/game-state.ts server/src/viewer/pipeline.ts server/test
+git commit -m "Spielart aus variant erkennen, allgemeiner Stand fuer alle Spielarten, Reihenfolge wie bei Autodarts"
 ```
 
 ---
@@ -2506,7 +2384,6 @@ export function sampleState(mode, count) {
   const n = Math.min(6, Math.max(1, count));
   const isX01 = mode === "x01";
   const players = NAMES.slice(0, n).map((name, index) => ({
-    id: `beispiel-${index + 1}`,
     seat: index + 1,
     name,
     avatarUrl: null,
@@ -2525,7 +2402,6 @@ export function sampleState(mode, count) {
     phase: "playing",
     variant: mode,
     mode,
-    matchId: "beispiel",
     match: MATCH[mode] ?? OTHER_MATCH,
     players,
     turn: {
@@ -3572,7 +3448,7 @@ git commit -m "Einstellungen: gemeinsam und je Spielart, Vorschau 1-6 Spieler, S
 
 Im Abschnitt zum Viewer:
 - Spielarten: Liste der elf, „angepasst“/„Standard“, gemeinsam vs. je Spielart.
-- Spielerbereiche: Verteilung, feste Plätze im Match.
+- Spielerbereiche: Verteilung; Reihenfolge immer wie bei Autodarts (wer werfen muss).
 - Schnittstelle: `POST /api/profiles { name }`, `PUT … { name?, gemeinsam?, spielart?, editing? }`, `POST …/reset { spielart }`, `editing`-Objekt; `catalog` mit `modes`, `groups`, `standards`, `shared`.
 - Neue Spielart prüfen: Mitschnitt aufnehmen, `variants` in `catalog.ts` korrigieren, `verified: true`.
 
