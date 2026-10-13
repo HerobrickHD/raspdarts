@@ -15,6 +15,7 @@ import { createSync } from "./profile-sync.js";
 import { FALLBACK_MODE, resolveProfile } from "./resolve-profile.js";
 import { previewState } from "./sample-state.js";
 import { createSettings } from "./settings.js";
+import { fitStage } from "./stage.js";
 
 const viewer = document.getElementById("viewer");
 const boardSvg = document.getElementById("board-svg");
@@ -25,6 +26,10 @@ const areaEls = {
   links: viewer.querySelector('[data-block="bereich-links"]'),
   rechts: viewer.querySelector('[data-block="bereich-rechts"]'),
 };
+
+const stageEl = document.getElementById("stage");
+const panelEl = viewer.querySelector("#settings");
+const toolbarEl = viewer.querySelector("#edit-toolbar");
 
 const board = createBoard(boardSvg);
 
@@ -95,14 +100,32 @@ const settings = createSettings({
   onChange: () => render(),
 });
 
+/**
+ * Lage der Buehne: Format des Profils, und auf diesem Geraet Platz fuer die
+ * offene Seitenleiste bzw. Werkzeugleiste - so verdecken sie nichts. Andere
+ * Geraete zeigen die Buehne unveraendert.
+ */
+function placeStage() {
+  const step = settings.editing()?.schritt;
+  const panel = panelEl.getBoundingClientRect();
+  const toolbar = toolbarEl.getBoundingClientRect();
+  const reserve = {
+    right: step === "inhalte" && panel.width > 0 ? window.innerWidth - panel.left : 0,
+    bottom: step === "layout" && toolbar.height > 0 ? window.innerHeight - toolbar.top + 8 : 0,
+  };
+  const format = view.profile?.gemeinsam.format ?? "fenster";
+  const { left, top, width, height } = fitStage({ width: window.innerWidth, height: window.innerHeight }, format, reserve);
+  Object.assign(stageEl.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+}
+
 function render() {
+  placeStage();
   const shown = shownState();
   const edit = editing();
   const mode = shownMode();
   const current = resolved();
   viewer.dataset.phase = shown.phase;
   viewer.dataset.spielart = mode ?? "unbekannt";
-  viewer.dataset.format = view.profile?.gemeinsam.format ?? "fenster";
   viewer.classList.toggle("is-layout", edit?.schritt === "layout");
   if (current) {
     applyContent(viewer, view.catalog, current.content, mode);
@@ -165,6 +188,12 @@ function connect() {
     retryDelay = Math.min(retryDelay * 2, 10000);
   });
 }
+
+/* Fenstergroesse, und Leiste/Werkzeugleiste gehen auf und zu (auch erst nach dem Zeichnen). */
+window.addEventListener("resize", placeStage);
+const resizeWatch = new ResizeObserver(() => placeStage());
+resizeWatch.observe(panelEl);
+resizeWatch.observe(toolbarEl);
 
 render();
 connect();

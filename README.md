@@ -147,7 +147,9 @@ startet ein Spiel, zeigt der Viewer den Teil dieser Spielart.
 (Ganzes Fenster, 16:9, 16:10, 4:3). Bei einem festen Format zeichnet der Viewer
 eine Bühne genau dieser Form (Rest schwarz) – das Layout sieht dann auf jedem
 Monitor gleich aus. Bestehende Profile stehen auf „Ganzes Fenster“ (wie bisher);
-nach einem Wechsel einmal nachjustieren.
+nach einem Wechsel einmal nachjustieren. Solange auf einem Gerät die Leiste oder
+die Werkzeugleiste offen ist, rückt dort die Bühne daneben (kleiner, unverzerrt),
+damit nichts verdeckt ist; der Beamer zeigt sie unverändert.
 
 **Schritt 1 – Inhalte:** Profil wählen, anlegen, umbenennen oder löschen. Unter
 „Gemeinsam“ Hintergrund und Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,

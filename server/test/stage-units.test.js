@@ -20,9 +20,9 @@ describe("Einheiten der Buehne", () => {
     }
   });
 
-  test("die Buehne ist ein Container, an dem sich cqh misst", () => {
+  test("die Buehne ist ein Container, an dem sich cqh misst; ihre Lage setzt stage.js", () => {
     const css = readFileSync("public/style.css", "utf8");
     expect(css).toMatch(/\.stage\s*\{[^}]*container-type:\s*size/);
-    for (const format of ["16:9", "16:10", "4:3"]) expect(css).toContain(`[data-format="${format}"]`);
+    expect(readFileSync("public/js/app.js", "utf8")).toContain("fitStage(");
   });
 });

@@ -312,6 +312,10 @@ Größen nur an der Höhe.
   `vh`. Seitenleiste, Knopf und Werkzeugleiste bleiben am Fensterrand.
 - Bedienung: ganz oben in der Leiste „Format“ (Auswahl), wirkt sofort auf
   allen Geräten. Der Layout-Editor rechnet mit der Bühne statt dem Fenster.
+- Nichts verdeckt (Arnold, 13.10.): Ist auf einem Gerät die Seitenleiste
+  bzw. die Werkzeugleiste offen, rückt dort die Bühne in den freien Platz
+  daneben bzw. darüber – kleiner, Seitenverhältnis gleich (`fitStage` in
+  `public/js/stage.js`). Andere Geräte zeigen die Bühne unverändert.
 - Tests: Prüfung/Übernahme/Anlegen/PUT des Formats; kein `vh` außer der
   Bühnengröße (`100vh`/`100vw`).
 
