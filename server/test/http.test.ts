@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { buildApp, isAllowedHost } from "../src/http.js";
 import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js";
 import type { DisplaySocket } from "../src/viewer/display-hub.js";
-import type { ViewerState } from "../src/viewer/game-state.js";
+import { toViewerState } from "../src/viewer/game-state.js";
 import { DEFAULT_BOARD } from "../src/viewer/layout.js";
 import { sharedStandard } from "../src/viewer/standards.js";
 import { testDeps } from "./helpers.js";
@@ -434,8 +434,8 @@ describe("/api/ingest/reset", () => {
   test("setzt alle Viewer auf Warten", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    const unsupported: ViewerState = { phase: "unsupported", variant: "Cricket" };
-    deps.hub.broadcast(unsupported);
+    const playing = toViewerState({ variant: "Cricket", players: [{ name: "A" }], gameScores: [0] });
+    deps.hub.broadcast(playing);
     const sent: unknown[] = [];
     const socket: DisplaySocket = { send: (data) => sent.push(JSON.parse(data)), on: () => undefined };
     deps.hub.attach(socket);
