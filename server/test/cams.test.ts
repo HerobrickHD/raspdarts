@@ -19,11 +19,19 @@ class FakeAutodarts implements AutodartsHttp {
   calls: string[] = [];
   config: unknown = CONFIG;
   state: unknown = { running: true, connected: true, status: "Throw" };
+  ellipses: unknown = { "0": { bull: [1, 2] } };
   image: (path: string) => Promise<Buffer> = async (path) => Buffer.from(`jpeg ${path}`);
 
   async json(path: string): Promise<unknown> {
     this.calls.push(path);
-    const answer = path === "/api/config" ? this.config : path === "/api/state" ? this.state : undefined;
+    const answer =
+      path === "/api/config"
+        ? this.config
+        : path === "/api/state"
+          ? this.state
+          : path === "/api/config/calibration/ellipses"
+            ? this.ellipses
+            : undefined;
     if (answer === undefined) throw new Error(`unbekannter Pfad ${path}`);
     if (answer instanceof Error) throw answer;
     return answer;
@@ -279,6 +287,51 @@ describe("image", () => {
     await cams.image(0);
 
     expect((await cams.info()).fetched).toBe(3);
+  });
+});
+
+describe("frische Bilder und Kalibrierung (Kamera-Ansicht)", () => {
+  test("fresh holt ein neues Bild, auch innerhalb der Sekunde, und ersetzt das gemerkte", async () => {
+    const { fake, cams } = setup();
+    let n = 0;
+    fake.image = async () => Buffer.from(`bild ${(n += 1)}`);
+    await cams.image(2);
+
+    const fresh = await cams.image(2, { fresh: true });
+    const again = await cams.image(2);
+
+    expect(fresh).toEqual({ ok: true, jpeg: Buffer.from("bild 2") });
+    expect(again).toEqual({ ok: true, jpeg: Buffer.from("bild 2") });
+    expect(fake.count("/api/img/cams/2")).toBe(2);
+  });
+
+  test("fresh im Standby: board-stopped, kein Bild", async () => {
+    const { fake, cams } = setup();
+    fake.state = { running: false, connected: true, status: "Stopped" };
+    expect(await cams.image(0, { fresh: true })).toEqual({ ok: false, reason: "board-stopped" });
+    expect(fake.count("/api/img/cams/0")).toBe(0);
+  });
+
+  test("calibration liest die Ringpunkte hoechstens alle 60 s", async () => {
+    const { fake, clock, cams } = setup();
+    expect(await cams.calibration()).toEqual({ "0": { bull: [1, 2] } });
+    clock.now = 59_000;
+    await cams.calibration();
+    expect(fake.count("/api/config/calibration/ellipses")).toBe(1);
+    clock.now = 61_000;
+    await cams.calibration();
+    expect(fake.count("/api/config/calibration/ellipses")).toBe(2);
+  });
+
+  test("calibration: Fehler ergibt null, neuer Versuch nach einer Sekunde", async () => {
+    const { fake, clock, cams } = setup();
+    fake.ellipses = new Error("weg");
+    expect(await cams.calibration()).toBeNull();
+    await cams.calibration();
+    expect(fake.count("/api/config/calibration/ellipses")).toBe(1);
+    clock.now = 1_500;
+    fake.ellipses = { "1": {} };
+    expect(await cams.calibration()).toEqual({ "1": {} });
   });
 });
 

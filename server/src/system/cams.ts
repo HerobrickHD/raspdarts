@@ -37,13 +37,18 @@ export type CamImage = { ok: true; jpeg: Buffer } | { ok: false; reason: CamFail
 export interface Cams {
   /** Wirft, wenn Autodarts nicht antwortet. */
   info(): Promise<CamsInfo>;
-  image(n: number): Promise<CamImage>;
+  /** fresh: neues Bild holen, auch wenn das gemerkte juenger als eine Sekunde ist (Kamera-Ansicht nach einem Wurf). */
+  image(n: number, options?: { fresh?: boolean }): Promise<CamImage>;
+  /** Ringpunkte der Kalibrierung je Kamera (Autodarts: /api/config/calibration/ellipses); null, wenn nicht lesbar. */
+  calibration(): Promise<unknown>;
 }
 
 const TIMEOUT_MS = 2000;
 const IMAGE_TTL_MS = 1000;
 const STATE_TTL_MS = 1000;
 const CONFIG_TTL_MS = 30_000;
+/** Die Kalibrierung aendert sich nur beim Kalibrieren - einmal pro Minute nachsehen reicht. */
+const CALIBRATION_TTL_MS = 60_000;
 const FAILURE_TTL_MS = 1000;
 
 /** Nimmt aus der Autodarts-Config nur Board-ID und Anzahl belegter Kamera-Plaetze. */
@@ -63,16 +68,17 @@ export function parseCamsConfig(body: unknown): { board_id: string | null; cams:
  * Haelt das Ergebnis von `load` fuer `ttlMs` ab dem Ende des Abrufs. Solange
  * ein Abruf laeuft, bekommen alle Aufrufer denselben - auch wenn er laenger
  * als `ttlMs` dauert. Ein Fehler wird nicht gemerkt. Springt die Uhr zurueck
- * (der Pi hat keine Echtzeituhr), gilt der Wert als abgelaufen.
+ * (der Pi hat keine Echtzeituhr), gilt der Wert als abgelaufen. force laedt
+ * in jedem Fall neu und ersetzt den gemerkten Wert.
  */
-export function cached<T>(ttlMs: number, now: () => number, load: () => Promise<T>): () => Promise<T> {
+export function cached<T>(ttlMs: number, now: () => number, load: () => Promise<T>): (force?: boolean) => Promise<T> {
   let entry: { promise: Promise<T>; settledAt: number | null } | null = null;
   const fresh = (settledAt: number) => {
     const age = now() - settledAt;
     return age >= 0 && age < ttlMs;
   };
-  return () => {
-    if (entry && (entry.settledAt === null || fresh(entry.settledAt))) return entry.promise;
+  return (force = false) => {
+    if (!force && entry && (entry.settledAt === null || fresh(entry.settledAt))) return entry.promise;
     const current: { promise: Promise<T>; settledAt: number | null } = { promise: load(), settledAt: null };
     entry = current;
     current.promise.then(
@@ -118,8 +124,19 @@ export function createCams(deps: CamsDeps): Cams {
     }
   });
 
-  const images = new Map<number, () => Promise<CamImage>>();
-  function imageOf(n: number): Promise<CamImage> {
+  const calibrationOk = cached(CALIBRATION_TTL_MS, deps.now, () =>
+    deps.http.json("/api/config/calibration/ellipses", TIMEOUT_MS),
+  );
+  const calibration = cached(FAILURE_TTL_MS, deps.now, async (): Promise<unknown> => {
+    try {
+      return await calibrationOk();
+    } catch {
+      return null;
+    }
+  });
+
+  const images = new Map<number, (force?: boolean) => Promise<CamImage>>();
+  function imageOf(n: number, fresh: boolean): Promise<CamImage> {
     let load = images.get(n);
     if (!load) {
       load = cached(IMAGE_TTL_MS, deps.now, async (): Promise<CamImage> => {
@@ -132,7 +149,7 @@ export function createCams(deps: CamsDeps): Cams {
       });
       images.set(n, load);
     }
-    return load();
+    return load(fresh);
   }
 
   return {
@@ -140,7 +157,8 @@ export function createCams(deps: CamsDeps): Cams {
       const { board_id, cams } = await config();
       return { board_id, cams, fetched };
     },
-    async image(n) {
+    calibration: () => calibration(),
+    async image(n, options = {}) {
       let cams: number;
       try {
         ({ cams } = await config());
@@ -151,7 +169,7 @@ export function createCams(deps: CamsDeps): Cams {
       const state = await running();
       if (state === null) return { ok: false, reason: "unavailable" };
       if (!state) return { ok: false, reason: "board-stopped" };
-      return imageOf(n);
+      return imageOf(n, options.fresh === true);
     },
   };
 }
