@@ -155,12 +155,13 @@ ist; der Beamer zeigt sie unverändert.
 
 **In der Leiste:** Profil wählen, anlegen, umbenennen oder löschen; Format.
 Darunter die **Spielart** wählen (Zusatz „angepasst“ oder „Standard“) und ihre
-Bausteine ein- und ausschalten: Hintergrund, Rahmen (weiße Linie am Bildrand,
-zum Ausrichten des Beamers), Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
+Bausteine einstellen: Hintergrund (Schwarz oder Autodarts, dazu Rahmen – weiße
+Linie am Bildrand zum Ausrichten des Beamers), Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
 Darts, Leuchten), Aufnahme, Spielinfo, Spielerkarten (mit Verteilung und Teilen).
 „Auf Standard zurücksetzen“ verwirft die Anpassung dieser Spielart samt Lage der
 Scheibe; „Von: … Übernehmen“ kopiert Inhalte und Layout einer anderen Spielart.
-Das **i** unten zeigt alle Tastenkürzel. Solange die Einstellungen offen
+Das **i** unten zeigt alle Tastenkürzel. Rückfragen erscheinen als Dialog über
+dem Fenster, in der Leiste verschiebt sich dabei nichts. Solange die Einstellungen offen
 sind, zeigen alle Geräte Beispieldaten (Spieler 1 … 6, Anzahl über „Vorschau“) –
 auch wenn gerade ein Spiel läuft. Nach dem Schließen kommt wieder das echte Spiel.
 

@@ -363,6 +363,23 @@ entfällt; ersetzt damit die Abschnitte „gemeinsam“ oben.
   Übernehmen“ mit Rückfrage. Hinweis unten nur „Auf der Bühne anklicken und
   ziehen.“ plus **i**-Knopf mit allen Tastenkürzeln (Esc schließt erst ihn).
 
+## Leiste im Stil von Autodarts (Nachtrag 13.10.)
+
+Arnold: Rahmen gehört in den Hintergrund; die Leiste passt nicht zu Autodarts;
+beim Klicken (z. B. Zurücksetzen) darf sich nichts verschieben.
+
+- Hintergrund ist ein fester Baustein ohne eigenen Schalter (`fixed`) mit
+  „Darstellung: Schwarz / Autodarts“ und dem Schalter „Rahmen (Bildrand)“.
+  Alte Werte: `hintergrund.on` → Darstellung, Baustein `rahmen` → Option.
+- Optik nach play.autodarts.com: Grund #01040B, Kästen #1B1F29 (18 px Rundung,
+  Kante #292C33), Hauptknöpfe #0B55DF (12 px), Manrope, Schalter als Pillen,
+  Auswahl-Optionen und Spielerzahl als Segmente. Kopf und Fuß der Leiste fest,
+  nur der Inhalt rollt.
+- Nichts springt: Neu, Umbenennen, Löschen, Zurücksetzen, Übernehmen und die
+  Tastenkürzel sind Dialoge über dem Fenster; „Zurücksetzen“ ist bei
+  „Standard“ gesperrt statt versteckt; Meldungen erscheinen als Hinweis über
+  dem Fuß. Nur das Aufklappen eines Kastens schiebt.
+
 ## Bedienung
 
 ### Schritt „Inhalte“
