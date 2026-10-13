@@ -1,24 +1,21 @@
 /**
- * Ein Profil: Name, ein gemeinsamer Teil (Scheibe samt Lage, Hintergrund) und
- * je Spielart Inhalte und Layout - aber nur fuer angepasste Spielarten. Alle
- * anderen folgen ihrem Standard (standards.ts). Genau ein Profil ist aktiv;
- * alle Geraete zeigen es.
+ * Ein Profil ist ein Bildschirm (Beamer, Fernseher ...): Name, Format der
+ * Buehne und je Spielart Inhalte und Layout - aber nur fuer angepasste
+ * Spielarten. Alle anderen folgen ihrem Standard (standards.ts). Genau ein
+ * Profil ist aktiv; alle Geraete zeigen es.
  */
-import { isMode, sanitizeModeContent, sanitizeShared, type Content } from "./catalog.js";
+import { isMode, sanitizeModeContent, type Content } from "./catalog.js";
 import {
-  DEFAULT_BOARD,
   DEFAULT_FORMAT,
-  sanitizeBoard,
   sanitizeFormat,
   sanitizeModeLayout,
   splitLegacyLayout,
-  type BoardLayout,
   type Format,
   type ModeLayout,
 } from "./layout.js";
-import { sharedStandard, standardFor } from "./standards.js";
+import { standardFor } from "./standards.js";
 
-export const PROFILE_VERSION = 4;
+export const PROFILE_VERSION = 5;
 export const MAX_NAME_LENGTH = 40;
 export const FALLBACK_NAME = "Profil";
 
@@ -30,13 +27,14 @@ export const VALID_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
 export interface ModeEntry {
   content: Content;
+  /** Scheibe, Bloecke und Spielerbereiche. */
   layout: ModeLayout;
 }
 
 export interface Profile {
-  version: 4;
+  version: 5;
   name: string;
-  gemeinsam: { content: Content; board: BoardLayout; format: Format };
+  format: Format;
   /** Nur angepasste Spielarten. */
   spielarten: Record<string, ModeEntry>;
 }
@@ -60,18 +58,9 @@ export function sanitizeName(raw: unknown): string {
   return name || FALLBACK_NAME;
 }
 
-/** Neues Profil: gemeinsamer Standard, alle Spielarten im Standard. */
-export function newProfile(
-  name: unknown,
-  board: BoardLayout = DEFAULT_BOARD,
-  format: Format = DEFAULT_FORMAT,
-): Profile {
-  return {
-    version: PROFILE_VERSION,
-    name: sanitizeName(name),
-    gemeinsam: { content: sharedStandard(), board: { ...board }, format },
-    spielarten: {},
-  };
+/** Neues Profil: alle Spielarten im Standard. */
+export function newProfile(name: unknown, format: Format = DEFAULT_FORMAT): Profile {
+  return { version: PROFILE_VERSION, name: sanitizeName(name), format, spielarten: {} };
 }
 
 /** Eintrag einer Spielart; Fehlendes oder Unbrauchbares aus fallback (Vorgabe: ihr Standard). */
@@ -83,34 +72,31 @@ export function sanitizeModeEntry(stored: unknown, mode: string, fallback: ModeE
   };
 }
 
-function sanitizeV4(source: Record<string, unknown>): Profile {
-  const gemeinsam = asRecord(source["gemeinsam"]);
+/** Alle brauchbaren Eintraege; ganz Unbrauchbares faellt weg - die Spielart folgt dann ihrem Standard. */
+function sanitizeEntries(stored: unknown): Record<string, ModeEntry> {
   const spielarten: Record<string, ModeEntry> = {};
-  for (const [mode, entry] of Object.entries(asRecord(source["spielarten"]))) {
-    // Ganz Unbrauchbares faellt weg - die Spielart folgt dann ihrem Standard.
+  for (const [mode, entry] of Object.entries(asRecord(stored))) {
     if (isMode(mode) && isRecord(entry)) spielarten[mode] = sanitizeModeEntry(entry, mode);
   }
+  return spielarten;
+}
+
+function sanitizeV5(source: Record<string, unknown>): Profile {
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
-    gemeinsam: {
-      content: sanitizeShared(gemeinsam["content"], sharedStandard()),
-      board: sanitizeBoard(gemeinsam["board"]),
-      format: sanitizeFormat(gemeinsam["format"]),
-    },
-    spielarten,
+    format: sanitizeFormat(source["format"]),
+    spielarten: sanitizeEntries(source["spielarten"]),
   };
 }
 
 /**
- * Profil-Version 3 (Oktober 2026): ein Satz Inhalte und ein Layout fuer
- * alles. Scheibe und Hintergrund werden gemeinsam, der Rest wird die
- * angepasste Spielart X01 - so sieht X01 mit 2 Spielern aus wie vorher.
+ * Profil-Version 3 (Oktober 2026): ein Satz Inhalte und ein Layout fuer alles.
+ * Das wird die angepasste Spielart X01 - so sieht X01 mit 2 Spielern aus wie
+ * vorher. Neue Optionen so, dass das Bild gleich bleibt.
  */
 export function fromV3(source: Record<string, unknown>): Profile {
   const content = asRecord(source["content"]);
-  const { board, layout } = splitLegacyLayout(source["layout"]);
-  // Neue Optionen so, dass das Bild gleich bleibt: beide Seiten, kein Chip "Spielart".
   const spielinfo = asRecord(content["spielinfo"]);
   const x01Content = {
     ...content,
@@ -120,18 +106,51 @@ export function fromV3(source: Record<string, unknown>): Profile {
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
-    // Ganzes Fenster wie bisher - am Pi verschiebt sich nach dem Update nichts.
-    gemeinsam: { content: sanitizeShared(content, sharedStandard()), board, format: DEFAULT_FORMAT },
+    format: DEFAULT_FORMAT,
     spielarten: {
-      x01: { content: sanitizeModeContent(x01Content, "x01", standardFor("x01").content), layout },
+      x01: {
+        content: sanitizeModeContent(x01Content, "x01", standardFor("x01").content),
+        layout: splitLegacyLayout(source["layout"]),
+      },
     },
+  };
+}
+
+/**
+ * Profil-Version 4 (13. Oktober 2026): ein gemeinsamer Teil (Hintergrund,
+ * Scheibe samt Lage, Format) und angepasste Spielarten. Der gemeinsame Teil
+ * wandert in X01 und in jede angepasste Spielart - dort galt er ja auch.
+ */
+export function fromV4(source: Record<string, unknown>): Profile {
+  const gemeinsam = asRecord(source["gemeinsam"]);
+  const shared = asRecord(gemeinsam["content"]);
+  const stored = asRecord(source["spielarten"]);
+  const modes = new Set(["x01", ...Object.keys(stored).filter((mode) => isMode(mode) && isRecord(stored[mode]))]);
+  const spielarten: Record<string, ModeEntry> = {};
+  for (const mode of modes) {
+    const entry = asRecord(stored[mode]);
+    const layout = asRecord(entry["layout"]);
+    spielarten[mode] = sanitizeModeEntry(
+      {
+        content: { ...asRecord(entry["content"]), ...shared },
+        layout: { ...layout, board: gemeinsam["board"] },
+      },
+      mode,
+    );
+  }
+  return {
+    version: PROFILE_VERSION,
+    name: sanitizeName(source["name"]),
+    format: sanitizeFormat(gemeinsam["format"]),
+    spielarten,
   };
 }
 
 /** Macht aus beliebigem gespeichertem Inhalt ein brauchbares Profil. */
 export function sanitizeProfile(stored: unknown): Profile {
   const source = asRecord(stored);
-  if (source["version"] === PROFILE_VERSION) return sanitizeV4(source);
+  if (source["version"] === PROFILE_VERSION) return sanitizeV5(source);
+  if (source["version"] === 4) return fromV4(source);
   if (source["version"] === 3) return fromV3(source);
   return newProfile(source["name"]);
 }

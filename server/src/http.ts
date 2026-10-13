@@ -144,7 +144,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const body = fields(request.body);
       const profile = deps.profiles.update(id, {
         name: body["name"],
-        gemeinsam: body["gemeinsam"],
+        format: body["format"],
         spielart: body["spielart"],
       });
       // Einstellen betrifft, was die Viewer zeigen - also nur das aktive Profil.
@@ -159,6 +159,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.post<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id/reset", async (request, reply) =>
     withProfiles(reply, () => {
       const profile = deps.profiles.resetMode(request.params.id, fields(request.body)["spielart"]);
+      deps.hub.publishProfile();
+      return profile;
+    }),
+  );
+
+  // Inhalte und Layout einer Spielart in eine andere kopieren ("Uebernehmen von").
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id/copy", async (request, reply) =>
+    withProfiles(reply, () => {
+      const body = fields(request.body);
+      const profile = deps.profiles.copyMode(request.params.id, body["von"], body["nach"]);
       deps.hub.publishProfile();
       return profile;
     }),

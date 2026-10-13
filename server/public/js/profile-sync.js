@@ -10,10 +10,9 @@ import { api } from "./profile-api.js";
 
 const SEND_INTERVAL_MS = 100;
 
-/* Eine Ebene tief zusammenfassen: gemeinsam immer, spielart nur bei gleicher id. */
+/* spielart eine Ebene tief zusammenfassen (nur bei gleicher id, siehe canMerge). */
 export function mergeBody(a, b) {
   const merged = { ...a, ...b };
-  if (a.gemeinsam && b.gemeinsam) merged.gemeinsam = { ...a.gemeinsam, ...b.gemeinsam };
   if (a.spielart && b.spielart) merged.spielart = { ...a.spielart, ...b.spielart };
   return merged;
 }

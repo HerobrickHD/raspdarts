@@ -1,23 +1,14 @@
 /*
- * Was eine Aenderung beim Ausrichten fuer das Profil bedeutet: Die Scheibe
- * gilt fuer alle Spielarten (gemeinsam), Bloecke und Bereiche nur fuer die
- * angezeigte Spielart. Wer nur die Scheibe verschiebt, passt damit keine
- * Spielart an. Reine Funktion ohne DOM.
+ * Was eine Aenderung beim Ausrichten fuer das Profil bedeutet: Scheibe,
+ * Bloecke und Bereiche gehoeren zur angezeigten Spielart - jede Aenderung
+ * passt nur sie an. Reine Funktion ohne DOM.
  */
-import { withBoard, withModeBlocks } from "./resolve-profile.js";
-
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+import { withModeLayout } from "./resolve-profile.js";
 
 export function layoutChange(profile, catalog, mode, before, after) {
-  let next = profile;
-  const patch = {};
-  if (!same(before.board, after.board)) {
-    next = withBoard(next, after.board);
-    patch.gemeinsam = { board: after.board };
-  }
-  if (!same(before.blocks, after.blocks)) {
-    next = withModeBlocks(next, catalog, mode, after.blocks);
-    patch.spielart = { id: mode, layout: { blocks: after.blocks } };
-  }
-  return { profile: next, patch };
+  if (JSON.stringify(before) === JSON.stringify(after)) return { profile, patch: {} };
+  return {
+    profile: withModeLayout(profile, catalog, mode, after),
+    patch: { spielart: { id: mode, layout: after } },
+  };
 }

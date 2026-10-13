@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { contentAttributes } from "../public/js/content-view.js";
-import { CATALOG, modeDefaults, sanitizeModeContent, sanitizeShared, sharedDefaults } from "../src/viewer/catalog.ts";
+import { CATALOG, modeDefaults, sanitizeModeContent } from "../src/viewer/catalog.ts";
 
-const defaultContent = () => ({ ...sharedDefaults(), ...modeDefaults("x01") });
-const sanitizeContent = (stored) => ({ ...sanitizeShared(stored), ...sanitizeModeContent(stored, "x01") });
+const defaultContent = () => modeDefaults("x01");
+const sanitizeContent = (stored) => sanitizeModeContent(stored, "x01");
 
 describe("contentAttributes", () => {
   test("setzt fuer jeden Baustein und jede Option ein Merkmal", () => {

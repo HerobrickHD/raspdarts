@@ -1,8 +1,8 @@
 /*
- * Seitenleiste, Schritt "Inhalte": Profil, gemeinsame Bausteine (gelten fuer
- * alle Spielarten), Spielart mit Vorschau und die Liste ihrer Bausteine. Die
- * Listen entstehen aus dem Katalog vom Pi - eine neue Option im Katalog
- * erscheint hier ohne Aenderung an dieser Datei.
+ * Seitenleiste: Profil und Format, Spielart mit Vorschau, Zuruecksetzen und
+ * Uebernehmen, und die Liste ihrer Bausteine. Die Liste entsteht aus dem
+ * Katalog vom Pi - eine neue Option im Katalog erscheint hier ohne Aenderung
+ * an dieser Datei.
  *
  * Kennt den Pi nicht: alles, was der Nutzer tut, geht an die handlers.
  */
@@ -63,8 +63,20 @@ export function createPanel(root, handlers) {
     const label = catalog.modes.find((m) => m.id === mode)?.label ?? mode;
     setAsk({
       kind: "confirm",
-      text: `${label} in „${profile.name}“ auf den Standard zurücksetzen? Inhalte und Layout dieser Spielart gehen verloren, die Scheibe bleibt.`,
+      text: `${label} in „${profile.name}“ auf den Standard zurücksetzen? Inhalte und Layout dieser Spielart gehen verloren, auch die Lage der Scheibe.`,
       yes: handlers.onReset.bind(null, profile.id, mode),
+    });
+  });
+
+  const modeLabel = (id) => catalog.modes.find((m) => m.id === id)?.label ?? id;
+  const copySelect = node("select", { className: "settings-grow" });
+  copySelect.setAttribute("aria-label", "Übernehmen von Spielart");
+  const copyButton = button("Übernehmen", () => {
+    const from = copySelect.value;
+    setAsk({
+      kind: "confirm",
+      text: `Inhalte und Layout von ${modeLabel(from)} nach ${modeLabel(mode)} übernehmen? Die bisherigen Einstellungen von ${modeLabel(mode)} gehen verloren.`,
+      yes: handlers.onCopy.bind(null, profile.id, from, mode),
     });
   });
 
@@ -73,10 +85,45 @@ export function createPanel(root, handlers) {
   );
 
   const askArea = node("div", { className: "settings-ask", hidden: true });
-  const sharedList = node("div", { className: "settings-list" });
   const modeList = node("div", { className: "settings-list" });
   const status = node("p", { className: "settings-status" });
   status.setAttribute("role", "status");
+
+  /* Alle Kuerzel - hinter dem i-Knopf, damit die Leiste kurz bleibt. */
+  const SHORTCUTS = [
+    ["Maus", [
+      ["Anklicken und ziehen", "verschieben"],
+      ["Griff an der Ecke", "Größe (Bereiche: Breite und Höhe)"],
+      ["Kreis über der Scheibe", "drehen – rastet bei 0°, 90°, 180° ein"],
+      ["Alt beim Drehen", "frei drehen"],
+      ["Mausrad auf der Scheibe", "Größe der Scheibe (Umschalt: fein)"],
+    ]],
+    ["Tastatur (nach Anklicken)", [
+      ["Pfeile", "verschieben (Umschalt: grob)"],
+      ["+ / −", "Größe (Umschalt: grob)"],
+      ["Q / E", "Scheibe drehen"],
+      ["Strg + Pfeil", "Bereich breiter/schmaler, höher/niedriger"],
+      ["Esc", "schließen"],
+    ]],
+  ];
+  const info = node("div", { className: "settings-info", hidden: true }, [
+    node("div", { className: "settings-row" }, [
+      node("h2", { className: "settings-grow", textContent: "Tastenkürzel" }),
+      button("×", () => (info.hidden = true), { className: "settings-close", title: "Schließen" }),
+    ]),
+    ...SHORTCUTS.map(([title, rows]) =>
+      node("section", {}, [
+        node("h3", { textContent: title }),
+        node(
+          "table",
+          {},
+          rows.map(([key, what]) => node("tr", {}, [node("th", { textContent: key }), node("td", { textContent: what })])),
+        ),
+      ]),
+    ),
+  ]);
+  const infoButton = button("i", () => (info.hidden = !info.hidden), { className: "settings-info-button", title: "Tastenkürzel" });
+  infoButton.setAttribute("aria-label", "Tastenkürzel anzeigen");
 
   root.replaceChildren(
     node("div", { className: "settings-row" }, [node("h2", { textContent: "Profil" }), close]),
@@ -87,23 +134,21 @@ export function createPanel(root, handlers) {
       node("span", { textContent: "Format:", title: "Seitenverhältnis des Bildschirms" }),
       formatSelect,
     ]),
-    node("h2", { textContent: "Gemeinsam – gilt für alle Spielarten" }),
-    sharedList,
     node("h2", { textContent: "Spielart" }),
     node("div", { className: "settings-row" }, [modeSelect]),
     node("div", { className: "settings-row" }, [modeState, resetButton]),
+    node("div", { className: "settings-row" }, [node("span", { textContent: "Von:" }), copySelect, copyButton]),
     node("div", { className: "settings-row settings-players" }, [
       node("span", { textContent: "Vorschau:", title: "Spieler in der Vorschau" }),
       ...playerButtons,
     ]),
     modeList,
     status,
-    node("p", {
-      className: "settings-hint",
-      textContent:
-        "Auf der Bühne: anklicken und ziehen = verschieben · Ecke = Größe · Kreis = Scheibe drehen (rastet bei 0°/90° ein, Alt: frei) · " +
-        "Mausrad = Scheibengröße · Pfeile, +/−, Q/E = fein (Umschalt: grob) · Strg+Pfeil = Bereich größer/kleiner · Esc = schließen",
-    }),
+    node("div", { className: "settings-row settings-hint" }, [
+      node("span", { className: "settings-grow", textContent: "Auf der Bühne anklicken und ziehen." }),
+      infoButton,
+    ]),
+    info,
   );
 
   function buildOption(part, option) {
@@ -124,7 +169,7 @@ export function createPanel(root, handlers) {
     const toggle = node("input", { type: "checkbox" });
     toggle.dataset.part = part.id;
     const head = node("div", { className: "part-head" }, [node("label", {}, [toggle, ` ${part.label}`])]);
-    const shown = part.options.filter((option) => part.scope === "gemeinsam" || availableIn(option, mode));
+    const shown = part.options.filter((option) => availableIn(option, mode));
     const options = node(
       "div",
       { className: "part-options", hidden: !expanded.has(part.id) },
@@ -144,7 +189,6 @@ export function createPanel(root, handlers) {
     }
     const section = node("section", { className: "part" }, [head, options]);
     section.dataset.part = part.id;
-    section.dataset.scope = part.scope;
     return section;
   }
 
@@ -152,13 +196,9 @@ export function createPanel(root, handlers) {
     formatSelect.replaceChildren(...catalog.formats.map((f) => node("option", { value: f.id, textContent: f.label })));
   }
 
-  function buildShared() {
-    sharedList.replaceChildren(...catalog.parts.filter((p) => p.scope === "gemeinsam").map(buildPart));
-  }
-
   function buildModeList() {
     modeList.replaceChildren(
-      ...catalog.parts.filter((p) => p.scope === "spielart" && availableIn(p, mode)).map(buildPart),
+      ...catalog.parts.filter((p) => availableIn(p, mode)).map(buildPart),
     );
   }
 
@@ -182,6 +222,19 @@ export function createPanel(root, handlers) {
     );
   }
 
+  /* Alle anderen Spielarten; angepasste zuerst, weil man meist von dort uebernimmt. */
+  function buildCopySelect() {
+    const previous = copySelect.value;
+    const others = catalog.modes.filter((m) => m.id !== mode);
+    const customized = (m) => Object.hasOwn(profile.spielarten, m.id);
+    copySelect.replaceChildren(
+      ...[...others.filter(customized), ...others.filter((m) => !customized(m))].map((m) =>
+        node("option", { value: m.id, textContent: `${m.label}${customized(m) ? " · angepasst" : ""}` }),
+      ),
+    );
+    if (others.some((m) => m.id === previous)) copySelect.value = previous;
+  }
+
   function onListChange(event) {
     const input = event.target;
     const { part, option } = input.dataset;
@@ -189,10 +242,8 @@ export function createPanel(root, handlers) {
     const content = structuredClone(resolved.content);
     if (!option) content[part].on = input.checked;
     else content[part][option] = input.type === "radio" ? input.value : input.checked;
-    if (input.closest(".part")?.dataset.scope === "gemeinsam") handlers.onShared(content);
-    else handlers.onModeContent(content);
+    handlers.onContent(content);
   }
-  sharedList.addEventListener("change", onListChange);
   modeList.addEventListener("change", onListChange);
 
   function update() {
@@ -221,7 +272,7 @@ export function createPanel(root, handlers) {
       for (const input of section.querySelectorAll(".part-options input")) input.disabled = !on;
     }
 
-    formatSelect.value = profile.gemeinsam.format;
+    formatSelect.value = profile.format;
     modeSelect.value = mode;
     modeState.textContent = resolved.angepasst ? "angepasst" : "Standard";
     resetButton.hidden = !resolved.angepasst;
@@ -291,20 +342,22 @@ export function createPanel(root, handlers) {
       mode = next.mode;
       players = next.players;
       resolved = next.resolved;
-      if (freshCatalog) {
-        buildFormats();
-        buildShared();
-      }
+      if (freshCatalog) buildFormats();
       if (freshCatalog || freshMode) buildModeList();
       const key = JSON.stringify(Object.keys(profile.spielarten).sort());
-      if (freshCatalog || key !== modesKey) {
+      if (freshCatalog || freshMode || key !== modesKey) {
         modesKey = key;
         buildModeSelect();
+        buildCopySelect();
       }
       update();
     },
-    /** Schliesst ein offenes Formular oder eine Rueckfrage; true, wenn eins offen war. */
+    /** Schliesst die Kuerzel, ein offenes Formular oder eine Rueckfrage; true, wenn etwas offen war. */
     cancelAsk() {
+      if (!info.hidden) {
+        info.hidden = true;
+        return true;
+      }
       if (!ask) return false;
       setAsk(null);
       return true;

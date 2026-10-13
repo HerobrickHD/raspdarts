@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { MODES, sanitizeModeContent, sanitizeShared } from "../src/viewer/catalog.js";
+import { MODES, sanitizeModeContent } from "../src/viewer/catalog.js";
 import { DEFAULT_MODE_LAYOUT, sanitizeModeLayout } from "../src/viewer/layout.js";
-import { STANDARDS, sharedStandard, standardFor, viewerCatalog } from "../src/viewer/standards.js";
+import { STANDARDS, standardFor, viewerCatalog } from "../src/viewer/standards.js";
 
 describe("Standards", () => {
   test("jede Spielart hat genau einen Standard", () => {
@@ -16,18 +16,15 @@ describe("Standards", () => {
     }
   });
 
-  test("zu Beginn: Spielinfo aus, sonst alles an, Bereiche wie die alten Karten", () => {
+  test("zu Beginn: wie die alte Vorlage Projektion, Scheibe in der Mitte, Bereiche wie die alten Karten", () => {
     const x01 = standardFor("x01");
+    expect(x01.content["hintergrund"]?.on).toBe(false);
+    expect(x01.content["rahmen"]?.on).toBe(false);
+    expect(x01.content["scheibe"]).toMatchObject({ on: true, darstellung: "light", zahlenring: false });
     expect(x01.content["spielinfo"]?.on).toBe(false);
     expect(x01.content["spieler"]?.on).toBe(true);
     expect(x01.content["aufnahme"]?.on).toBe(true);
     expect(x01.layout).toEqual(DEFAULT_MODE_LAYOUT);
-  });
-
-  test("gemeinsamer Standard wie die alte Vorlage Projektion", () => {
-    expect(sharedStandard()).toEqual(
-      sanitizeShared({ hintergrund: { on: false }, scheibe: { darstellung: "light", zahlenring: false } }),
-    );
   });
 
   test("standardFor liefert Kopien", () => {
@@ -40,7 +37,7 @@ describe("Standards", () => {
     expect(catalog.modes).toEqual(MODES);
     expect(Object.keys(catalog.standards)).toEqual(MODES.map((m) => m.id));
     expect(catalog.standards["cricket"]).toEqual(standardFor("cricket"));
-    expect(catalog.shared).toEqual(sharedStandard());
+    expect(catalog).not.toHaveProperty("shared");
     expect(catalog.groups).toEqual({ spiele: "Spiele", training: "Training", party: "Party" });
     expect(catalog).not.toHaveProperty("templates");
   });

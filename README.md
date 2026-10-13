@@ -103,10 +103,11 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | POST | `/api/system/update`, `/api/system/uninstall` | SSE-Stream |
 | POST | `/api/system/reboot`, `/api/system/shutdown` | sofort |
 | GET | `/api/profiles` | `{active, profiles:[{id, name}]}` |
-| GET | `/api/profiles/:id` | ein Profil (Version 4: Name, `gemeinsam`, angepasste `spielarten`) |
-| POST | `/api/profiles` | `{name}` – neues Profil, alle Spielarten im Standard, Scheibe wie im aktiven; wird aktiv |
-| PUT | `/api/profiles/:id` | Teile ändern: `{name?, gemeinsam?: {content?, board?, format?}, spielart?: {id, content?, layout?}, editing?}`; live an alle Viewer. `editing`: `{schritt, spielart, spieler}` oder `null` |
-| POST | `/api/profiles/:id/reset` | `{spielart}` – Spielart auf ihren Standard zurücksetzen, Scheibe bleibt |
+| GET | `/api/profiles/:id` | ein Profil (Version 5: Name, `format`, angepasste `spielarten` mit Inhalten und Layout samt Scheibe) |
+| POST | `/api/profiles` | `{name}` – neues Profil, alle Spielarten im Standard, Format wie im aktiven; wird aktiv |
+| PUT | `/api/profiles/:id` | Teile ändern: `{name?, format?, spielart?: {id, content?, layout?: {board?, blocks?}}, editing?}`; live an alle Viewer. `editing`: `{schritt, spielart, spieler}` oder `null` |
+| POST | `/api/profiles/:id/reset` | `{spielart}` – Spielart samt Scheibe auf ihren Standard zurücksetzen |
+| POST | `/api/profiles/:id/copy` | `{von, nach}` – Inhalte und Layout einer Spielart in eine andere übernehmen |
 | DELETE | `/api/profiles/:id` | löschen (nicht das letzte) |
 | PUT | `/api/active-profile` | `{id}` – aktives Profil wechseln |
 
@@ -138,10 +139,11 @@ erscheint unten rechts **Einstellungen**. Alle Geräte zeigen dasselbe, nämlich
 
 **Spielarten:** X01, Cricket / Taktik, Count Up, Around The Clock, Zufälliges
 Checkout, Round the World, Segmenttraining, Bob's 27, Shanghai, Gotcha, Bermuda
-(121 und Killer nicht). Jedes Profil hat einen **gemeinsamen Teil** – Hintergrund,
-Scheibe und ihre Lage, gilt für alle Spielarten – und je Spielart Inhalte und
-Layout. Eine Spielart, die man nie angepasst hat, folgt ihrem **Standard**;
-startet ein Spiel, zeigt der Viewer den Teil dieser Spielart.
+(121 und Killer nicht). Ein Profil ist ein Bildschirm: Name, Format und je
+Spielart alles, was gezeigt wird – Hintergrund, Rahmen, Scheibe samt Lage,
+Spielerkarten, Aufnahme, Spielinfo. Eine Spielart, die man nie angepasst hat,
+folgt ihrem **Standard**; startet ein Spiel, zeigt der Viewer den Teil dieser
+Spielart.
 
 **Format:** Ganz oben in der Leiste das Seitenverhältnis des Bildschirms wählen
 (Ganzes Fenster, 16:9, 16:10, 4:3). Bei einem festen Format zeichnet der Viewer
@@ -151,20 +153,22 @@ nach einem Wechsel einmal nachjustieren. Solange auf einem Gerät die Leiste off
 ist, rückt dort die Bühne daneben (kleiner, unverzerrt), damit nichts verdeckt
 ist; der Beamer zeigt sie unverändert.
 
-**In der Leiste:** Profil wählen, anlegen, umbenennen oder löschen. Unter
-„Gemeinsam“ Hintergrund und Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
-Darts, Leuchten). Darunter die **Spielart** wählen (Zusatz „angepasst“ oder
-„Standard“) und ihre Bausteine ein- und ausschalten: Spielerkarten (mit
-Verteilung und Teilen), Aufnahme, Spielinfo. „Auf Standard zurücksetzen“ verwirft
-die Anpassung dieser Spielart. Solange die Einstellungen offen
+**In der Leiste:** Profil wählen, anlegen, umbenennen oder löschen; Format.
+Darunter die **Spielart** wählen (Zusatz „angepasst“ oder „Standard“) und ihre
+Bausteine ein- und ausschalten: Hintergrund, Rahmen (weiße Linie am Bildrand,
+zum Ausrichten des Beamers), Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,
+Darts, Leuchten), Aufnahme, Spielinfo, Spielerkarten (mit Verteilung und Teilen).
+„Auf Standard zurücksetzen“ verwirft die Anpassung dieser Spielart samt Lage der
+Scheibe; „Von: … Übernehmen“ kopiert Inhalte und Layout einer anderen Spielart.
+Das **i** unten zeigt alle Tastenkürzel. Solange die Einstellungen offen
 sind, zeigen alle Geräte Beispieldaten (Spieler 1 … 6, Anzahl über „Vorschau“) –
 auch wenn gerade ein Spiel läuft. Nach dem Schließen kommt wieder das echte Spiel.
 
 **Auf der Bühne** (gleichzeitig, solange die Leiste offen ist): Bausteine
-anklicken und direkt ausrichten. Zum Ausrichten auf die echten Drähte unter
-„Gemeinsam“ die Darstellung der Scheibe auf „Linien“ stellen und danach zurück.
+anklicken und direkt ausrichten. Zum Ausrichten auf die echten Drähte die
+Darstellung der Scheibe auf „Linien“ stellen und danach zurück.
 
-- Scheibe (gilt für alle Spielarten): ziehen = verschieben, Ecke oder Mausrad =
+- Scheibe: ziehen = verschieben, Ecke oder Mausrad =
   Größe, Kreis = drehen (rastet bei 0°, 90°, 180° ein; mit Alt frei); fein mit
   Pfeiltasten, +/− und Q/E (mit Umschalt grob).
 - Spielerbereiche links und rechts: ziehen, am Griff unten rechts oder mit
@@ -177,9 +181,11 @@ anklicken und direkt ausrichten. Zum Ausrichten auf die echten Drähte unter
 
 Gespeichert wird automatisch unter `server/data/profiles/<id>.json`, das aktive
 Profil in `active.json`. Positionen sind Prozentwerte, Größen hängen an der
-Bildhöhe, damit das Layout bei jeder Auflösung passt. Profile der Version 3
-werden beim Laden umgebaut (Karte 1/2 → Bereiche, alles außer der Scheibe →
-angepasstes X01) und beim nächsten Ändern als Version 4 gespeichert.
+Bildhöhe, damit das Layout bei jeder Auflösung passt. Ältere Profile werden beim
+Laden umgebaut – Version 3: alles wird angepasstes X01 (Karte 1/2 → Bereiche);
+Version 4: der gemeinsame Teil wandert in X01 und jede angepasste Spielart – und
+beim nächsten Ändern als Version 5 gespeichert. Nach einem Update geöffnete
+Viewer-Fenster einmal neu laden.
 
 **Neue Spielart prüfen:** Die `variant`-Werte außer X01 sind geschätzt. Ein
 Spiel mitschneiden (`server/data/sessions/`), `variants` in

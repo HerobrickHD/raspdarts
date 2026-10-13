@@ -12,35 +12,43 @@ import {
   GROUP_LABELS,
   MODES,
   sanitizeModeContent,
-  sanitizeShared,
   type Content,
   type ContentPatch,
   type GameMode,
   type ModeGroup,
   type Part,
 } from "./catalog.js";
-import { DEFAULT_MODE_LAYOUT, FORMATS, sanitizeModeLayout, type ModeBlocks, type ModeLayout } from "./layout.js";
+import {
+  DEFAULT_MODE_LAYOUT,
+  FORMATS,
+  sanitizeModeLayout,
+  type BoardLayout,
+  type ModeBlocks,
+  type ModeLayout,
+} from "./layout.js";
 
 export interface ModeStandard {
   mode: string;
   content: ContentPatch;
-  layout: Partial<ModeBlocks>;
+  layout: { board?: BoardLayout; blocks?: Partial<ModeBlocks> };
 }
 
-/** Gemeinsamer Teil neuer Profile - wie die fruehere Vorlage "Projektion". */
-export const SHARED_STANDARD: ContentPatch = { scheibe: { zahlenring: false } };
-
-const BASE: Omit<ModeStandard, "mode"> = { content: { spielinfo: { on: false } }, layout: {} };
+/** Zu Beginn wie die fruehere Vorlage "Projektion": ohne Zahlenring und Spielinfo, Scheibe mittig. */
+const BASE: Omit<ModeStandard, "mode"> = {
+  content: { scheibe: { zahlenring: false }, spielinfo: { on: false } },
+  layout: {},
+};
 
 export const STANDARDS: ModeStandard[] = MODES.map((mode) => ({ mode: mode.id, ...structuredClone(BASE) }));
-
-export const sharedStandard = (): Content => sanitizeShared(SHARED_STANDARD);
 
 export function standardFor(mode: string): { content: Content; layout: ModeLayout } {
   const standard = STANDARDS.find((s) => s.mode === mode) ?? { mode, ...BASE };
   return {
     content: sanitizeModeContent(standard.content, mode),
-    layout: sanitizeModeLayout({ blocks: { ...DEFAULT_MODE_LAYOUT.blocks, ...standard.layout } }),
+    layout: sanitizeModeLayout({
+      board: standard.layout.board ?? DEFAULT_MODE_LAYOUT.board,
+      blocks: { ...DEFAULT_MODE_LAYOUT.blocks, ...standard.layout.blocks },
+    }),
   };
 }
 
@@ -49,7 +57,6 @@ export interface ViewerCatalog {
   modes: GameMode[];
   groups: Record<ModeGroup, string>;
   standards: Record<string, { content: Content; layout: ModeLayout }>;
-  shared: Content;
   formats: { id: string; label: string }[];
 }
 
@@ -60,7 +67,6 @@ export function viewerCatalog(): ViewerCatalog {
     modes: MODES,
     groups: GROUP_LABELS,
     standards: Object.fromEntries(MODES.map((mode) => [mode.id, standardFor(mode.id)])),
-    shared: sharedStandard(),
     formats: FORMATS.map((f) => ({ ...f })),
   };
 }

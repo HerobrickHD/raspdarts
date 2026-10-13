@@ -2,8 +2,8 @@
  * Viewer: verbindet sich mit dem Pi und zeichnet, was er schickt.
  *
  * Spielregeln kennt der Viewer nicht - Rest, Bust, Checkout und Sieger kommen
- * fertig vom Pi. Was angezeigt wird und wo, steht im aktiven Profil: ein
- * gemeinsamer Teil und je Spielart Inhalte und Layout (resolve-profile.js).
+ * fertig vom Pi. Was angezeigt wird und wo, steht im aktiven Profil: das
+ * Format der Buehne und je Spielart Inhalte und Layout (resolve-profile.js).
  */
 import { arrangeCards } from "./areas.js";
 import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
@@ -104,7 +104,7 @@ function placeStage() {
     right: settings.editing() && panel.width > 0 ? window.innerWidth - panel.left : 0,
     bottom: 0,
   };
-  const format = view.profile?.gemeinsam.format ?? "fenster";
+  const format = view.profile?.format ?? "fenster";
   const { left, top, width, height } = fitStage({ width: window.innerWidth, height: window.innerHeight }, format, reserve);
   Object.assign(stageEl.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
 }

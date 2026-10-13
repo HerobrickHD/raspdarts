@@ -9,9 +9,9 @@
  * Alte Profile bleiben gueltig: Fehlende Optionen bekommen beim Lesen die
  * Vorgabe. Standards je Spielart stehen in standards.ts.
  *
- * Spielarten: Bausteine sind gemeinsam (gelten fuer alle Spielarten) oder
- * werden je Spielart eingestellt. modes an einem Baustein oder einer Option
- * sagt, in welchen Spielarten es sie gibt; ohne modes gibt es sie ueberall.
+ * Spielarten: Alle Bausteine werden je Spielart eingestellt. modes an einem
+ * Baustein oder einer Option sagt, in welchen Spielarten es sie gibt; ohne
+ * modes gibt es sie ueberall.
  */
 
 export interface ToggleOption {
@@ -37,8 +37,6 @@ export type Option = ToggleOption | ChoiceOption;
 export interface Part {
   id: string;
   label: string;
-  /** Gilt fuer alle Spielarten (gemeinsam) oder wird je Spielart eingestellt. */
-  scope: "gemeinsam" | "spielart";
   /** an/aus */
   default: boolean;
   modes?: string[];
@@ -150,11 +148,12 @@ const X01 = ["x01"];
 
 export const CATALOG: Catalog = {
   parts: [
-    { id: "hintergrund", label: "Hintergrund", scope: "gemeinsam", default: false, options: [] },
+    { id: "hintergrund", label: "Hintergrund", default: false, options: [] },
+    // Weisse Linie innen am Rand der Buehne - zum Ausrichten des Beamers.
+    { id: "rahmen", label: "Rahmen (Bildrand)", default: false, options: [] },
     {
       id: "scheibe",
       label: "Scheibe",
-      scope: "gemeinsam",
       default: true,
       options: [
         {
@@ -176,14 +175,12 @@ export const CATALOG: Catalog = {
     {
       id: "aufnahme",
       label: "Aufnahme",
-      scope: "spielart",
       default: true,
       options: [toggle("darts", "Darts"), toggle("summe", "Summe")],
     },
     {
       id: "spielinfo",
       label: "Spielinfo",
-      scope: "spielart",
       default: true,
       options: [
         toggle("spielart", "Spielart"),
@@ -195,7 +192,6 @@ export const CATALOG: Catalog = {
     {
       id: "spieler",
       label: "Spielerkarten",
-      scope: "spielart",
       default: true,
       options: [
         {
@@ -263,17 +259,9 @@ function sanitizeParts(parts: Part[], stored: unknown, fallback: Content, mode: 
   return content;
 }
 
-const sharedParts = (): Part[] => CATALOG.parts.filter((part) => part.scope === "gemeinsam");
-const modeParts = (mode: string): Part[] =>
-  CATALOG.parts.filter((part) => part.scope === "spielart" && availableIn(part, mode));
+const modeParts = (mode: string): Part[] => CATALOG.parts.filter((part) => availableIn(part, mode));
 
-export const sharedDefaults = (): Content => sanitizeParts(sharedParts(), null, {}, null);
 export const modeDefaults = (mode: string): Content => sanitizeParts(modeParts(mode), null, {}, mode);
-
-/** Hintergrund und Scheibe; fehlende oder unbrauchbare Werte aus fallback. */
-export function sanitizeShared(stored: unknown, fallback: Content = sharedDefaults()): Content {
-  return sanitizeParts(sharedParts(), stored, fallback, null);
-}
 
 /** Bausteine einer Spielart; Optionen, die es dort nicht gibt, fallen weg. */
 export function sanitizeModeContent(stored: unknown, mode: string, fallback: Content = modeDefaults(mode)): Content {

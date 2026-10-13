@@ -3,8 +3,7 @@
  * gross er ist. Was angezeigt wird (und wie die Scheibe aussieht), steht in den
  * Inhalten des Profils (catalog.ts), nicht hier.
  *
- * Die Lage der Scheibe gilt fuer alle Spielarten, Bloecke und Spielerbereiche
- * je Spielart.
+ * Alles gilt je Spielart: Lage der Scheibe, Bloecke und Spielerbereiche.
  *
  * Positionen sind Prozentwerte der Bildflaeche, Groessen haengen an der
  * Bildhoehe - keine Pixel. Ein eingerichtetes Layout passt dadurch auch nach
@@ -47,6 +46,7 @@ export interface ModeBlocks {
 }
 
 export interface ModeLayout {
+  board: BoardLayout;
   blocks: ModeBlocks;
 }
 
@@ -74,6 +74,7 @@ export const CARD = { w: 49, h: 34 } as const;
 export const DEFAULT_BOARD: BoardLayout = { cx: 50, cy: 51, diameter: 50, rotation: 0 };
 
 export const DEFAULT_MODE_LAYOUT: ModeLayout = {
+  board: { ...DEFAULT_BOARD },
   blocks: {
     spielinfo: { x: 2, y: 3, scale: 1 },
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
@@ -141,13 +142,15 @@ function sanitizeArea(stored: unknown, fallback: Area): Area {
 }
 
 /**
- * Bloecke und Bereiche einer Spielart; jeder Wert einzeln geprueft,
+ * Scheibe, Bloecke und Bereiche einer Spielart; jeder Wert einzeln geprueft,
  * Unbrauchbares aus fallback. Eine kaputte Datei darf den Viewer nie
  * unbedienbar machen.
  */
 export function sanitizeModeLayout(stored: unknown, fallback: ModeLayout = DEFAULT_MODE_LAYOUT): ModeLayout {
-  const blocks = asRecord(asRecord(stored)["blocks"]);
+  const source = asRecord(stored);
+  const blocks = asRecord(source["blocks"]);
   return {
+    board: sanitizeBoard(source["board"], fallback.board),
     blocks: {
       spielinfo: sanitizeBlock(blocks["spielinfo"], fallback.blocks.spielinfo),
       aufnahme: sanitizeBlock(blocks["aufnahme"], fallback.blocks.aufnahme),
@@ -170,21 +173,19 @@ function cardToArea(stored: unknown, fallback: Area): Area {
  * Aufnahme und sechs feste Kartenplaetze. Karte 1 und 2 werden die Bereiche,
  * in die sie mit 2 Spielern genau passen - das Bild bleibt gleich.
  */
-export function splitLegacyLayout(stored: unknown): { board: BoardLayout; layout: ModeLayout } {
+export function splitLegacyLayout(stored: unknown): ModeLayout {
   const source = asRecord(stored);
   const blocks = asRecord(source["blocks"]);
   const defaults = DEFAULT_MODE_LAYOUT.blocks;
-  return {
-    board: sanitizeBoard(source["board"]),
-    layout: sanitizeModeLayout({
-      blocks: {
-        spielinfo: blocks["spielinfo"],
-        aufnahme: blocks["aufnahme"],
-        "bereich-links": cardToArea(blocks["spieler-1"], defaults["bereich-links"]),
-        "bereich-rechts": cardToArea(blocks["spieler-2"], defaults["bereich-rechts"]),
-      },
-    }),
-  };
+  return sanitizeModeLayout({
+    board: source["board"],
+    blocks: {
+      spielinfo: blocks["spielinfo"],
+      aufnahme: blocks["aufnahme"],
+      "bereich-links": cardToArea(blocks["spieler-1"], defaults["bereich-links"]),
+      "bereich-rechts": cardToArea(blocks["spieler-2"], defaults["bereich-rechts"]),
+    },
+  });
 }
 
 /** Darstellung der Scheibe in den alten Layout-Dateien. */
@@ -197,13 +198,13 @@ export type LegacyBoardMode = "light" | "drawn";
  */
 export function fromLegacyLayout(
   stored: unknown,
-): { board: BoardLayout; layout: ModeLayout; boardMode: LegacyBoardMode } | null {
+): { layout: ModeLayout; boardMode: LegacyBoardMode } | null {
   const source = asRecord(stored);
   if (source["version"] !== 2) return null;
   const blocks = { ...asRecord(source["blocks"]) };
   if (!("spielinfo" in blocks) && "kopf" in blocks) blocks["spielinfo"] = blocks["kopf"];
   return {
-    ...splitLegacyLayout({ board: source["board"], blocks }),
+    layout: splitLegacyLayout({ board: source["board"], blocks }),
     boardMode: source["boardMode"] === "drawn" ? "drawn" : "light",
   };
 }

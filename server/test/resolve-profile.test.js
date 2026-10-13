@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { resolveProfile, withBoard, withContent, withFormat, withModeBlocks } from "../public/js/resolve-profile.js";
+import { resolveProfile, withContent, withFormat, withModeLayout } from "../public/js/resolve-profile.js";
 import { newProfile } from "../src/viewer/profile.ts";
 import { viewerCatalog } from "../src/viewer/standards.ts";
 
@@ -7,27 +7,27 @@ const catalog = viewerCatalog();
 const BOARD = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
 
 describe("resolveProfile", () => {
-  test("Spielart im Standard: gemeinsam + Standard, nicht angepasst", () => {
-    const profile = newProfile("P", BOARD);
-    const resolved = resolveProfile(profile, catalog, "cricket");
+  test("Spielart im Standard: Inhalte und Layout (samt Scheibe) aus dem Standard, nicht angepasst", () => {
+    const resolved = resolveProfile(newProfile("P"), catalog, "cricket");
     expect(resolved.angepasst).toBe(false);
-    expect(resolved.layout.board).toEqual(BOARD);
-    expect(resolved.layout.blocks).toEqual(catalog.standards.cricket.layout.blocks);
-    expect(resolved.content.scheibe).toEqual(profile.gemeinsam.content.scheibe);
-    expect(resolved.content.spieler).toEqual(catalog.standards.cricket.content.spieler);
+    expect(resolved.layout).toEqual(catalog.standards.cricket.layout);
+    expect(resolved.content).toEqual(catalog.standards.cricket.content);
   });
 
-  test("angepasste Spielart gewinnt", () => {
-    const profile = newProfile("P", BOARD);
+  test("angepasste Spielart gewinnt, auch bei der Scheibe", () => {
+    const profile = newProfile("P");
     profile.spielarten.x01 = structuredClone(catalog.standards.x01);
     profile.spielarten.x01.content.aufnahme.on = false;
+    profile.spielarten.x01.layout.board = BOARD;
     const resolved = resolveProfile(profile, catalog, "x01");
     expect(resolved.angepasst).toBe(true);
     expect(resolved.content.aufnahme.on).toBe(false);
+    expect(resolved.layout.board).toEqual(BOARD);
+    expect(resolveProfile(profile, catalog, "cricket").layout.board).toEqual(catalog.standards.cricket.layout.board);
   });
 
   test("unbekannte Spielart (null) nutzt den X01-Teil", () => {
-    const profile = newProfile("P", BOARD);
+    const profile = newProfile("P");
     profile.spielarten.x01 = structuredClone(catalog.standards.x01);
     profile.spielarten.x01.layout.blocks.aufnahme.x = 11;
     expect(resolveProfile(profile, catalog, null).layout.blocks.aufnahme.x).toBe(11);
@@ -35,42 +35,26 @@ describe("resolveProfile", () => {
 });
 
 describe("lokale Aenderungen", () => {
-  test("withBoard aendert nur die Scheibe, keine Spielart wird angepasst", () => {
-    const profile = withBoard(newProfile("P"), BOARD);
-    expect(profile.gemeinsam.board).toEqual(BOARD);
-    expect(profile.spielarten).toEqual({});
-  });
-
-  test("withModeBlocks legt die Spielart aus dem Standard an", () => {
-    const blocks = { ...catalog.standards.gotcha.layout.blocks, aufnahme: { x: 1, y: 2, scale: 3 } };
-    const profile = withModeBlocks(newProfile("P"), catalog, "gotcha", blocks);
-    expect(profile.spielarten.gotcha.layout.blocks.aufnahme).toEqual({ x: 1, y: 2, scale: 3 });
+  test("withModeLayout legt die Spielart aus dem Standard an, Inhalte bleiben", () => {
+    const layout = { ...catalog.standards.gotcha.layout, board: BOARD };
+    const profile = withModeLayout(newProfile("P"), catalog, "gotcha", layout);
+    expect(profile.spielarten.gotcha.layout).toEqual(layout);
     expect(profile.spielarten.gotcha.content).toEqual(catalog.standards.gotcha.content);
   });
 
-  test("withContent teilt nach gemeinsam und Spielart auf", () => {
+  test("withContent legt die Spielart an, Layout bleibt; unveraendert gibt dasselbe Profil", () => {
     const base = newProfile("P");
     const resolved = resolveProfile(base, catalog, "x01");
+    expect(withContent(base, catalog, "x01", structuredClone(resolved.content))).toBe(base);
 
-    const shared = withContent(base, catalog, "x01", { ...resolved.content, hintergrund: { on: true } });
-    expect(shared.gemeinsam.content.hintergrund.on).toBe(true);
-    expect(shared.spielarten).toEqual({});
-
-    const own = withContent(base, catalog, "x01", {
-      ...resolved.content,
-      aufnahme: { ...resolved.content.aufnahme, on: false },
-    });
-    expect(own.spielarten.x01.content.aufnahme.on).toBe(false);
-    expect(own.spielarten.x01.content).not.toHaveProperty("scheibe");
-    expect(own.gemeinsam).toEqual(base.gemeinsam);
+    const changed = withContent(base, catalog, "x01", { ...resolved.content, hintergrund: { on: true } });
+    expect(changed.spielarten.x01.content.hintergrund.on).toBe(true);
+    expect(changed.spielarten.x01.layout).toEqual(catalog.standards.x01.layout);
   });
-});
 
-describe("withFormat", () => {
-  test("aendert nur das Format, keine Spielart wird angepasst", () => {
-    const base = newProfile("P", BOARD);
-    const profile = withFormat(base, "4:3");
-    expect(profile.gemeinsam).toEqual({ ...base.gemeinsam, format: "4:3" });
+  test("withFormat aendert nur das Format, keine Spielart wird angepasst", () => {
+    const profile = withFormat(newProfile("P"), "4:3");
+    expect(profile.format).toBe("4:3");
     expect(profile.spielarten).toEqual({});
   });
 });

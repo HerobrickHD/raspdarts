@@ -41,26 +41,26 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
     sync.flush();
   }
 
-  /* Eine Aenderung an den Inhalten: sofort im eigenen Bild, gedrosselt an den Pi. */
-  function changeContent(content, scope) {
+  /* Eine Aenderung an den Inhalten der Spielart: sofort im eigenen Bild, gedrosselt an den Pi. */
+  function changeContent(content) {
     const { profile, catalog } = getView();
     const next = withContent(profile, catalog, preview.spielart, content);
     if (next === profile) return;
     applyLocalProfile(next);
-    const patch =
-      scope === "gemeinsam"
-        ? { gemeinsam: { content: next.gemeinsam.content } }
-        : { spielart: { id: preview.spielart, content: next.spielarten[preview.spielart].content } };
+    const patch = { spielart: { id: preview.spielart, content: next.spielarten[preview.spielart].content } };
     sync.queue(profile.id, { ...patch, editing: editing() });
   }
 
   const panel = createPanel(root, {
-    onShared: (content) => changeContent(content, "gemeinsam"),
-    onModeContent: (content) => changeContent(content, "spielart"),
+    onContent: changeContent,
     onFormat(format) {
       const { profile } = getView();
       applyLocalProfile(withFormat(profile, format));
-      sync.queue(profile.id, { gemeinsam: { format }, editing: editing() });
+      sync.queue(profile.id, { format, editing: editing() });
+    },
+    onCopy(id, from, to) {
+      sync.flush();
+      api("POST", path(id, "/copy"), { von: from, nach: to }).catch(report);
     },
     onMode(mode) {
       preview.spielart = mode;

@@ -4,8 +4,6 @@ import { buildApp, isAllowedHost } from "../src/http.js";
 import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js";
 import type { DisplaySocket } from "../src/viewer/display-hub.js";
 import { toViewerState } from "../src/viewer/game-state.js";
-import { DEFAULT_BOARD } from "../src/viewer/layout.js";
-import { sharedStandard } from "../src/viewer/standards.js";
 import { testDeps } from "./helpers.js";
 
 let app: FastifyInstance;
@@ -147,9 +145,9 @@ describe("Profil-API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       id: "standard",
-      version: 4,
+      version: 5,
       name: "Standard",
-      gemeinsam: { content: sharedStandard(), board: DEFAULT_BOARD, format: "fenster" },
+      format: "fenster",
       spielarten: {},
     });
   });
@@ -161,25 +159,26 @@ describe("Profil-API", () => {
     const response = await call("POST", "/api/profiles", { name: "Fernseher Küche" });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 4, spielarten: {} });
+    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 5, spielarten: {} });
     expect(deps.profiles.activeId).toBe("fernseher-kueche");
   });
 
-  test("aendert gemeinsam und eine Spielart, setzt editing fuer das aktive", async () => {
+  test("aendert Format und eine Spielart, setzt editing fuer das aktive", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
 
     const response = await call("PUT", "/api/profiles/standard", {
       name: "Beamer",
-      gemeinsam: { content: { hintergrund: { on: true } } },
-      spielart: { id: "cricket", content: { aufnahme: { on: false } } },
+      format: "4:3",
+      spielart: { id: "cricket", content: { hintergrund: { on: true }, aufnahme: { on: false } } },
       editing: { schritt: "inhalte", spielart: "cricket", spieler: 3 },
     });
 
     expect(response.statusCode).toBe(200);
     const profile = response.json();
     expect(profile.name).toBe("Beamer");
-    expect(profile.gemeinsam.content.hintergrund.on).toBe(true);
+    expect(profile.format).toBe("4:3");
+    expect(profile.spielarten.cricket.content.hintergrund.on).toBe(true);
     expect(profile.spielarten.cricket.content.aufnahme.on).toBe(false);
     expect(deps.hub.editing).toEqual({ schritt: "inhalte", spielart: "cricket", spieler: 3 });
   });
@@ -217,18 +216,27 @@ describe("Profil-API", () => {
     expect(reset.statusCode).toBe(400);
   });
 
-  test("setzt eine Spielart auf den Standard zurueck, die Scheibe bleibt", async () => {
+  test("setzt eine Spielart samt Scheibe auf den Standard zurueck", async () => {
     app = await buildApp(testDeps());
     const board = { cx: 40, cy: 45, diameter: 80, rotation: 1.5 };
-    await call("PUT", "/api/profiles/standard", {
-      gemeinsam: { board },
-      spielart: { id: "x01", content: { aufnahme: { on: false } } },
-    });
+    await call("PUT", "/api/profiles/standard", { spielart: { id: "x01", layout: { board } } });
 
     const response = await call("POST", "/api/profiles/standard/reset", { spielart: "x01" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ spielarten: {}, gemeinsam: { board } });
+    expect(response.json().spielarten).toEqual({});
+  });
+
+  test("uebernimmt eine Spielart in eine andere; Unbekanntes ergibt 400", async () => {
+    app = await buildApp(testDeps());
+    const board = { cx: 40, cy: 45, diameter: 80, rotation: 1.5 };
+    await call("PUT", "/api/profiles/standard", { spielart: { id: "x01", layout: { board } } });
+
+    const response = await call("POST", "/api/profiles/standard/copy", { von: "x01", nach: "cricket" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().spielarten.cricket.layout.board).toEqual(board);
+    expect((await call("POST", "/api/profiles/standard/copy", { von: "x01", nach: "killer" })).statusCode).toBe(400);
   });
 
   test("loescht ein Profil, aber nie das letzte", async () => {

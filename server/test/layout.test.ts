@@ -27,8 +27,9 @@ describe("sanitizeBoard", () => {
 });
 
 describe("sanitizeModeLayout", () => {
-  test("Standard: Spielinfo, Aufnahme und zwei Bereiche wie die alten Karten 1 und 2", () => {
+  test("Standard: Scheibe, Spielinfo, Aufnahme und zwei Bereiche wie die alten Karten 1 und 2", () => {
     expect(sanitizeModeLayout(null)).toEqual(DEFAULT_MODE_LAYOUT);
+    expect(DEFAULT_MODE_LAYOUT.board).toEqual(DEFAULT_BOARD);
     expect(DEFAULT_MODE_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 32.7, w: 49, h: 34 });
     expect(DEFAULT_MODE_LAYOUT.blocks["bereich-rechts"]).toEqual({ x: 71, y: 32.7, w: 49, h: 34 });
   });
@@ -51,6 +52,17 @@ describe("sanitizeModeLayout", () => {
     expect(layout.blocks).not.toHaveProperty("spieler-3");
   });
 
+  test("die Scheibe gehoert zum Layout der Spielart und wird einzeln geprueft", () => {
+    const fallback = structuredClone(DEFAULT_MODE_LAYOUT);
+    fallback.board = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
+    expect(sanitizeModeLayout({ board: { cx: 120, cy: "x" } }, fallback).board).toEqual({
+      cx: 100,
+      cy: 30,
+      diameter: 14,
+      rotation: -103,
+    });
+  });
+
   test("liefert jedes Mal eine eigene Kopie", () => {
     const a = sanitizeModeLayout(null);
     a.blocks.spielinfo.x = 77;
@@ -60,7 +72,7 @@ describe("sanitizeModeLayout", () => {
 
 describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
   test("Scheibe getrennt, Karte 1/2 werden Bereiche in Kartengroesse, 3-6 fallen weg", () => {
-    const { board, layout } = splitLegacyLayout({
+    const layout = splitLegacyLayout({
       board: { cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 },
       blocks: {
         spielinfo: { x: 5, y: 6, scale: 1.2 },
@@ -70,7 +82,7 @@ describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
         "spieler-3": { x: 1, y: 68, scale: 0.45 },
       },
     });
-    expect(board).toEqual({ cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 });
+    expect(layout.board).toEqual({ cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 });
     expect(layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
     expect(layout.blocks.aufnahme).toEqual({ x: 30, y: 2, scale: 1.4 });
     expect(layout.blocks["bereich-links"]).toEqual({ x: 1, y: 30, w: CARD.w * 0.8, h: CARD.h * 0.8 });
@@ -79,7 +91,7 @@ describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
   });
 
   test("ohne Karten gelten die Standardbereiche", () => {
-    expect(splitLegacyLayout({}).layout).toEqual(DEFAULT_MODE_LAYOUT);
+    expect(splitLegacyLayout({})).toEqual(DEFAULT_MODE_LAYOUT);
   });
 });
 
@@ -92,7 +104,7 @@ describe("fromLegacyLayout (version 2)", () => {
       blocks: { kopf: { x: 5, y: 6, scale: 1.2 }, "spieler-1": { x: 2, y: 3, scale: 1 } },
     });
     expect(legacy?.boardMode).toBe("drawn");
-    expect(legacy?.board).toEqual({ cx: 48.2, cy: 47.5, diameter: 81.3, rotation: -2.4 });
+    expect(legacy?.layout.board).toEqual({ cx: 48.2, cy: 47.5, diameter: 81.3, rotation: -2.4 });
     expect(legacy?.layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
     expect(legacy?.layout.blocks["bereich-links"]).toEqual({ x: 2, y: 3, w: 49, h: 34 });
   });

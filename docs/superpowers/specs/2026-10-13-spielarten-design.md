@@ -339,6 +339,30 @@ Arnold: Die Leiste zeigt schon die Ansicht – ein eigener Layout-Schritt ist
 Die folgenden Abschnitte „Schritt Layout“ und die Werkzeugleiste sind damit
 überholt.
 
+## Alles je Spielart (Nachtrag 13.10., Profil Version 5)
+
+Arnold: Die Scheibe soll je Spielart woanders liegen können, und „Auf
+Standard zurücksetzen“ muss sie mit zurücksetzen. Der gemeinsame Teil
+entfällt; ersetzt damit die Abschnitte „gemeinsam“ oben.
+
+- Profil Version 5: `{ version: 5, name, format, spielarten }`. Ein Profil
+  ist ein Bildschirm; das Format bleibt beim Profil. Jede angepasste Spielart
+  hat Inhalte aller Bausteine und ein Layout `{ board, blocks }`.
+- Bausteine: Hintergrund, **Rahmen (Bildrand)** (neu: weiße Linie innen am
+  Rand der Bühne, zum Ausrichten des Beamers, Vorgabe aus), Scheibe,
+  Aufnahme, Spielinfo, Spielerkarten – alle je Spielart, kein `scope` mehr.
+- Standards: zu Beginn wie die frühere Vorlage „Projektion“, Scheibe mittig.
+  Eigene Standards je Spielart folgen später (offen).
+- Übernahme: Version 3 → alles in angepasstes X01, Format „fenster“.
+  Version 4 → `gemeinsam` (Inhalte, Scheibe) wandert in X01 und jede
+  angepasste Spielart, `gemeinsam.format` wird `format`.
+- Schnittstelle: `PUT … { name?, format?, spielart?: { id, content?, layout? } }`;
+  neu `POST /api/profiles/:id/copy { von, nach }` (400 bei unbekannter oder
+  gleicher Spielart); `reset` setzt die Spielart samt Scheibe zurück.
+- Leiste: kein „Gemeinsam“ mehr; unter der Spielart „Von: [Spielart ▾]
+  Übernehmen“ mit Rückfrage. Hinweis unten nur „Auf der Bühne anklicken und
+  ziehen.“ plus **i**-Knopf mit allen Tastenkürzeln (Esc schließt erst ihn).
+
 ## Bedienung
 
 ### Schritt „Inhalte“

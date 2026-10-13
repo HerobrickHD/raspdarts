@@ -10,14 +10,14 @@
  * auf die SD-Karte geht es gebuendelt und atomar (erst .tmp, dann umbenennen),
  * damit ein Stromausfall nie eine halbe Datei hinterlaesst.
  *
- * Profile der Version 3 werden beim Laden umgebaut und erst beim naechsten
- * Aendern als Version 4 geschrieben - bis dahin bleibt die alte Datei der
- * Rueckweg.
+ * Profile der Versionen 3 und 4 werden beim Laden umgebaut und erst beim
+ * naechsten Aendern als Version 5 geschrieben - bis dahin bleibt die alte
+ * Datei der Rueckweg.
  */
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { isMode, sanitizeShared } from "./catalog.js";
-import { fromLegacyLayout, sanitizeBoard, sanitizeFormat } from "./layout.js";
+import { isMode, sanitizeModeContent } from "./catalog.js";
+import { fromLegacyLayout, sanitizeFormat } from "./layout.js";
 import {
   VALID_ID,
   newProfile,
@@ -45,9 +45,8 @@ export class ProfileError extends Error {
 
 export interface ProfilePatch {
   name?: unknown;
-  /** { content?, board?, format? } */
-  gemeinsam?: unknown;
-  /** { id, content?, layout? } */
+  format?: unknown;
+  /** { id, content?, layout? } - layout mit board und blocks */
   spielart?: unknown;
 }
 
@@ -101,10 +100,9 @@ export class ProfileStore {
     return this.read(this.#active);
   }
 
-  /** Neues Profil, alle Spielarten im Standard; Scheibe und Format wie im aktiven (derselbe Beamer). */
+  /** Neues Profil, alle Spielarten im Standard; Format wie im aktiven (derselbe Bildschirm). */
   create(name: unknown): ProfileWithId {
-    const active = this.#profiles.get(this.#active)?.gemeinsam;
-    const profile = newProfile(name, active?.board, active?.format);
+    const profile = newProfile(name, this.#profiles.get(this.#active)?.format);
     const id = uniqueId(profile.name, (candidate) => candidate === RESERVED_ID || this.#profiles.has(candidate));
     this.#profiles.set(id, profile);
     this.#markDirty(id);
@@ -126,20 +124,9 @@ export class ProfileStore {
       next.name = sanitizeName(patch.name);
       changed = true;
     }
-    if (patch.gemeinsam !== undefined) {
-      const gemeinsam = asRecord(patch.gemeinsam);
-      if (gemeinsam["content"] !== undefined) {
-        next.gemeinsam.content = sanitizeShared(gemeinsam["content"], current.gemeinsam.content);
-        changed = true;
-      }
-      if (gemeinsam["board"] !== undefined) {
-        next.gemeinsam.board = sanitizeBoard(gemeinsam["board"], current.gemeinsam.board);
-        changed = true;
-      }
-      if (gemeinsam["format"] !== undefined) {
-        next.gemeinsam.format = sanitizeFormat(gemeinsam["format"], current.gemeinsam.format);
-        changed = true;
-      }
+    if (patch.format !== undefined) {
+      next.format = sanitizeFormat(patch.format, current.format);
+      changed = true;
     }
     if (patch.spielart !== undefined) {
       const spielart = asRecord(patch.spielart);
@@ -168,6 +155,24 @@ export class ProfileStore {
     if (!isMode(mode)) throw new ProfileError("invalid-mode", "Unbekannte Spielart");
     const next = structuredClone(current);
     delete next.spielarten[mode];
+    this.#profiles.set(id, next);
+    this.#markDirty(id);
+    return this.read(id);
+  }
+
+  /**
+   * Inhalte und Layout einer Spielart (angepasst oder ihr Standard) in eine
+   * andere kopieren; das Ziel ist danach angepasst. Optionen, die es im Ziel
+   * nicht gibt, fallen weg.
+   */
+  copyMode(id: string, from: unknown, to: unknown): ProfileWithId {
+    const current = this.#get(id);
+    if (!isMode(from) || !isMode(to) || from === to) {
+      throw new ProfileError("invalid-mode", "Unbekannte oder gleiche Spielart");
+    }
+    const source = current.spielarten[from] ?? standardFor(from);
+    const next = structuredClone(current);
+    next.spielarten[to] = sanitizeModeEntry(source, to);
     this.#profiles.set(id, next);
     this.#markDirty(id);
     return this.read(id);
@@ -239,13 +244,13 @@ export class ProfileStore {
   /** Erster Start: das bisher ausgerichtete Layout wird zum Profil "Standard". */
   #createFirst(legacyDir: string | null): void {
     const legacy = legacyDir === null ? null : fromLegacyLayout(this.#readJson(join(legacyDir, "standard.json")));
-    const profile = newProfile("Standard", legacy?.board);
+    const profile = newProfile("Standard");
     if (legacy) {
-      profile.gemeinsam.content = sanitizeShared(
-        { scheibe: { darstellung: legacy.boardMode } },
-        profile.gemeinsam.content,
-      );
-      profile.spielarten["x01"] = { content: standardFor("x01").content, layout: legacy.layout };
+      const standard = standardFor("x01").content;
+      profile.spielarten["x01"] = {
+        content: sanitizeModeContent({ scheibe: { darstellung: legacy.boardMode } }, "x01", standard),
+        layout: legacy.layout,
+      };
     }
     this.#profiles.set(FIRST_ID, profile);
     this.#pending.add(FIRST_ID);

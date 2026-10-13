@@ -176,14 +176,14 @@ describe("createSync", () => {
 });
 
 describe("mergeBody", () => {
-  test("gemeinsam und dieselbe Spielart werden eine Ebene tief zusammengefasst", () => {
+  test("dieselbe Spielart wird eine Ebene tief zusammengefasst, das Format gilt zuletzt", () => {
     expect(
       mergeBody(
-        { gemeinsam: { content: 1 }, spielart: { id: "x01", content: 2 } },
-        { gemeinsam: { board: 3 }, spielart: { id: "x01", layout: 4 }, editing: 5 },
+        { format: "4:3", spielart: { id: "x01", content: 2 } },
+        { format: "16:9", spielart: { id: "x01", layout: 4 }, editing: 5 },
       ),
     ).toEqual({
-      gemeinsam: { content: 1, board: 3 },
+      format: "16:9",
       spielart: { id: "x01", content: 2, layout: 4 },
       editing: 5,
     });
@@ -191,6 +191,6 @@ describe("mergeBody", () => {
 
   test("zwei Spielarten lassen sich nicht zusammenfassen", () => {
     expect(canMerge({ spielart: { id: "x01" } }, { spielart: { id: "cricket" } })).toBe(false);
-    expect(canMerge({ spielart: { id: "x01" } }, { gemeinsam: {} })).toBe(true);
+    expect(canMerge({ spielart: { id: "x01" } }, { format: "4:3" })).toBe(true);
   });
 });

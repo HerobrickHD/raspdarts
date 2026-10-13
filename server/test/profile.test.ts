@@ -11,7 +11,7 @@ import {
   slugify,
   uniqueId,
 } from "../src/viewer/profile.js";
-import { sharedStandard, standardFor } from "../src/viewer/standards.js";
+import { standardFor } from "../src/viewer/standards.js";
 
 describe("sanitizeName", () => {
   test.each([
@@ -30,18 +30,12 @@ describe("sanitizeName", () => {
 });
 
 describe("newProfile", () => {
-  test("gemeinsamer Standard, keine angepassten Spielarten, Scheibe wie mitgegeben", () => {
-    const board = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
-    expect(newProfile("Wohnzimmer", board)).toEqual({
-      version: 4,
-      name: "Wohnzimmer",
-      gemeinsam: { content: sharedStandard(), board, format: "fenster" },
-      spielarten: {},
-    });
+  test("Version 5: Name, Format, keine angepassten Spielarten", () => {
+    expect(newProfile("Wohnzimmer", "4:3")).toEqual({ version: 5, name: "Wohnzimmer", format: "4:3", spielarten: {} });
   });
 
-  test("ohne Scheibe gilt die Standardlage", () => {
-    expect(newProfile("").gemeinsam.board).toEqual(DEFAULT_BOARD);
+  test("ohne Format ganzes Fenster, ohne Namen Profil", () => {
+    expect(newProfile("").format).toBe("fenster");
     expect(newProfile("").name).toBe(FALLBACK_NAME);
   });
 });
@@ -62,26 +56,35 @@ describe("sanitizeModeEntry", () => {
 });
 
 describe("sanitizeProfile", () => {
-  test("Version 4: prueft gemeinsam und jede Spielart, unbekannte Spielarten fallen weg", () => {
+  test("Version 5: prueft Format und jede Spielart, unbekannte Spielarten fallen weg", () => {
     const profile = sanitizeProfile({
-      version: 4,
+      version: 5,
       name: " Beamer ",
-      gemeinsam: { content: { scheibe: { darstellung: "drawn" } }, board: { cx: 300 } },
-      spielarten: { cricket: { content: {}, layout: {} }, killer: { content: {} }, x01: "kaputt" },
+      format: "16:10",
+      spielarten: {
+        cricket: { content: { hintergrund: { on: true } }, layout: { board: { cx: 300 } } },
+        killer: { content: {} },
+        x01: "kaputt",
+      },
     });
     expect(profile.name).toBe("Beamer");
-    expect(profile.gemeinsam.content["scheibe"]?.["darstellung"]).toBe("drawn");
-    expect(profile.gemeinsam.board).toEqual({ ...DEFAULT_BOARD, cx: 100 });
+    expect(profile.format).toBe("16:10");
     expect(Object.keys(profile.spielarten)).toEqual(["cricket"]);
-    expect(profile.spielarten["cricket"]).toEqual(standardFor("cricket"));
+    expect(profile.spielarten["cricket"]?.content["hintergrund"]?.on).toBe(true);
+    expect(profile.spielarten["cricket"]?.layout.board).toEqual({ ...DEFAULT_BOARD, cx: 100 });
   });
 
-  test("Version 3 wird umgebaut: Scheibe gemeinsam, Rest wird angepasstes X01, Karten 1/2 werden Bereiche", () => {
+  test("Version 5 ohne oder mit unbekanntem Format: ganzes Fenster", () => {
+    expect(sanitizeProfile({ version: 5, name: "P", spielarten: {} }).format).toBe("fenster");
+    expect(sanitizeProfile({ version: 5, name: "P", format: "21:9", spielarten: {} }).format).toBe("fenster");
+  });
+
+  test("Version 3 wird umgebaut: alles wird angepasstes X01, Karten 1/2 werden Bereiche", () => {
     const v3 = {
       version: 3,
       name: "Standard",
       content: {
-        hintergrund: { on: false },
+        hintergrund: { on: true },
         scheibe: { on: true, darstellung: "light", zahlenring: false, darts: true, letzterDart: true },
         aufnahme: { on: true, darts: true, summe: false },
         spielinfo: { on: false, punktzahl: true, legs: true, modus: true },
@@ -110,11 +113,14 @@ describe("sanitizeProfile", () => {
     };
     const profile = sanitizeProfile(v3);
 
-    expect(profile.version).toBe(4);
-    expect(profile.gemeinsam.board).toEqual(v3.layout.board);
-    expect(profile.gemeinsam.content["scheibe"]).toEqual(v3.content.scheibe);
+    expect(profile.version).toBe(5);
+    expect(profile.format).toBe("fenster");
     expect(Object.keys(profile.spielarten)).toEqual(["x01"]);
     const x01 = profile.spielarten["x01"]!;
+    expect(x01.layout.board).toEqual(v3.layout.board);
+    expect(x01.content["hintergrund"]).toEqual({ on: true });
+    expect(x01.content["rahmen"]).toEqual({ on: false });
+    expect(x01.content["scheibe"]).toEqual(v3.content.scheibe);
     expect(x01.content["aufnahme"]).toEqual(v3.content.aufnahme);
     expect(x01.content["spieler"]).toMatchObject({ verteilung: "beide", flaeche: false, average: false });
     expect(x01.content["spielinfo"]).toMatchObject({ on: false, spielart: false });
@@ -129,7 +135,6 @@ describe("sanitizeProfile", () => {
       content: { spielinfo: { on: true, punktzahl: true, legs: true, modus: true } },
       layout: {},
     });
-
     expect(profile.spielarten["x01"]?.content["spielinfo"]).toEqual({
       on: true,
       spielart: false,
@@ -139,7 +144,31 @@ describe("sanitizeProfile", () => {
     });
   });
 
-  test("ohne Version 3 oder 4: neues Profil, der Name bleibt", () => {
+  test("Version 4: gemeinsamer Teil wandert in X01 und jede angepasste Spielart, Format bleibt", () => {
+    const gemeinsam = {
+      content: { hintergrund: { on: true }, scheibe: { darstellung: "drawn" } },
+      board: { cx: 40, cy: 30, diameter: 14, rotation: -103 },
+      format: "4:3",
+    };
+    const profile = sanitizeProfile({
+      version: 4,
+      name: "P",
+      gemeinsam,
+      spielarten: { gotcha: { content: { aufnahme: { on: false } }, layout: {} } },
+    });
+    expect(profile.version).toBe(5);
+    expect(profile.format).toBe("4:3");
+    expect(Object.keys(profile.spielarten).sort()).toEqual(["gotcha", "x01"]);
+    for (const mode of ["x01", "gotcha"]) {
+      const entry = profile.spielarten[mode]!;
+      expect(entry.layout.board, mode).toEqual(gemeinsam.board);
+      expect(entry.content["hintergrund"]?.on, mode).toBe(true);
+      expect(entry.content["scheibe"]?.["darstellung"], mode).toBe("drawn");
+    }
+    expect(profile.spielarten["gotcha"]?.content["aufnahme"]?.on).toBe(false);
+  });
+
+  test("ohne Version 3, 4 oder 5: neues Profil, der Name bleibt", () => {
     expect(sanitizeProfile({ version: 1, name: "Alt" })).toEqual(newProfile("Alt"));
     expect(sanitizeProfile(null)).toEqual(newProfile("Profil"));
   });
@@ -176,25 +205,5 @@ describe("uniqueId", () => {
     const id = uniqueId(long, (candidate) => candidate === slugify(long));
     expect(id).toBe(`${"a".repeat(30)}-2`);
     expect(VALID_ID.test(id)).toBe(true);
-  });
-});
-
-describe("Format", () => {
-  test("neues Profil: Format wie mitgegeben, sonst ganzes Fenster", () => {
-    expect(newProfile("A").gemeinsam.format).toBe("fenster");
-    expect(newProfile("A", undefined, "4:3").gemeinsam.format).toBe("4:3");
-  });
-
-  test("Version 4 ohne oder mit unbekanntem Format: ganzes Fenster; gueltige bleiben", () => {
-    const base = { version: 4, name: "P", gemeinsam: {}, spielarten: {} };
-    expect(sanitizeProfile(base).gemeinsam.format).toBe("fenster");
-    expect(sanitizeProfile({ ...base, gemeinsam: { format: "21:9" } }).gemeinsam.format).toBe("fenster");
-    for (const format of ["16:9", "16:10", "4:3"]) {
-      expect(sanitizeProfile({ ...base, gemeinsam: { format } }).gemeinsam.format).toBe(format);
-    }
-  });
-
-  test("Version 3 bekommt ganzes Fenster - am Pi verschiebt sich nichts", () => {
-    expect(sanitizeProfile({ version: 3, name: "S", content: {}, layout: {} }).gemeinsam.format).toBe("fenster");
   });
 });
