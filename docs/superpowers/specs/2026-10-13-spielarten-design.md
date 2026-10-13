@@ -333,9 +333,10 @@ Vorschau mit Spielern: [1] [2] [3] [4] [5] [6]
 - Werkzeugleiste: „X01 · 4 Spieler“, Spielerzahl-Knöpfe 1–6 (gesperrt bei
   laufendem Spiel), Hinweistext, „← Inhalte“, „Fertig“. Esc = Fertig.
 - **Bereiche** erscheinen als Rahmen mit den Karten der Vorschau darin. Man
-  verschiebt sie durch Ziehen und ändert Breite und Höhe an Ecken und
-  Kanten (Mindestmaß wie die Grenzen). Tastatur: Pfeile verschieben wie
-  bisher; Größe mit Umschalt+Pfeil (Breite links/rechts, Höhe hoch/runter).
+  verschiebt sie durch Ziehen und ändert Breite und Höhe am Griff unten
+  rechts (Mindestmaß wie die Grenzen). Tastatur: Pfeile verschieben wie
+  bisher (Umschalt: grob); Größe mit Strg+Pfeil (Breite links/rechts, Höhe
+  hoch/runter), +/− ändert beide.
 - Ein ausgeblendeter Bereich (Verteilung „Nur links“/„Nur rechts“) wird
   nicht gezeigt.
 - Die Scheibe lässt sich wie bisher ausrichten; der Hinweistext sagt, dass
