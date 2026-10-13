@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { resolveProfile, withBoard, withContent, withModeBlocks } from "../public/js/resolve-profile.js";
+import { resolveProfile, withBoard, withContent, withFormat, withModeBlocks } from "../public/js/resolve-profile.js";
 import { newProfile } from "../src/viewer/profile.ts";
 import { viewerCatalog } from "../src/viewer/standards.ts";
 
@@ -63,5 +63,14 @@ describe("lokale Aenderungen", () => {
     expect(own.spielarten.x01.content.aufnahme.on).toBe(false);
     expect(own.spielarten.x01.content).not.toHaveProperty("scheibe");
     expect(own.gemeinsam).toEqual(base.gemeinsam);
+  });
+});
+
+describe("withFormat", () => {
+  test("aendert nur das Format, keine Spielart wird angepasst", () => {
+    const base = newProfile("P", BOARD);
+    const profile = withFormat(base, "4:3");
+    expect(profile.gemeinsam).toEqual({ ...base.gemeinsam, format: "4:3" });
+    expect(profile.spielarten).toEqual({});
   });
 });

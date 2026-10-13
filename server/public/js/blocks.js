@@ -155,8 +155,8 @@ export function renderPlayers(areas, players, arrangement) {
     // vor den Griff, damit der Griff oben liegt
     if (entry.slot.parentElement !== area) area.prepend(entry.slot);
     entry.slot.hidden = false;
-    entry.slot.style.left = `${card.left}vh`;
-    entry.slot.style.top = `${card.top}vh`;
+    entry.slot.style.left = `${card.left}cqh`;
+    entry.slot.style.top = `${card.top}cqh`;
     entry.slot.style.transform = `scale(${card.scale})`;
     updateCard(entry.parts, player);
   }

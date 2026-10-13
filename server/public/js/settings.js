@@ -6,7 +6,7 @@
  * im Layout-Schritt die Scheibe als Linien. Nach "Fertig" wieder das Spiel.
  */
 import { api } from "./profile-api.js";
-import { withContent } from "./resolve-profile.js";
+import { withContent, withFormat } from "./resolve-profile.js";
 import { createPanel } from "./settings-panel.js";
 
 /* Der Pi beendet editing nach 60 s ohne Meldung; solange eingestellt wird,
@@ -57,6 +57,11 @@ export function createSettings({ viewer, editor, sync, getView, getGameMode, get
   const panel = createPanel(root, {
     onShared: (content) => changeContent(content, "gemeinsam"),
     onModeContent: (content) => changeContent(content, "spielart"),
+    onFormat(format) {
+      const { profile } = getView();
+      applyLocalProfile(withFormat(profile, format));
+      sync.queue(profile.id, { gemeinsam: { format }, editing: editing() });
+    },
     onMode(mode) {
       preview.spielart = mode;
       announce();

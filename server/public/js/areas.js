@@ -10,7 +10,7 @@
  * einzelne Karte nicht riesig wird.
  */
 
-/** Grundgroesse einer Karte in vh (style.css: .card) und Abstand untereinander. */
+/** Grundgroesse einer Karte in cqh (style.css: .card) und Abstand untereinander. */
 export const CARD_W = 49;
 export const CARD_H = 34;
 export const GAP = 1.5;
@@ -23,8 +23,8 @@ export function sideOf(seat, verteilung) {
 }
 
 /**
- * seats: die Plaetze der Spieler (1-6); areas: { links, rechts } mit w/h in vh.
- * left/top der Karten in vh, relativ zur linken oberen Ecke ihres Bereichs.
+ * seats: die Plaetze der Spieler (1-6); areas: { links, rechts } mit w/h in cqh.
+ * left/top der Karten in cqh, relativ zur linken oberen Ecke ihres Bereichs.
  */
 export function arrangeCards(seats, verteilung, areas) {
   const visible = { links: verteilung !== "rechts", rechts: verteilung !== "links" };

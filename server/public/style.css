@@ -2,8 +2,9 @@
  * Raspdarts Viewer.
  *
  * Schwarz ist "aus": Was nicht leuchten soll, bleibt schwarz - der Beamer wirft
- * dort kein Licht. Grundgroessen in vh, damit das Layout bei jeder Aufloesung
- * passt; der Massstab aus dem Layout kommt obendrauf.
+ * dort kein Licht. Grundgroessen in cqh (Hoehe der Buehne), damit das Layout
+ * bei jeder Aufloesung und jedem Format passt; der Massstab aus dem Layout
+ * kommt obendrauf.
  */
 
 @font-face {
@@ -60,6 +61,37 @@ body {
 .viewer {
   position: relative;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * Buehne: alles Gezeichnete. Groessen in cqh haengen an ihrer Hoehe, nicht am
+ * Fenster - bei festem Format sieht das Layout so auf jedem Bildschirm gleich
+ * aus (Rest schwarz). "Ganzes Fenster" fuellt das Fenster wie bisher.
+ */
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  container-type: size;
+  overflow: hidden;
+}
+
+.viewer[data-format="16:9"] .stage {
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+}
+
+.viewer[data-format="16:10"] .stage {
+  width: min(100vw, calc(100vh * 16 / 10));
+  height: min(100vh, calc(100vw * 10 / 16));
+}
+
+.viewer[data-format="4:3"] .stage {
+  width: min(100vw, calc(100vh * 4 / 3));
+  height: min(100vh, calc(100vw * 3 / 4));
 }
 
 /* --- Bloecke ------------------------------------------------------------ */
@@ -84,15 +116,15 @@ body {
 
 .head {
   display: flex;
-  gap: 1vh;
+  gap: 1cqh;
 }
 
 .chip {
   background: var(--chip);
   color: #d7d9de;
-  font-size: 2.2vh;
+  font-size: 2.2cqh;
   font-weight: 600;
-  padding: 0.5vh 1.4vh;
+  padding: 0.5cqh 1.4cqh;
   border-radius: 999px;
 }
 
@@ -100,13 +132,13 @@ body {
 
 .turn {
   display: grid;
-  grid-template-columns: repeat(3, 1fr) 14vh;
+  grid-template-columns: repeat(3, 1fr) 14cqh;
   align-items: center;
-  width: 66vh;
-  height: 9.2vh;
+  width: 66cqh;
+  height: 9.2cqh;
   background: #16171b;
-  border: 0.3vh solid transparent;
-  border-radius: 1.6vh;
+  border: 0.3cqh solid transparent;
+  border-radius: 1.6cqh;
 }
 
 .turn.is-busted {
@@ -119,21 +151,21 @@ body {
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 5.2vh;
+  font-size: 5.2cqh;
 }
 
 .turn-dart .dart-icon {
-  width: 9vh;
-  height: 2.2vh;
+  width: 9cqh;
+  height: 2.2cqh;
 }
 
 .turn-total {
   height: 100%;
-  border-left: 0.15vh solid #2a2b31;
+  border-left: 0.15cqh solid #2a2b31;
 }
 
 .turn.is-busted .turn-total {
-  font-size: 3vh;
+  font-size: 3cqh;
 }
 
 .dart-icon {
@@ -153,15 +185,15 @@ body {
 }
 
 .card {
-  width: 49vh;
-  height: 34vh;
-  border-radius: 2vh;
+  width: 49cqh;
+  height: 34cqh;
+  border-radius: 2cqh;
   background: var(--card);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.6vh;
+  gap: 0.6cqh;
   overflow: hidden;
   transition: background-color 300ms ease;
 }
@@ -184,12 +216,12 @@ body {
 .card-head {
   display: flex;
   align-items: center;
-  gap: 1vh;
+  gap: 1cqh;
 }
 
 .card-avatar {
-  width: 5.6vh;
-  height: 5.6vh;
+  width: 5.6cqh;
+  height: 5.6cqh;
   border-radius: 50%;
   object-fit: cover;
   background: #000;
@@ -197,16 +229,16 @@ body {
 
 .card-name {
   font-family: "Bebas Neue", "Manrope", sans-serif;
-  font-size: 3.6vh;
+  font-size: 3.6cqh;
   letter-spacing: 0.04em;
   background: #0c0d10;
-  padding: 0.2vh 2vh 0.2vh 1vh;
+  padding: 0.2cqh 2cqh 0.2cqh 1cqh;
   clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
 }
 
 .card-flag {
-  width: 2.6vh;
-  height: 1.95vh;
+  width: 2.6cqh;
+  height: 1.95cqh;
 }
 
 .card-flag[hidden] {
@@ -216,28 +248,28 @@ body {
 .card-main {
   display: flex;
   align-items: center;
-  gap: 1.2vh;
+  gap: 1.2cqh;
 }
 
 .card-checkout {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.6vh;
+  gap: 0.6cqh;
 }
 
 .card-checkout li {
   background: var(--checkout-bg);
   color: var(--checkout);
   font-weight: 700;
-  font-size: 2.6vh;
-  padding: 0.5vh 1.2vh;
-  border-radius: 0.8vh;
+  font-size: 2.6cqh;
+  padding: 0.5cqh 1.2cqh;
+  border-radius: 0.8cqh;
 }
 
 .card-score {
   font-weight: 800;
-  font-size: 16vh;
+  font-size: 16cqh;
   line-height: 1;
   letter-spacing: -0.02em;
   color: var(--score-dim);
@@ -252,13 +284,13 @@ body {
 .card-legs {
   background: #000;
   font-weight: 700;
-  font-size: 3vh;
-  padding: 0.4vh 1vh;
-  border-radius: 0.6vh;
+  font-size: 3cqh;
+  padding: 0.4cqh 1cqh;
+  border-radius: 0.6cqh;
 }
 
 .card-averages {
-  font-size: 3.6vh;
+  font-size: 3.6cqh;
 }
 
 .card-averages b,
@@ -269,13 +301,13 @@ body {
 .card-darts {
   display: flex;
   align-items: center;
-  gap: 1vh;
-  font-size: 3.4vh;
+  gap: 1cqh;
+  font-size: 3.4cqh;
 }
 
 .card-darts .dart-icon {
-  width: 5vh;
-  height: 1.2vh;
+  width: 5cqh;
+  height: 1.2cqh;
   transform: rotate(225deg);
 }
 
@@ -360,7 +392,7 @@ body {
 
 /* Hintergrund wie die Autodarts-Spielansicht, eigener Nachbau: dunkles Blau
    mit Verlauf und grossen, schwachen Winkeln. Aus = schwarz, kein Licht. */
-.viewer[data-hintergrund="on"] {
+.viewer[data-hintergrund="on"] .stage {
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90' preserveAspectRatio='xMidYMid slice'><polygon points='-10,0 18,0 50,45 18,90 -10,90 22,45' fill='rgba(70,120,255,0.07)'/><polygon points='112,90 140,90 172,45 140,0 112,0 144,45' fill='rgba(70,120,255,0.04)'/></svg>")
       center / cover no-repeat,
@@ -445,7 +477,7 @@ body {
   top: 50%;
   transform: translate(-50%, -50%);
   color: var(--hint);
-  font-size: 2.4vh;
+  font-size: 2.4cqh;
 }
 
 .viewer[data-phase="playing"] .message {
@@ -454,10 +486,10 @@ body {
 
 .offline {
   position: absolute;
-  right: 1.5vh;
-  bottom: 1.5vh;
+  right: 1.5cqh;
+  bottom: 1.5cqh;
   color: var(--hint);
-  font-size: 1.8vh;
+  font-size: 1.8cqh;
   display: none;
 }
 
@@ -469,18 +501,18 @@ body {
 
 .settings-toggle {
   position: fixed;
-  right: 2vh;
-  bottom: 2vh;
+  right: 2cqh;
+  bottom: 2cqh;
   z-index: 10;
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms;
   background: #111;
   color: #ddd;
-  border: 0.15vh solid #444;
-  border-radius: 0.8vh;
-  padding: 0.8vh 1.6vh;
-  font: 600 1.8vh "Manrope", sans-serif;
+  border: 0.15cqh solid #444;
+  border-radius: 0.8cqh;
+  padding: 0.8cqh 1.6cqh;
+  font: 600 1.8cqh "Manrope", sans-serif;
   cursor: pointer;
 }
 
@@ -497,17 +529,17 @@ body {
 .edit-toolbar {
   position: fixed;
   left: 50%;
-  bottom: 2vh;
+  bottom: 2cqh;
   transform: translateX(-50%);
   z-index: 10;
   display: none;
-  gap: 1vh;
+  gap: 1cqh;
   align-items: center;
   background: #111;
-  border: 0.15vh solid var(--edit);
-  border-radius: 0.8vh;
-  padding: 0.8vh 1.2vh;
-  font-size: 1.6vh;
+  border: 0.15cqh solid var(--edit);
+  border-radius: 0.8cqh;
+  padding: 0.8cqh 1.2cqh;
+  font-size: 1.6cqh;
   color: #bbb;
 }
 
@@ -518,10 +550,10 @@ body {
 .edit-toolbar button {
   background: #222;
   color: #ddd;
-  border: 0.15vh solid #444;
-  border-radius: 0.6vh;
-  padding: 0.5vh 1.2vh;
-  font: 600 1.6vh "Manrope", sans-serif;
+  border: 0.15cqh solid #444;
+  border-radius: 0.6cqh;
+  padding: 0.5cqh 1.2cqh;
+  font: 600 1.6cqh "Manrope", sans-serif;
   cursor: pointer;
 }
 
@@ -533,7 +565,7 @@ body {
 
 .edit-players {
   display: flex;
-  gap: 0.4vh;
+  gap: 0.4cqh;
 }
 
 .edit-toolbar .edit-players button[aria-pressed="true"] {
@@ -557,21 +589,21 @@ body {
 
 .viewer.is-editing .block {
   pointer-events: auto;
-  outline: 0.2vh dashed rgba(74, 158, 255, 0.6);
+  outline: 0.2cqh dashed rgba(74, 158, 255, 0.6);
   cursor: move;
 }
 
 .viewer.is-editing .block.is-selected {
-  outline: 0.25vh solid var(--edit);
+  outline: 0.25cqh solid var(--edit);
 }
 
 .handle {
   display: none;
   position: absolute;
-  width: 2.4vh;
-  height: 2.4vh;
+  width: 2.4cqh;
+  height: 2.4cqh;
   background: var(--edit);
-  border-radius: 0.4vh;
+  border-radius: 0.4cqh;
 }
 
 .viewer.is-editing .handle {
@@ -579,15 +611,15 @@ body {
 }
 
 .handle-resize {
-  right: -1.2vh;
-  bottom: -1.2vh;
+  right: -1.2cqh;
+  bottom: -1.2cqh;
   cursor: nwse-resize;
 }
 
 .handle-rotate {
   left: 50%;
-  top: -4vh;
-  margin-left: -1.2vh;
+  top: -4cqh;
+  margin-left: -1.2cqh;
   border-radius: 50%;
   cursor: grab;
 }

@@ -19,29 +19,33 @@
     </svg>
 
     <main id="viewer" class="viewer" data-phase="idle">
-      <!-- Jeder Block ist frei platzierbar. data-block ist der Schluessel im Layout. -->
-      <section class="block" data-block="spielinfo">
-        <div class="head"></div>
-        <span class="handle handle-resize" data-handle="resize"></span>
-      </section>
+      <!-- Buehne: hier ist alles, was gezeichnet wird. Bei festem Format hat sie
+           genau dieses Seitenverhaeltnis, der Rest des Fensters bleibt schwarz. -->
+      <div id="stage" class="stage">
+        <!-- Jeder Block ist frei platzierbar. data-block ist der Schluessel im Layout. -->
+        <section class="block" data-block="spielinfo">
+          <div class="head"></div>
+          <span class="handle handle-resize" data-handle="resize"></span>
+        </section>
 
-      <section class="block" data-block="aufnahme">
-        <div class="turn"></div>
-        <span class="handle handle-resize" data-handle="resize"></span>
-      </section>
+        <section class="block" data-block="aufnahme">
+          <div class="turn"></div>
+          <span class="handle handle-resize" data-handle="resize"></span>
+        </section>
 
-      <section class="block board-block" data-block="scheibe">
-        <svg id="board-svg" class="board-svg" data-mode="light" aria-hidden="true"></svg>
-        <span class="handle handle-resize" data-handle="resize"></span>
-        <span class="handle handle-rotate" data-handle="rotate"></span>
-      </section>
+        <section class="block board-block" data-block="scheibe">
+          <svg id="board-svg" class="board-svg" data-mode="light" aria-hidden="true"></svg>
+          <span class="handle handle-resize" data-handle="resize"></span>
+          <span class="handle handle-rotate" data-handle="rotate"></span>
+        </section>
 
-      <!-- Spielerbereiche: die Karten ordnen sich darin selbst an (areas.js). -->
-      <section class="block area-block" data-block="bereich-links"><span class="handle handle-resize" data-handle="resize"></span></section>
-      <section class="block area-block" data-block="bereich-rechts"><span class="handle handle-resize" data-handle="resize"></span></section>
+        <!-- Spielerbereiche: die Karten ordnen sich darin selbst an (areas.js). -->
+        <section class="block area-block" data-block="bereich-links"><span class="handle handle-resize" data-handle="resize"></span></section>
+        <section class="block area-block" data-block="bereich-rechts"><span class="handle handle-resize" data-handle="resize"></span></section>
 
-      <p id="message" class="message"></p>
-      <p class="offline">Keine Verbindung zum Raspdarts-Dienst</p>
+        <p id="message" class="message"></p>
+        <p class="offline">Keine Verbindung zum Raspdarts-Dienst</p>
+      </div>
 
       <button id="settings-toggle" class="settings-toggle" type="button">Einstellungen</button>
 

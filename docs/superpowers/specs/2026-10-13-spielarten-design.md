@@ -295,6 +295,26 @@ Schreibende Aufrufe brauchen wie bisher `X-Raspdarts: 1`.
   Funktion wie der Pi, siehe „Was sich sonst ändert“).
 - `state` bekommt `mode` (siehe Erkennen).
 
+## Format der Bühne (Nachtrag 13.10.)
+
+Arnold beim Test: Ein auf einem 4:3-Bildschirm eingerichtetes Layout verrutscht
+auf einem 16:9-Monitor, weil Positionen an Breite und Höhe des Fensters hängen,
+Größen nur an der Höhe.
+
+- `gemeinsam.format`: `"fenster"` (ganzes Fenster wie bisher), `"16:9"`,
+  `"16:10"`, `"4:3"`. Bestehende Profile (v3 und v4 ohne Format) und
+  Unbekanntes → `"fenster"`; ein neues Profil übernimmt das Format des aktiven.
+  Ändern mit `PUT … { gemeinsam: { format } }`; der Katalog liefert `formats`.
+- Der Viewer zeichnet alles auf einer Bühne (`#stage`, CSS-Container). Bei
+  festem Format hat sie genau dieses Seitenverhältnis, so groß wie möglich und
+  mittig; der Rest bleibt schwarz, der Hintergrund füllt nur die Bühne.
+  Positionen sind Prozent der Bühne, Größen `cqh` (Höhe der Bühne) statt
+  `vh`. Seitenleiste, Knopf und Werkzeugleiste bleiben am Fensterrand.
+- Bedienung: ganz oben in der Leiste „Format“ (Auswahl), wirkt sofort auf
+  allen Geräten. Der Layout-Editor rechnet mit der Bühne statt dem Fenster.
+- Tests: Prüfung/Übernahme/Anlegen/PUT des Formats; kein `vh` außer der
+  Bühnengröße (`100vh`/`100vw`).
+
 ## Bedienung
 
 ### Schritt „Inhalte“

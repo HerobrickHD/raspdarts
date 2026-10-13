@@ -105,7 +105,7 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | GET | `/api/profiles` | `{active, profiles:[{id, name}]}` |
 | GET | `/api/profiles/:id` | ein Profil (Version 4: Name, `gemeinsam`, angepasste `spielarten`) |
 | POST | `/api/profiles` | `{name}` – neues Profil, alle Spielarten im Standard, Scheibe wie im aktiven; wird aktiv |
-| PUT | `/api/profiles/:id` | Teile ändern: `{name?, gemeinsam?: {content?, board?}, spielart?: {id, content?, layout?}, editing?}`; live an alle Viewer. `editing`: `{schritt, spielart, spieler}` oder `null` |
+| PUT | `/api/profiles/:id` | Teile ändern: `{name?, gemeinsam?: {content?, board?, format?}, spielart?: {id, content?, layout?}, editing?}`; live an alle Viewer. `editing`: `{schritt, spielart, spieler}` oder `null` |
 | POST | `/api/profiles/:id/reset` | `{spielart}` – Spielart auf ihren Standard zurücksetzen, Scheibe bleibt |
 | DELETE | `/api/profiles/:id` | löschen (nicht das letzte) |
 | PUT | `/api/active-profile` | `{id}` – aktives Profil wechseln |
@@ -142,6 +142,12 @@ Checkout, Round the World, Segmenttraining, Bob's 27, Shanghai, Gotcha, Bermuda
 Scheibe und ihre Lage, gilt für alle Spielarten – und je Spielart Inhalte und
 Layout. Eine Spielart, die man nie angepasst hat, folgt ihrem **Standard**;
 startet ein Spiel, zeigt der Viewer den Teil dieser Spielart.
+
+**Format:** Ganz oben in der Leiste das Seitenverhältnis des Bildschirms wählen
+(Ganzes Fenster, 16:9, 16:10, 4:3). Bei einem festen Format zeichnet der Viewer
+eine Bühne genau dieser Form (Rest schwarz) – das Layout sieht dann auf jedem
+Monitor gleich aus. Bestehende Profile stehen auf „Ganzes Fenster“ (wie bisher);
+nach einem Wechsel einmal nachjustieren.
 
 **Schritt 1 – Inhalte:** Profil wählen, anlegen, umbenennen oder löschen. Unter
 „Gemeinsam“ Hintergrund und Scheibe (Nur Licht, Gezeichnet, Linien, Zahlenring,

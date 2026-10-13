@@ -50,6 +50,10 @@ export function createPanel(root, handlers) {
     setAsk({ kind: "confirm", text: `Profil „${profile.name}“ löschen?`, yes: handlers.onDelete.bind(null, profile.id) }),
   );
 
+  const formatSelect = node("select", { className: "settings-grow" });
+  formatSelect.setAttribute("aria-label", "Format");
+  formatSelect.addEventListener("change", () => handlers.onFormat(formatSelect.value));
+
   const modeSelect = node("select", { className: "settings-grow" });
   modeSelect.setAttribute("aria-label", "Spielart");
   modeSelect.addEventListener("change", () => handlers.onMode(modeSelect.value));
@@ -79,6 +83,10 @@ export function createPanel(root, handlers) {
     node("div", { className: "settings-row" }, [select]),
     node("div", { className: "settings-row" }, [button("Neu", () => setAsk({ kind: "new" })), renameButton, deleteButton]),
     askArea,
+    node("div", { className: "settings-row" }, [
+      node("span", { textContent: "Format:", title: "Seitenverhältnis des Bildschirms" }),
+      formatSelect,
+    ]),
     node("h2", { textContent: "Gemeinsam – gilt für alle Spielarten" }),
     sharedList,
     node("h2", { textContent: "Spielart" }),
@@ -133,6 +141,10 @@ export function createPanel(root, handlers) {
     section.dataset.part = part.id;
     section.dataset.scope = part.scope;
     return section;
+  }
+
+  function buildFormats() {
+    formatSelect.replaceChildren(...catalog.formats.map((f) => node("option", { value: f.id, textContent: f.label })));
   }
 
   function buildShared() {
@@ -204,6 +216,7 @@ export function createPanel(root, handlers) {
       for (const input of section.querySelectorAll(".part-options input")) input.disabled = !on;
     }
 
+    formatSelect.value = profile.gemeinsam.format;
     modeSelect.value = mode;
     modeState.textContent = resolved.angepasst ? "angepasst" : "Standard";
     resetButton.hidden = !resolved.angepasst;
@@ -273,7 +286,10 @@ export function createPanel(root, handlers) {
       mode = next.mode;
       players = next.players;
       resolved = next.resolved;
-      if (freshCatalog) buildShared();
+      if (freshCatalog) {
+        buildFormats();
+        buildShared();
+      }
       if (freshCatalog || freshMode) buildModeList();
       const key = JSON.stringify(Object.keys(profile.spielarten).sort());
       if (freshCatalog || key !== modesKey) {

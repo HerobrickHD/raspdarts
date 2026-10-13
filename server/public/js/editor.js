@@ -21,13 +21,13 @@ const isArea = (block) => "w" in block;
 
 const PLUS_KEYS = ["+", "*", "="];
 const MINUS_KEYS = ["-", "_"];
-/* Bereichsgroesse per Tastatur in vh: 1 fein, 10 mit Umschalt. */
+/* Bereichsgroesse per Tastatur (Hoehen-Prozent der Buehne): 1 fein, 10 mit Umschalt. */
 const AREA_STEP = 10;
 
-/** Aenderung durch Ziehen an einem Block oder Griff. */
-function drag(layout, id, handle, start, move, anchor) {
-  const dx = ((move.clientX - start.x) / window.innerWidth) * 100;
-  const dy = ((move.clientY - start.y) / window.innerHeight) * 100;
+/** Aenderung durch Ziehen an einem Block oder Griff; stage = Groesse der Buehne in px. */
+function drag(layout, id, handle, start, move, anchor, stage) {
+  const dx = ((move.clientX - start.x) / stage.width) * 100;
+  const dy = ((move.clientY - start.y) / stage.height) * 100;
   const ratio = distance(move.clientX, move.clientY, anchor) / Math.max(1, distance(start.x, start.y, anchor));
 
   if (id === "scheibe") {
@@ -51,9 +51,9 @@ function drag(layout, id, handle, start, move, anchor) {
     block.x = clamp(from.x + dx, 0, 100);
     block.y = clamp(from.y + dy, 0, 100);
   } else if (handle === "resize" && isArea(block)) {
-    // Groesse in vh: Mausweg relativ zur Bildhoehe
-    const dw = ((move.clientX - start.x) / window.innerHeight) * 100;
-    const dh = ((move.clientY - start.y) / window.innerHeight) * 100;
+    // Groesse in Hoehen-Prozent der Buehne: Mausweg relativ zu ihrer Hoehe
+    const dw = ((move.clientX - start.x) / stage.height) * 100;
+    const dh = ((move.clientY - start.y) / stage.height) * 100;
     block.w = clamp(from.w + dw, 5, 300);
     block.h = clamp(from.h + dh, 5, 100);
   } else if (handle === "resize") {
@@ -208,13 +208,14 @@ export function createEditor({
     const handle = event.target.closest("[data-handle]")?.dataset.handle ?? "move";
     const start = { x: event.clientX, y: event.clientY, layout: structuredClone(startLayout) };
     const rect = block.getBoundingClientRect();
+    const stage = viewer.querySelector("#stage").getBoundingClientRect();
     const anchor =
       id === "scheibe"
         ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
         : { x: rect.left, y: rect.top };
 
     block.setPointerCapture(event.pointerId);
-    const onMove = (move) => change((layout) => drag(layout, id, handle, start, move, anchor));
+    const onMove = (move) => change((layout) => drag(layout, id, handle, start, move, anchor, stage));
     const onUp = () => {
       block.removeEventListener("pointermove", onMove);
       block.removeEventListener("pointerup", onUp);

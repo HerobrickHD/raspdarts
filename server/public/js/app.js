@@ -102,6 +102,7 @@ function render() {
   const current = resolved();
   viewer.dataset.phase = shown.phase;
   viewer.dataset.spielart = mode ?? "unbekannt";
+  viewer.dataset.format = view.profile?.gemeinsam.format ?? "fenster";
   viewer.classList.toggle("is-layout", edit?.schritt === "layout");
   if (current) {
     applyContent(viewer, view.catalog, current.content, mode);

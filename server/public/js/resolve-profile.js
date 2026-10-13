@@ -30,6 +30,10 @@ export function withBoard(profile, board) {
   return { ...profile, gemeinsam: { ...profile.gemeinsam, board } };
 }
 
+export function withFormat(profile, format) {
+  return { ...profile, gemeinsam: { ...profile.gemeinsam, format } };
+}
+
 export function withModeBlocks(profile, catalog, mode, blocks) {
   const entry = entryFor(profile, catalog, mode);
   return {
