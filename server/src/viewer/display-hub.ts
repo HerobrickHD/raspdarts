@@ -36,7 +36,8 @@ export interface Editing {
 export type ViewerMessage =
   | { type: "catalog"; catalog: ViewerCatalog }
   | { type: "state"; state: ViewerState }
-  | { type: "profile"; profile: ProfileWithId; profiles: ProfileSummary[]; editing: Editing | null };
+  | { type: "profile"; profile: ProfileWithId; profiles: ProfileSummary[]; editing: Editing | null }
+  | { type: "camera"; cam: number; version: number };
 
 export const EDIT_TIMEOUT_MS = 60_000;
 
@@ -111,6 +112,12 @@ export class DisplayHub {
 
   get editing(): Editing | null {
     return this.#editing;
+  }
+
+  /** Neues Kamerabild (board-camera.ts) - die Viewer holen es sich ab. */
+  publishCamera(update: { cam: number; version: number }): void {
+    const message: ViewerMessage = { type: "camera", ...update };
+    for (const socket of [...this.#clients]) this.#send(socket, message);
   }
 
   close(): void {

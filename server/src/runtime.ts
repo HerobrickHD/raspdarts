@@ -10,6 +10,7 @@ import { createFramePipeline } from "./viewer/pipeline.js";
 import { Recorder, sessionPath } from "./viewer/recorder.js";
 import type { AppDeps } from "./http.js";
 import { autodartsHttp, createCams } from "./system/cams.js";
+import { BoardCamera, wantedCamera } from "./viewer/board-camera.js";
 import { JobRunner } from "./system/jobs.js";
 import { createStatusReader } from "./system/status.js";
 
@@ -25,13 +26,20 @@ export function createDeps(options: { record: boolean }): Runtime {
   // Jede Session wird mitgeschrieben: Material fuer Tests und fuer die
   // spaeteren Stufen (die Wurf-Koordinaten stecken schon in den Nachrichten).
   const recorder = options.record ? new Recorder(sessionPath()) : null;
+  const cams = createCams({ http: autodartsHttp(loadConfig().autodartsUrl), now: Date.now });
+  const boardCamera = new BoardCamera({
+    cams,
+    wanted: (mode) => wantedCamera(profiles.active(), mode),
+    notify: (update) => hub.publishCamera(update),
+  });
   return {
     hub,
     recorder,
     profiles,
-    ingest: new Ingest(createFramePipeline(hub, recorder)),
+    ingest: new Ingest(createFramePipeline(hub, recorder, boardCamera)),
     status: createStatusReader(),
     jobs: new JobRunner(),
-    cams: createCams({ http: autodartsHttp(loadConfig().autodartsUrl), now: Date.now }),
+    cams,
+    boardCamera,
   };
 }

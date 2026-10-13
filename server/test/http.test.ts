@@ -438,6 +438,53 @@ describe("/api/cams", () => {
   });
 });
 
+describe("/api/board-camera", () => {
+  const headers = { "x-raspdarts": "1" };
+  const camera = (latest: Buffer | null) => {
+    const refreshed: number[][] = [];
+    return {
+      refreshed,
+      boardCamera: {
+        info: async () => ({ cams: [{ n: 2, version: latest ? 1 : null, matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] }] }),
+        latest: (n: number) => (n === 2 && latest ? { jpeg: latest, version: 1 } : null),
+        refresh: (cams: number[]) => refreshed.push(cams),
+      },
+    };
+  };
+
+  test("liefert je Kamera Version und Entzerrung", async () => {
+    const { boardCamera } = camera(Buffer.from("jpeg"));
+    app = await buildApp(testDeps({ boardCamera }));
+    const response = await app.inject({ method: "GET", url: "/api/board-camera", headers });
+    expect(response.json()).toEqual({ cams: [{ n: 2, version: 1, matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] }] });
+  });
+
+  test("liefert das letzte Bild als JPEG ohne Zwischenspeichern, 404 ohne Bild", async () => {
+    const { boardCamera } = camera(Buffer.from("jpeg"));
+    app = await buildApp(testDeps({ boardCamera }));
+    const ok = await app.inject({ method: "GET", url: "/api/board-camera/2", headers });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.headers["content-type"]).toBe("image/jpeg");
+    expect(ok.headers["cache-control"]).toBe("no-store");
+    expect(ok.rawPayload.toString()).toBe("jpeg");
+    expect((await app.inject({ method: "GET", url: "/api/board-camera/0", headers })).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: "/api/board-camera/x", headers })).statusCode).toBe(404);
+  });
+
+  test("refresh holt die genannten Kameras, nur gueltige Nummern", async () => {
+    const { boardCamera, refreshed } = camera(null);
+    app = await buildApp(testDeps({ boardCamera }));
+    const response = await app.inject({ method: "POST", url: "/api/board-camera/refresh", headers, payload: { cams: [0, 2, -1, "x", 9] } });
+    expect(response.statusCode).toBe(200);
+    expect(refreshed).toEqual([[0, 2]]);
+  });
+
+  test("verlangt den X-Raspdarts-Header", async () => {
+    app = await buildApp(testDeps());
+    expect((await app.inject({ method: "GET", url: "/api/board-camera" })).statusCode).toBe(403);
+  });
+});
+
 describe("/api/ingest/reset", () => {
   test("setzt alle Viewer auf Warten", async () => {
     const deps = testDeps();

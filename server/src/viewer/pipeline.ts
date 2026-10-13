@@ -13,9 +13,15 @@ export interface FrameSink {
   write(frame: unknown): void;
 }
 
+/** Bekommt jeden neuen Stand mit dem vorigen - fuer die Kamera-Ansicht (board-camera.ts). */
+export interface StateWatcher {
+  onState(prev: ViewerState, next: ViewerState): void;
+}
+
 export function createFramePipeline(
   hub: DisplayHub,
   recorder: FrameSink | null,
+  camera: StateWatcher | null = null,
 ): (frame: unknown) => void {
   /* Jede unbekannte Spielart nur einmal ins Log - sonst bei jedem Wurf. */
   const reported = new Set<string>();
@@ -38,6 +44,7 @@ export function createFramePipeline(
       reported.add(state.variant);
       console.warn(`Spielart "${state.variant}" unbekannt - allgemeine Darstellung`);
     }
+    camera?.onState(hub.state, state);
     hub.broadcast(state);
   };
 }

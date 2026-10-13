@@ -75,6 +75,21 @@ describe("createFramePipeline", () => {
     warn.mockRestore();
   });
 
+  test("meldet jeden neuen Stand mit dem vorigen an die Kamera-Ansicht", () => {
+    const hub = newHub();
+    const seen: [string, string][] = [];
+    const camera = { onState: (prev: { phase: string }, next: { phase: string }) => seen.push([prev.phase, next.phase]) };
+    const handle = createFramePipeline(hub, null, camera);
+
+    handle(MATCH_FRAME);
+    handle(MATCH_FRAME);
+
+    expect(seen).toEqual([
+      ["idle", "playing"],
+      ["playing", "playing"],
+    ]);
+  });
+
   test("bleibt idle ohne Spielstand", () => {
     const hub = newHub();
     createFramePipeline(hub, null)({ irgendwas: 1 });

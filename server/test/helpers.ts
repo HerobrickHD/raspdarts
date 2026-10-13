@@ -40,7 +40,9 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     cams: {
       info: async () => ({ board_id: "b-1", cams: 3, fetched: 0 }),
       image: async () => ({ ok: false, reason: "board-stopped" }),
+      calibration: async () => null,
     } satisfies Cams,
+    boardCamera: { info: async () => ({ cams: [] }), latest: () => null, refresh: () => {} },
     ...overrides,
   };
 }

@@ -140,6 +140,20 @@ describe("DisplayHub", () => {
   });
 });
 
+describe("Kamera-Bilder", () => {
+  test("ein neues Kamerabild wird allen Viewern gemeldet", () => {
+    hub = new DisplayHub(store());
+    const a = fakeSocket();
+    const b = fakeSocket();
+    hub.attach(a.socket);
+    hub.attach(b.socket);
+
+    hub.publishCamera({ cam: 2, version: 7 });
+
+    for (const viewer of [a, b]) expect(viewer.sent.at(-1)).toEqual({ type: "camera", cam: 2, version: 7 });
+  });
+});
+
 describe("parseEditing", () => {
   test("Schritt, Spielart und Spielerzahl; sonst wird nicht eingestellt", () => {
     expect(parseEditing({ schritt: "layout", spielart: "cricket", spieler: 4 })).toEqual({

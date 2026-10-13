@@ -21,6 +21,7 @@ import { IDLE } from "./viewer/game-state.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
 import { ProfileError, type ProfileErrorCode, type ProfileStore } from "./viewer/profile-store.js";
 import type { CamFailure, Cams } from "./system/cams.js";
+import type { BoardCamera } from "./viewer/board-camera.js";
 import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
@@ -47,6 +48,7 @@ export interface AppDeps {
   status: () => Promise<SystemStatus>;
   jobs: JobRunner;
   cams: Cams;
+  boardCamera: Pick<BoardCamera, "info" | "latest" | "refresh">;
 }
 
 /** Langlaeufer: Ausgabe wird zeilenweise als Server-Sent Events gestreamt. */
@@ -213,6 +215,23 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const result = await deps.cams.image(n);
     if (result.ok) return reply.header("cache-control", "no-store").type("image/jpeg").send(result.jpeg);
     return reply.code(CAM_FAILURE_CODES[result.reason]).send({ error: result.reason });
+  });
+
+  // Kamera-Ansicht der Scheibe: letztes Bild je Kamera aus board-camera.ts -
+  // Autodarts wird dabei nicht gefragt, die Bremse steckt dort.
+  app.get("/api/board-camera", async () => deps.boardCamera.info());
+
+  app.get<{ Params: { n: string } }>("/api/board-camera/:n", async (request, reply) => {
+    const latest = /^\d+$/.test(request.params.n) ? deps.boardCamera.latest(Number(request.params.n)) : null;
+    if (!latest) return reply.code(404).send({ error: "not-found" });
+    return reply.header("cache-control", "no-store").type("image/jpeg").send(latest.jpeg);
+  });
+
+  app.post<{ Body: unknown }>("/api/board-camera/refresh", async (request) => {
+    const raw = fields(request.body)["cams"];
+    const cams = Array.isArray(raw) ? raw.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 8) : [];
+    deps.boardCamera.refresh(cams);
+    return { ok: true };
   });
 
   for (const [path, script] of Object.entries(JOB_ROUTES)) {
