@@ -4,8 +4,8 @@ import { buildApp, isAllowedHost } from "../src/http.js";
 import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js";
 import type { DisplaySocket } from "../src/viewer/display-hub.js";
 import type { ViewerState } from "../src/viewer/game-state.js";
-import { DEFAULT_LAYOUT } from "../src/viewer/layout.js";
-import { templateContent } from "../src/viewer/catalog.js";
+import { DEFAULT_BOARD } from "../src/viewer/layout.js";
+import { sharedStandard } from "../src/viewer/standards.js";
 import { testDeps } from "./helpers.js";
 
 let app: FastifyInstance;
@@ -147,61 +147,51 @@ describe("Profil-API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       id: "standard",
-      version: 3,
+      version: 4,
       name: "Standard",
-      content: templateContent("projektion"),
-      layout: DEFAULT_LAYOUT,
+      gemeinsam: { content: sharedStandard(), board: DEFAULT_BOARD },
+      spielarten: {},
     });
   });
 
-  test("legt ein Profil aus einer Vorlage an und macht es aktiv", async () => {
+  test("legt ein Profil nur mit Namen an und macht es aktiv", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
 
-    const response = await call("POST", "/api/profiles", { name: "Fernseher Küche", template: "fernseher" });
+    const response = await call("POST", "/api/profiles", { name: "Fernseher Küche" });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({
-      id: "fernseher-kueche",
-      name: "Fernseher Küche",
-      content: templateContent("fernseher"),
-    });
+    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 4, spielarten: {} });
     expect(deps.profiles.activeId).toBe("fernseher-kueche");
   });
 
-  test("weist eine unbekannte oder fehlende Vorlage mit 400 ab", async () => {
-    app = await buildApp(testDeps());
-
-    expect((await call("POST", "/api/profiles", { name: "X", template: "disco" })).statusCode).toBe(400);
-    expect((await call("POST", "/api/profiles", { name: "X" })).statusCode).toBe(400);
-  });
-
-  test("aendert Teile eines Profils und setzt editing fuer das aktive", async () => {
+  test("aendert gemeinsam und eine Spielart, setzt editing fuer das aktive", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
 
     const response = await call("PUT", "/api/profiles/standard", {
       name: "Beamer",
-      content: { hintergrund: { on: true } },
-      editing: "inhalte",
+      gemeinsam: { content: { hintergrund: { on: true } } },
+      spielart: { id: "cricket", content: { aufnahme: { on: false } } },
+      editing: { schritt: "inhalte", spielart: "cricket", spieler: 3 },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      id: "standard",
-      name: "Beamer",
-      content: { hintergrund: { on: true }, spielinfo: { on: false } },
-    });
-    expect(deps.hub.editing).toBe("inhalte");
+    const profile = response.json();
+    expect(profile.name).toBe("Beamer");
+    expect(profile.gemeinsam.content.hintergrund.on).toBe(true);
+    expect(profile.spielarten.cricket.content.aufnahme.on).toBe(false);
+    expect(deps.hub.editing).toEqual({ schritt: "inhalte", spielart: "cricket", spieler: 3 });
   });
 
   test("ein PUT ohne editing laesst den Schritt stehen, editing null beendet ihn", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    await call("PUT", "/api/profiles/standard", { editing: "layout" });
+    const layout = { schritt: "layout", spielart: "x01", spieler: 2 };
+    await call("PUT", "/api/profiles/standard", { editing: layout });
 
     await call("PUT", "/api/profiles/standard", { name: "Beamer" });
-    expect(deps.hub.editing).toBe("layout");
+    expect(deps.hub.editing).toEqual(layout);
 
     await call("PUT", "/api/profiles/standard", { editing: null });
     expect(deps.hub.editing).toBeNull();
@@ -210,28 +200,41 @@ describe("Profil-API", () => {
   test("editing fuer ein nicht aktives Profil wird ignoriert", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    await call("POST", "/api/profiles", { name: "TV", template: "fernseher" });
+    await call("POST", "/api/profiles", { name: "TV" });
 
-    await call("PUT", "/api/profiles/standard", { editing: "layout" });
+    await call("PUT", "/api/profiles/standard", { editing: { schritt: "layout", spielart: "x01", spieler: 2 } });
 
     expect(deps.hub.editing).toBeNull();
   });
 
-  test("setzt die Inhalte auf eine Vorlage zurueck, das Layout bleibt", async () => {
+  test("unbekannte Spielart beim Aendern oder Zuruecksetzen ergibt 400", async () => {
     app = await buildApp(testDeps());
-    const moved = { ...DEFAULT_LAYOUT, board: { cx: 40, cy: 45, diameter: 80, rotation: 1.5 } };
-    await call("PUT", "/api/profiles/standard", { layout: moved });
 
-    const response = await call("POST", "/api/profiles/standard/reset", { template: "minimal" });
+    const put = await call("PUT", "/api/profiles/standard", { spielart: { id: "killer", content: {} } });
+    const reset = await call("POST", "/api/profiles/standard/reset", { spielart: "killer" });
+
+    expect(put.statusCode).toBe(400);
+    expect(reset.statusCode).toBe(400);
+  });
+
+  test("setzt eine Spielart auf den Standard zurueck, die Scheibe bleibt", async () => {
+    app = await buildApp(testDeps());
+    const board = { cx: 40, cy: 45, diameter: 80, rotation: 1.5 };
+    await call("PUT", "/api/profiles/standard", {
+      gemeinsam: { board },
+      spielart: { id: "x01", content: { aufnahme: { on: false } } },
+    });
+
+    const response = await call("POST", "/api/profiles/standard/reset", { spielart: "x01" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ content: templateContent("minimal"), layout: { board: moved.board } });
+    expect(response.json()).toMatchObject({ spielarten: {}, gemeinsam: { board } });
   });
 
   test("loescht ein Profil, aber nie das letzte", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    await call("POST", "/api/profiles", { name: "TV", template: "fernseher" });
+    await call("POST", "/api/profiles", { name: "TV" });
 
     expect((await call("DELETE", "/api/profiles/tv")).statusCode).toBe(204);
     expect(deps.profiles.activeId).toBe("standard");
@@ -241,7 +244,7 @@ describe("Profil-API", () => {
   test("schaltet das aktive Profil um", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    await call("POST", "/api/profiles", { name: "TV", template: "fernseher" });
+    await call("POST", "/api/profiles", { name: "TV" });
 
     const response = await call("PUT", "/api/active-profile", { id: "standard" });
 
@@ -275,7 +278,7 @@ describe("Profil-API", () => {
     const response = await app.inject({
       method: "POST",
       url: "/api/profiles",
-      payload: { name: "X", template: "minimal" },
+      payload: { name: "X" },
     });
 
     expect(response.statusCode).toBe(403);

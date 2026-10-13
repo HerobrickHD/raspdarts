@@ -5,14 +5,15 @@
  * immer vollstaendige Schnappschuesse gesendet, keine Deltas: Ein Viewer, der
  * sich spaeter verbindet, ist sofort richtig.
  *
- * "editing" sagt allen Viewern, dass gerade eingestellt wird ("inhalte" oder
- * "layout") - dann zeigen sie ohne Spiel Beispieldaten, beim Layout die
- * Scheibe als Linien. Bleibt eine Meldung aus (Fenster geschlossen), faellt es
+ * "editing" sagt allen Viewern, dass gerade eingestellt wird, in welchem
+ * Schritt, fuer welche Spielart und mit wie vielen Spielern in der Vorschau -
+ * dann zeigen sie ohne Spiel Beispieldaten, beim Layout die Scheibe als Linien. Bleibt eine Meldung aus (Fenster geschlossen), faellt es
  * nach dem Zeitlimit zurueck; ein Wechsel des aktiven Profils beendet es.
  */
-import { CATALOG, type Catalog } from "./catalog.js";
+import { FALLBACK_MODE, isMode } from "./catalog.js";
 import { IDLE, type ViewerState } from "./game-state.js";
 import type { ProfileSummary, ProfileWithId } from "./profile.js";
+import { viewerCatalog, type ViewerCatalog } from "./standards.js";
 
 export interface DisplaySocket {
   send(data: string): void;
@@ -25,24 +26,40 @@ export interface ProfileSource {
   list(): ProfileSummary[];
 }
 
-export type EditStep = "inhalte" | "layout";
+/** Wer gerade einstellt: Schritt, die Spielart in der Leiste und die Spielerzahl der Vorschau. */
+export interface Editing {
+  schritt: "inhalte" | "layout";
+  spielart: string;
+  spieler: number;
+}
 
 export type ViewerMessage =
-  | { type: "catalog"; catalog: Catalog }
+  | { type: "catalog"; catalog: ViewerCatalog }
   | { type: "state"; state: ViewerState }
-  | { type: "profile"; profile: ProfileWithId; profiles: ProfileSummary[]; editing: EditStep | null };
+  | { type: "profile"; profile: ProfileWithId; profiles: ProfileSummary[]; editing: Editing | null };
 
 export const EDIT_TIMEOUT_MS = 60_000;
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
+
 /** Nur die beiden Schritte gelten; alles andere heisst "es wird nicht eingestellt". */
-export function editStep(raw: unknown): EditStep | null {
-  return raw === "inhalte" || raw === "layout" ? raw : null;
+export function parseEditing(raw: unknown): Editing | null {
+  const source = asRecord(raw);
+  const schritt = source["schritt"];
+  if (schritt !== "inhalte" && schritt !== "layout") return null;
+  const spieler = source["spieler"];
+  return {
+    schritt,
+    spielart: isMode(source["spielart"]) ? source["spielart"] : FALLBACK_MODE,
+    spieler: typeof spieler === "number" && Number.isInteger(spieler) && spieler >= 1 && spieler <= 6 ? spieler : 2,
+  };
 }
 
 export class DisplayHub {
   readonly #clients = new Set<DisplaySocket>();
   #state: ViewerState = IDLE;
-  #editing: EditStep | null = null;
+  #editing: Editing | null = null;
   #editTimer: NodeJS.Timeout | null = null;
   /** Das aktive Profil beim letzten Verteilen - ein Wechsel beendet das Einstellen. */
   #shownActive: string;
@@ -57,7 +74,7 @@ export class DisplayHub {
   attach(socket: DisplaySocket): void {
     this.#clients.add(socket);
     socket.on("close", () => this.#clients.delete(socket));
-    this.#send(socket, { type: "catalog", catalog: CATALOG });
+    this.#send(socket, { type: "catalog", catalog: viewerCatalog() });
     this.#send(socket, { type: "state", state: this.#state });
     this.#send(socket, this.#profileMessage());
   }
@@ -69,11 +86,11 @@ export class DisplayHub {
   }
 
   /** Wer gerade einstellt. Jede Meldung verlaengert; ohne Meldung endet es nach dem Zeitlimit. */
-  setEditing(step: EditStep | null): void {
+  setEditing(editing: Editing | null): void {
     if (this.#editTimer) clearTimeout(this.#editTimer);
     this.#editTimer = null;
-    this.#editing = step;
-    if (!step) return;
+    this.#editing = editing;
+    if (!editing) return;
     this.#editTimer = setTimeout(() => {
       this.#editTimer = null;
       this.#editing = null;
@@ -92,7 +109,7 @@ export class DisplayHub {
     for (const socket of [...this.#clients]) this.#send(socket, message);
   }
 
-  get editing(): EditStep | null {
+  get editing(): Editing | null {
     return this.#editing;
   }
 

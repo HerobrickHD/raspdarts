@@ -11,17 +11,6 @@
  * einem Aufloesungswechsel des Beamers noch.
  */
 
-export const PLAYER_BLOCKS = [
-  "spieler-1",
-  "spieler-2",
-  "spieler-3",
-  "spieler-4",
-  "spieler-5",
-  "spieler-6",
-] as const;
-export const BLOCK_IDS = ["spielinfo", "aufnahme", ...PLAYER_BLOCKS] as const;
-export type BlockId = (typeof BLOCK_IDS)[number];
-
 export interface BlockLayout {
   /** Linke obere Ecke, Prozent der Breite. */
   x: number;
@@ -40,11 +29,6 @@ export interface BoardLayout {
   diameter: number;
   /** Grad, im Uhrzeigersinn. */
   rotation: number;
-}
-
-export interface DisplayLayout {
-  board: BoardLayout;
-  blocks: Record<BlockId, BlockLayout>;
 }
 
 /** Ein Spielerbereich: Position in Prozent, Groesse in vh (wie alle Groessen im Viewer). */
@@ -77,20 +61,6 @@ export const DEFAULT_MODE_LAYOUT: ModeLayout = {
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
     "bereich-links": { x: 1.4, y: 32.7, w: CARD.w, h: CARD.h },
     "bereich-rechts": { x: 71, y: 32.7, w: CARD.w, h: CARD.h },
-  },
-};
-
-export const DEFAULT_LAYOUT: DisplayLayout = {
-  board: { ...DEFAULT_BOARD },
-  blocks: {
-    spielinfo: { x: 2, y: 3, scale: 1 },
-    aufnahme: { x: 32.5, y: 3.8, scale: 1 },
-    "spieler-1": { x: 1.4, y: 32.7, scale: 1 },
-    "spieler-2": { x: 71, y: 32.7, scale: 1 },
-    "spieler-3": { x: 1.4, y: 68, scale: 0.45 },
-    "spieler-4": { x: 85.5, y: 68, scale: 0.45 },
-    "spieler-5": { x: 1.4, y: 84, scale: 0.45 },
-    "spieler-6": { x: 85.5, y: 84, scale: 0.45 },
   },
 };
 
@@ -167,18 +137,6 @@ export function sanitizeModeLayout(stored: unknown, fallback: ModeLayout = DEFAU
       "bereich-rechts": sanitizeArea(blocks["bereich-rechts"], fallback.blocks["bereich-rechts"]),
     },
   };
-}
-
-/** Bisheriges Layout mit sechs Kartenplaetzen - entfaellt mit Profil-Version 4. */
-export function sanitizeLayout(stored: unknown): DisplayLayout {
-  const fresh = structuredClone(DEFAULT_LAYOUT);
-  const source = asRecord(stored);
-  const blocks = asRecord(source["blocks"]);
-  fresh.board = sanitizeBoard(source["board"]);
-  for (const id of BLOCK_IDS) {
-    fresh.blocks[id] = sanitizeBlock(blocks[id], DEFAULT_LAYOUT.blocks[id]);
-  }
-  return fresh;
 }
 
 /** Eine alte Karte (Position + Skalierung) als Bereich, in den sie genau passt. */

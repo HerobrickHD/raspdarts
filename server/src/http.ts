@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
-import { editStep, type DisplayHub } from "./viewer/display-hub.js";
+import { parseEditing, type DisplayHub } from "./viewer/display-hub.js";
 import { IDLE } from "./viewer/game-state.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
 import { ProfileError, type ProfileErrorCode, type ProfileStore } from "./viewer/profile-store.js";
@@ -69,7 +69,7 @@ const CAM_FAILURE_CODES: Record<CamFailure, number> = {
 
 const PROFILE_ERROR_CODES: Record<ProfileErrorCode, number> = {
   "invalid-id": 400,
-  "invalid-template": 400,
+  "invalid-mode": 400,
   "not-found": 404,
   "last-profile": 409,
 };
@@ -131,8 +131,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.post<{ Body: unknown }>("/api/profiles", async (request, reply) =>
     withProfiles(reply, () => {
-      const body = fields(request.body);
-      const profile = deps.profiles.create(body["name"], body["template"]);
+      const profile = deps.profiles.create(fields(request.body)["name"]);
       deps.hub.publishProfile();
       reply.code(201);
       return profile;
@@ -145,12 +144,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const body = fields(request.body);
       const profile = deps.profiles.update(id, {
         name: body["name"],
-        content: body["content"],
-        layout: body["layout"],
+        gemeinsam: body["gemeinsam"],
+        spielart: body["spielart"],
       });
       // Einstellen betrifft, was die Viewer zeigen - also nur das aktive Profil.
       if (body["editing"] !== undefined && id === deps.profiles.activeId) {
-        deps.hub.setEditing(editStep(body["editing"]));
+        deps.hub.setEditing(parseEditing(body["editing"]));
       }
       deps.hub.publishProfile();
       return profile;
@@ -159,7 +158,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.post<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id/reset", async (request, reply) =>
     withProfiles(reply, () => {
-      const profile = deps.profiles.resetContent(request.params.id, fields(request.body)["template"]);
+      const profile = deps.profiles.resetMode(request.params.id, fields(request.body)["spielart"]);
       deps.hub.publishProfile();
       return profile;
     }),

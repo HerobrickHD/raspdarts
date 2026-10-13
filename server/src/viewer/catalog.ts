@@ -1,5 +1,5 @@
 /**
- * Katalog: alle Bausteine des Viewers, ihre Optionen und die Vorlagen.
+ * Katalog: alle Bausteine des Viewers, ihre Optionen und die Spielarten.
  *
  * Die einzige Stelle, an der Optionen beschrieben werden. Der Pi prueft jedes
  * Profil dagegen und schickt den Katalog an den Viewer, der daraus die
@@ -7,7 +7,7 @@
  * Viewer ihre Wirkung (meist eine CSS-Regel auf data-<baustein>-<option>).
  *
  * Alte Profile bleiben gueltig: Fehlende Optionen bekommen beim Lesen die
- * Vorgabe.
+ * Vorgabe. Standards je Spielart stehen in standards.ts.
  *
  * Spielarten: Bausteine sind gemeinsam (gelten fuer alle Spielarten) oder
  * werden je Spielart eingestellt. modes an einem Baustein oder einer Option
@@ -54,13 +54,6 @@ export interface PartContent {
 export type Content = Record<string, PartContent>;
 export type ContentPatch = Record<string, Record<string, boolean | string>>;
 
-export interface Template {
-  id: string;
-  label: string;
-  /** Nur die Abweichungen von den Vorgaben. */
-  content: ContentPatch;
-}
-
 export type ModeGroup = "spiele" | "training" | "party";
 
 export interface GameMode {
@@ -75,7 +68,6 @@ export interface GameMode {
 
 export interface Catalog {
   parts: Part[];
-  templates: Template[];
 }
 
 const toggle = (id: string, label: string, value = true, modes?: string[]): ToggleOption => ({
@@ -229,38 +221,7 @@ export const CATALOG: Catalog = {
       ],
     },
   ],
-  templates: [
-    {
-      id: "projektion",
-      label: "Projektion",
-      content: { scheibe: { zahlenring: false }, spielinfo: { on: false } },
-    },
-    {
-      id: "fernseher",
-      label: "Fernseher",
-      content: { hintergrund: { on: true }, scheibe: { darstellung: "drawn" } },
-    },
-    {
-      id: "minimal",
-      label: "Minimal",
-      content: {
-        aufnahme: { on: false },
-        spielinfo: { on: false },
-        spieler: {
-          profilbild: false,
-          flagge: false,
-          legs: false,
-          checkout: false,
-          average: false,
-          dartzahl: false,
-        },
-      },
-    },
-  ],
 };
-
-/** Vorlage fuer neue Profile ohne (gueltige) Wahl und fuer die Uebernahme. */
-export const DEFAULT_TEMPLATE = "projektion";
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
@@ -269,10 +230,6 @@ function partDefaults(part: Part): PartContent {
   const value: PartContent = { on: part.default };
   for (const option of part.options) value[option.id] = option.default;
   return value;
-}
-
-export function defaultContent(): Content {
-  return Object.fromEntries(CATALOG.parts.map((part) => [part.id, partDefaults(part)]));
 }
 
 function isValid(option: Option, raw: unknown): raw is boolean | string {
@@ -306,11 +263,6 @@ function sanitizeParts(parts: Part[], stored: unknown, fallback: Content, mode: 
   return content;
 }
 
-/** Alle Bausteine wie in Profil-Version 3 - entfaellt mit Version 4. */
-export function sanitizeContent(stored: unknown, fallback: Content = defaultContent()): Content {
-  return sanitizeParts(CATALOG.parts, stored, fallback, FALLBACK_MODE);
-}
-
 const sharedParts = (): Part[] => CATALOG.parts.filter((part) => part.scope === "gemeinsam");
 const modeParts = (mode: string): Part[] =>
   CATALOG.parts.filter((part) => part.scope === "spielart" && availableIn(part, mode));
@@ -326,10 +278,4 @@ export function sanitizeShared(stored: unknown, fallback: Content = sharedDefaul
 /** Bausteine einer Spielart; Optionen, die es dort nicht gibt, fallen weg. */
 export function sanitizeModeContent(stored: unknown, mode: string, fallback: Content = modeDefaults(mode)): Content {
   return sanitizeParts(modeParts(mode), stored, fallback, mode);
-}
-
-/** Inhalte einer Vorlage; null, wenn es sie nicht gibt. */
-export function templateContent(id: unknown): Content | null {
-  const template = CATALOG.templates.find((t) => t.id === id);
-  return template ? sanitizeContent(template.content) : null;
 }
