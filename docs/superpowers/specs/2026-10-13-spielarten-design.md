@@ -379,6 +379,12 @@ beim Klicken (z. B. Zurücksetzen) darf sich nichts verschieben.
   Tastenkürzel sind Dialoge über dem Fenster; „Zurücksetzen“ ist bei
   „Standard“ gesperrt statt versteckt; Meldungen erscheinen als Hinweis über
   dem Fuß. Nur das Aufklappen eines Kastens schiebt.
+- *Nachtrag 14.10.:* Alle Kästen lassen sich einklappen (auch Profil, Spielart,
+  Hintergrund), offen ist immer höchstens einer – beim ersten Öffnen Profil,
+  danach der zuletzt offene. Klick auf den Kopf klappt, der Schalter im Kopf
+  nicht. Zugeklappt zeigen Profil und Spielart, was gerade eingestellt wird
+  („Standard“, „X01“). Geht darüber ein Kasten zu, rollt die Leiste mit, damit
+  der angeklickte Kopf stehen bleibt.
 
 ## Bedienung
 

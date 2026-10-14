@@ -876,6 +876,26 @@ body {
   font-weight: 700;
 }
 
+.part-head.is-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Was gerade eingestellt wird (Profil, Spielart) - nur im zugeklappten Kopf. */
+.card-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ad-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel-card.is-open .card-summary {
+  display: none;
+}
+
 .chevron::before {
   content: "";
   width: 8px;

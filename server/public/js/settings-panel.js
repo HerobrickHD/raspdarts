@@ -6,8 +6,9 @@
  *
  * Nichts darf springen: Rueckfragen, Formulare und die Tastenkuerzel kommen
  * als Dialog ueber das Fenster, Knoepfe stehen immer an derselben Stelle
- * (gesperrt statt versteckt). Nur das Aufklappen eines Kastens schiebt, weil
- * man es selbst ausloest.
+ * (gesperrt statt versteckt). Nur das Auf- und Zuklappen der Kaesten schiebt,
+ * weil man es selbst ausloest - offen ist immer hoechstens einer, und der
+ * angeklickte Kopf bleibt dabei stehen, soweit die Leiste rollen kann.
  *
  * Kennt den Pi nicht: alles, was der Nutzer tut, geht an die handlers.
  */
@@ -76,7 +77,8 @@ export function createPanel(root, handlers) {
      inzwischen ein anderes Geraet das aktive Profil, darf "Ja" nicht das neue
      treffen. */
   let dialogOpen = false;
-  const expanded = new Set(["scheibe", "spieler"]);
+  /* Der eine offene Kasten (data-card) oder null; beim ersten Oeffnen Profil. */
+  let openCard = "profil";
 
   const modeLabel = (id) => catalog.modes.find((m) => m.id === id)?.label ?? id;
 
@@ -149,7 +151,52 @@ export function createPanel(root, handlers) {
     );
   }
 
+  /* --- Kaesten ------------------------------------------------------------ */
+
+  const panelBody = node("div", { className: "panel-body" });
+
+  function showOpen(section) {
+    const open = section.dataset.card === openCard;
+    section.classList.toggle("is-open", open);
+    section.querySelector(":scope > .part-options").hidden = !open;
+    section.querySelector(":scope > .part-head .chevron")?.setAttribute("aria-expanded", String(open));
+  }
+
+  function toggleCard(id, head) {
+    const before = head.getBoundingClientRect().top;
+    openCard = openCard === id ? null : id;
+    for (const section of root.querySelectorAll("[data-card]")) showOpen(section);
+    // Geht darueber ein Kasten zu, rollt die Leiste mit - der Kopf bleibt unter der Maus.
+    panelBody.scrollTop += head.getBoundingClientRect().top - before;
+  }
+
+  /**
+   * Kasten mit Kopf zum Auf- und Zuklappen (ein Klick auf den Kopf, nicht auf
+   * den Schalter darin). summary steht nur im zugeklappten Kopf, extra immer.
+   */
+  function card(id, title, children, { summary = null, extra = [], className = "" } = {}) {
+    const head = node("div", { className: "part-head" }, [node("span", { className: "part-title", textContent: title })]);
+    if (summary) head.append(summary);
+    head.append(...extra);
+    const body = node("div", { className: "part-options" }, children);
+    const section = node("section", { className: `panel-card ${className}`.trim() }, [head, body]);
+    section.dataset.card = id;
+    if (children.length > 0) {
+      const expand = node("button", { type: "button", className: "btn-icon chevron" });
+      expand.setAttribute("aria-label", `${title}: auf- oder zuklappen`);
+      head.append(expand);
+      head.classList.add("is-toggle");
+      head.addEventListener("click", (event) => {
+        if (!event.target.closest("input")) toggleCard(id, head);
+      });
+    }
+    showOpen(section);
+    return section;
+  }
+
   /* --- Profil ------------------------------------------------------------- */
+
+  const profileSummary = node("span", { className: "card-summary" });
 
   const select = node("select");
   select.setAttribute("aria-label", "Aktives Profil");
@@ -178,6 +225,7 @@ export function createPanel(root, handlers) {
   modeSelect.addEventListener("change", () => handlers.onMode(modeSelect.value));
 
   const modeState = node("span", { className: "chip" });
+  const modeSummary = node("span", { className: "card-summary" });
   const resetButton = button("Zurücksetzen", () => {
     const { id, name } = profile;
     const target = mode;
@@ -262,26 +310,11 @@ export function createPanel(root, handlers) {
 
   function buildPart(part) {
     const shown = part.options.filter((option) => availableIn(option, mode));
-    const options = node(
-      "div",
-      { className: "part-options", hidden: !part.fixed && !expanded.has(part.id) },
-      shown.map((option) => buildOption(part, option)),
-    );
-    const head = node("div", { className: "part-head" }, [node("span", { className: "part-title", textContent: part.label })]);
-    // Feste Bausteine (Hintergrund) sind immer offen und haben keinen eigenen Schalter.
-    if (!part.fixed && shown.length > 0) {
-      const expand = button("", () => {
-        if (expanded.has(part.id)) expanded.delete(part.id);
-        else expanded.add(part.id);
-        options.hidden = !expanded.has(part.id);
-        expand.setAttribute("aria-expanded", String(!options.hidden));
-      }, { className: "btn-icon chevron" });
-      expand.setAttribute("aria-expanded", String(!options.hidden));
-      expand.setAttribute("aria-label", `${part.label}: Einzelteile`);
-      head.append(expand);
-    }
-    if (!part.fixed) head.append(switchInput({ part: part.id }, part.label));
-    const section = node("section", { className: "panel-card part" }, [head, options]);
+    // Feste Bausteine (Hintergrund) haben keinen eigenen Schalter.
+    const section = card(part.id, part.label, shown.map((option) => buildOption(part, option)), {
+      extra: part.fixed ? [] : [switchInput({ part: part.id }, part.label)],
+      className: "part",
+    });
     section.dataset.part = part.id;
     return section;
   }
@@ -312,30 +345,39 @@ export function createPanel(root, handlers) {
       node("h1", { textContent: "Einstellungen" }),
       button("×", () => handlers.onClose(), { className: "btn-icon", title: "Schließen", ariaLabel: "Einstellungen schließen" }),
     ]),
-    node("div", { className: "panel-body" }, [
-      node("section", { className: "panel-card" }, [
-        node("h2", { textContent: "Profil" }),
-        field("Aktives Profil", select),
-        node("div", { className: "btn-row" }, [newButton, renameButton, deleteButton]),
-        field("Format", formatSelect),
-      ]),
-      node("section", { className: "panel-card" }, [
-        node("div", { className: "card-head" }, [node("h2", { textContent: "Spielart" }), modeState]),
-        modeSelect,
-        node("div", { className: "btn-row" }, [resetButton, copyButton]),
-        node("div", { className: "field" }, [
-          node("span", { textContent: "Vorschau mit Spielern" }),
-          node("div", { className: "segments" }, playerButtons),
-        ]),
-      ]),
-      partList,
-    ]),
+    panelBody,
     node("footer", { className: "panel-foot" }, [
       node("span", { textContent: "Auf der Bühne anklicken und ziehen." }),
       button("i", shortcutsDialog, { className: "btn-icon info", title: "Tastenkürzel", ariaLabel: "Tastenkürzel anzeigen" }),
     ]),
     status,
     scrim,
+  );
+  panelBody.append(
+    card(
+      "profil",
+      "Profil",
+      [
+        field("Aktives Profil", select),
+        node("div", { className: "btn-row" }, [newButton, renameButton, deleteButton]),
+        field("Format", formatSelect),
+      ],
+      { summary: profileSummary },
+    ),
+    card(
+      "spielart",
+      "Spielart",
+      [
+        modeSelect,
+        node("div", { className: "btn-row" }, [resetButton, copyButton]),
+        node("div", { className: "field" }, [
+          node("span", { textContent: "Vorschau mit Spielern" }),
+          node("div", { className: "segments" }, playerButtons),
+        ]),
+      ],
+      { summary: modeSummary, extra: [modeState] },
+    ),
+    partList,
   );
 
   function buildFormats() {
@@ -370,6 +412,7 @@ export function createPanel(root, handlers) {
       select.replaceChildren(...profiles.map((p) => node("option", { value: p.id, textContent: p.name })));
     }
     select.value = profile.id;
+    profileSummary.textContent = profile.name;
     deleteButton.disabled = profiles.length <= 1;
     deleteButton.title = deleteButton.disabled ? "Das letzte Profil bleibt" : "";
     formatSelect.value = profile.format;
@@ -399,6 +442,7 @@ export function createPanel(root, handlers) {
     }
 
     modeSelect.value = mode;
+    modeSummary.textContent = modeLabel(mode);
     modeState.textContent = resolved.angepasst ? "Angepasst" : "Standard";
     modeState.classList.toggle("is-custom", resolved.angepasst);
     // Gesperrt statt versteckt - sonst verschiebt sich die Leiste.
