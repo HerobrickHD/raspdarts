@@ -12,7 +12,6 @@ import { cameraMatrices, type Homography } from "./camera-geometry.js";
 import type { CamImage } from "../system/cams.js";
 import type { ViewerState } from "./game-state.js";
 import type { Profile } from "./profile.js";
-import { standardFor } from "./standards.js";
 
 /** Nach dem Wurf kurz warten, damit der Pfeil schon im Kamerabild steckt. */
 export const SETTLE_MS = 500;
@@ -24,8 +23,8 @@ export interface BoardCameraDeps {
     image(n: number, options?: { fresh?: boolean }): Promise<CamImage>;
     calibration(): Promise<unknown>;
   };
-  /** Welche Kamera die Spielart des Stands will; null = keine Kamera-Ansicht. */
-  wanted(mode: string | null): number | null;
+  /** Welche Kamera das aktive Profil zeigt; null = keine Kamera-Ansicht. */
+  wanted(): number | null;
   notify(update: { cam: number; version: number }): void;
 }
 
@@ -33,10 +32,9 @@ export interface CameraInfo {
   cams: { n: number; version: number | null; matrix: Homography | null }[];
 }
 
-/** Welche Kamera das Profil fuer diese Spielart zeigt (unbekannt → X01-Teil); null = keine Kamera-Ansicht. */
-export function wantedCamera(profile: Profile, mode: string | null): number | null {
-  const key = mode ?? "x01";
-  const scheibe = (profile.spielarten[key] ?? standardFor(key)).content["scheibe"];
+/** Welche Kamera das Profil zeigt; null = keine Kamera-Ansicht. */
+export function wantedCamera(profile: Profile): number | null {
+  const scheibe = profile.content["scheibe"];
   if (!scheibe?.on || scheibe["darstellung"] !== "kamera") return null;
   const cam = Number(scheibe["kamera"]);
   return Number.isInteger(cam) && cam >= 0 ? cam : null;
@@ -68,7 +66,7 @@ export class BoardCamera {
   /** Vom Datenfluss bei jedem neuen Spielstand aufgerufen. */
   onState(prev: ViewerState, next: ViewerState): void {
     if (!cameraTrigger(prev, next)) return;
-    const cam = this.deps.wanted(next.phase === "playing" ? next.mode : null);
+    const cam = this.deps.wanted();
     if (cam !== null) this.#schedule(cam, SETTLE_MS);
   }
 

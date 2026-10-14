@@ -1,8 +1,10 @@
 /*
- * Seitenleiste im Stil von Autodarts: Profil und Format, Spielart mit
- * Zuruecksetzen und Uebernehmen, darunter die Bausteine als Kaesten mit
- * Schaltern (bei den Spielerkarten oben die Vorschau mit 1-6 Spielern). Die Liste entsteht aus dem Katalog vom Pi - eine neue Option
- * im Katalog erscheint hier ohne Aenderung an dieser Datei.
+ * Seitenleiste im Stil von Autodarts: Profil mit Format und Zuruecksetzen,
+ * darunter die Bausteine als Kaesten mit Schaltern (bei den Spielerkarten
+ * oben die Vorschau mit 1-6 Spielern). Ein Profil gilt fuer alle Spielarten;
+ * was es nur in einigen gibt, traegt den Hinweis "nur ...". Die Liste entsteht
+ * aus dem Katalog vom Pi - eine neue Option im Katalog erscheint hier ohne
+ * Aenderung an dieser Datei.
  *
  * Nichts darf springen: Rueckfragen, Formulare und die Tastenkuerzel kommen
  * als Dialog ueber das Fenster, Knoepfe stehen immer an derselben Stelle
@@ -35,8 +37,6 @@ function switchInput(dataset, label) {
   return input;
 }
 
-const availableIn = (item, mode) => !item.modes || item.modes.includes(mode);
-
 /* Alle Kuerzel - hinter dem i-Knopf, damit die Leiste kurz bleibt. */
 const SHORTCUTS = [
   [
@@ -66,11 +66,7 @@ export function createPanel(root, handlers) {
   let profile = null;
   let profiles = [];
   let profilesKey = "";
-  let mode = "x01";
   let players = 2;
-  /* Inhalte des Profils fuer die gewaehlte Spielart (resolve-profile.js). */
-  let resolved = null;
-  let modesKey = "";
   /* Objekt-URL des letzten Bilds einer Kamera (camera-feed.js) - fuer die Vorschaubilder. */
   let cameraUrl = () => null;
   /* Offener Dialog - er merkt sich das Profil, das er nennt: Wechselt
@@ -81,6 +77,9 @@ export function createPanel(root, handlers) {
   let openCard = "profil";
 
   const modeLabel = (id) => catalog.modes.find((m) => m.id === id)?.label ?? id;
+  /* "nur X01" fuer Bausteine und Optionen, die es nicht in allen Spielarten gibt. */
+  const onlyIn = (item) =>
+    item.modes ? [node("span", { className: "only-in", textContent: `nur ${item.modes.map(modeLabel).join(", ")}` })] : [];
 
   /* --- Dialog ueber dem Fenster ------------------------------------------- */
 
@@ -218,49 +217,18 @@ export function createPanel(root, handlers) {
     confirm("Profil löschen", `Profil „${name}“ löschen?`, "Löschen", () => handlers.onDelete(id), { danger: true });
   }, { className: "btn btn-danger-text" });
 
-  /* --- Spielart ----------------------------------------------------------- */
-
-  const modeSelect = node("select");
-  modeSelect.setAttribute("aria-label", "Spielart");
-  modeSelect.addEventListener("change", () => handlers.onMode(modeSelect.value));
-
-  const modeState = node("span", { className: "chip" });
-  const modeSummary = node("span", { className: "card-summary" });
   const resetButton = button("Zurücksetzen", () => {
     const { id, name } = profile;
-    const target = mode;
     confirm(
       "Auf Standard zurücksetzen",
-      `${modeLabel(target)} in „${name}“ auf den Standard zurücksetzen? Inhalte und Layout dieser Spielart gehen verloren, auch die Lage der Scheibe.`,
+      `„${name}“ auf das Standardlayout zurücksetzen? Alle Inhalte und das Layout gehen verloren, auch die Lage der Scheibe. Name und Format bleiben.`,
       "Zurücksetzen",
-      () => handlers.onReset(id, target),
+      () => handlers.onReset(id),
       { danger: true },
     );
   }, { className: "btn" });
-  const copyButton = button("Übernehmen von …", () => {
-    const { id } = profile;
-    const target = mode;
-    const others = catalog.modes.filter((m) => m.id !== target);
-    const customized = (m) => Object.hasOwn(profile.spielarten, m.id);
-    const source = node(
-      "select",
-      {},
-      [...others.filter(customized), ...others.filter((m) => !customized(m))].map((m) =>
-        node("option", { value: m.id, textContent: `${m.label}${customized(m) ? " · angepasst" : ""}` }),
-      ),
-    );
-    openDialog(
-      `Übernehmen nach ${modeLabel(target)}`,
-      [
-        node("div", { className: "dialog-field" }, [node("label", { textContent: "Von Spielart" }), source]),
-        node("p", {
-          className: "dialog-text",
-          textContent: `Inhalte und Layout werden kopiert; die bisherigen Einstellungen von ${modeLabel(target)} gehen verloren.`,
-        }),
-      ],
-      [{ text: "Übernehmen", primary: true, run: () => handlers.onCopy(id, source.value, target) }],
-    );
-  }, { className: "btn" });
+
+  /* --- Vorschau ----------------------------------------------------------- */
 
   const playerButtons = [1, 2, 3, 4, 5, 6].map((n) =>
     button(String(n), () => handlers.onPlayers(n), { className: "segment" }),
@@ -298,7 +266,7 @@ export function createPanel(root, handlers) {
     if (part.id === "scheibe" && option.id === "kamera") return buildCameraPicks(part, option);
     if (option.type === "toggle") {
       return node("label", { className: "option-row" }, [
-        node("span", { textContent: option.label }),
+        node("span", {}, [option.label, ...onlyIn(option)]),
         switchInput({ part: part.id, option: option.id }, option.label),
       ]);
     }
@@ -308,18 +276,17 @@ export function createPanel(root, handlers) {
       return node("label", { className: "segment" }, [input, node("span", { textContent: choice.label })]);
     });
     return node("div", { className: "option-choice" }, [
-      node("span", { className: "option-label", textContent: option.label }),
+      node("span", { className: "option-label" }, [option.label, ...onlyIn(option)]),
       node("div", { className: "segments" }, segments),
     ]);
   }
 
   function buildPart(part) {
-    const shown = part.options.filter((option) => availableIn(option, mode));
-    const children = shown.map((option) => buildOption(part, option));
+    const children = part.options.map((option) => buildOption(part, option));
     if (part.id === "spieler") children.unshift(playersField);
     // Feste Bausteine (Hintergrund) haben keinen eigenen Schalter.
     const section = card(part.id, part.label, children, {
-      extra: part.fixed ? [] : [switchInput({ part: part.id }, part.label)],
+      extra: [...onlyIn(part), ...(part.fixed ? [] : [switchInput({ part: part.id }, part.label)])],
       className: "part",
     });
     section.dataset.part = part.id;
@@ -327,14 +294,14 @@ export function createPanel(root, handlers) {
   }
 
   function buildParts() {
-    partList.replaceChildren(...catalog.parts.filter((p) => availableIn(p, mode)).map(buildPart));
+    partList.replaceChildren(...catalog.parts.map(buildPart));
   }
 
   partList.addEventListener("change", (event) => {
     const input = event.target;
     const { part, option } = input.dataset;
-    if (!part || !resolved) return;
-    const content = structuredClone(resolved.content);
+    if (!part || !profile) return;
+    const content = structuredClone(profile.content);
     if (!option) content[part].on = input.checked;
     else content[part][option] = input.type === "radio" ? input.value : input.checked;
     handlers.onContent(content);
@@ -368,42 +335,15 @@ export function createPanel(root, handlers) {
         field("Aktives Profil", select),
         node("div", { className: "btn-row" }, [newButton, renameButton, deleteButton]),
         field("Format", formatSelect),
+        node("div", { className: "btn-row" }, [resetButton]),
       ],
       { summary: profileSummary },
-    ),
-    card(
-      "spielart",
-      "Spielart",
-      [
-        modeSelect,
-        node("div", { className: "btn-row" }, [resetButton, copyButton]),
-      ],
-      { summary: modeSummary, extra: [modeState] },
     ),
     partList,
   );
 
   function buildFormats() {
     formatSelect.replaceChildren(...catalog.formats.map((f) => node("option", { value: f.id, textContent: f.label })));
-  }
-
-  function buildModeSelect() {
-    modeSelect.replaceChildren(
-      ...Object.entries(catalog.groups).map(([groupId, groupLabel]) =>
-        node(
-          "optgroup",
-          { label: groupLabel },
-          catalog.modes
-            .filter((m) => m.group === groupId)
-            .map((m) =>
-              node("option", {
-                value: m.id,
-                textContent: `${m.label} · ${Object.hasOwn(profile.spielarten, m.id) ? "angepasst" : "Standard"}`,
-              }),
-            ),
-        ),
-      ),
-    );
   }
 
   function update() {
@@ -421,7 +361,7 @@ export function createPanel(root, handlers) {
     formatSelect.value = profile.format;
 
     for (const input of partList.querySelectorAll("input")) {
-      const value = resolved.content[input.dataset.part];
+      const value = profile.content[input.dataset.part];
       if (!value) continue;
       const option = input.dataset.option;
       if (!option) input.checked = value.on;
@@ -429,14 +369,14 @@ export function createPanel(root, handlers) {
       else input.checked = value[option] === true;
     }
     for (const section of partList.querySelectorAll(".part")) {
-      const on = resolved.content[section.dataset.part]?.on ?? true;
+      const on = profile.content[section.dataset.part]?.on ?? true;
       section.classList.toggle("is-off", !on);
       for (const input of section.querySelectorAll(".part-options input")) input.disabled = !on;
     }
 
     for (const element of partList.querySelectorAll("[data-show-if-option]")) {
       const { showIfPart, showIfOption, showIfValue } = element.dataset;
-      element.hidden = resolved.content[showIfPart]?.[showIfOption] !== showIfValue;
+      element.hidden = profile.content[showIfPart]?.[showIfOption] !== showIfValue;
     }
     for (const img of partList.querySelectorAll(".camera-pick img")) {
       const url = cameraUrl(Number(img.dataset.cam));
@@ -444,13 +384,6 @@ export function createPanel(root, handlers) {
       img.classList.toggle("is-empty", !url);
     }
 
-    modeSelect.value = mode;
-    modeSummary.textContent = modeLabel(mode);
-    modeState.textContent = resolved.angepasst ? "Angepasst" : "Standard";
-    modeState.classList.toggle("is-custom", resolved.angepasst);
-    // Gesperrt statt versteckt - sonst verschiebt sich die Leiste.
-    resetButton.disabled = !resolved.angepasst;
-    resetButton.title = resetButton.disabled ? "Steht schon auf Standard" : "";
     for (const [index, b] of playerButtons.entries()) b.setAttribute("aria-pressed", String(index + 1 === players));
   }
 
@@ -458,20 +391,14 @@ export function createPanel(root, handlers) {
     render(next) {
       if (profile && next.profile.id !== profile.id) closeDialog(); // gehoerte zum alten Profil
       const freshCatalog = next.catalog !== catalog;
-      const freshMode = next.mode !== mode;
       catalog = next.catalog;
       profile = next.profile;
       profiles = next.profiles;
-      mode = next.mode;
       players = next.players;
-      resolved = next.resolved;
       cameraUrl = next.cameraUrl ?? cameraUrl;
-      if (freshCatalog) buildFormats();
-      if (freshCatalog || freshMode) buildParts();
-      const key = JSON.stringify(Object.keys(profile.spielarten).sort());
-      if (freshCatalog || key !== modesKey) {
-        modesKey = key;
-        buildModeSelect();
+      if (freshCatalog) {
+        buildFormats();
+        buildParts();
       }
       update();
     },

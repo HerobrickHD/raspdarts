@@ -1,10 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { contentAttributes } from "../public/js/content-view.js";
-import { CATALOG, modeDefaults, sanitizeModeContent } from "../src/viewer/catalog.ts";
-
-const defaultContent = () => modeDefaults("x01");
-const sanitizeContent = (stored) => sanitizeModeContent(stored, "x01");
+import { CATALOG, contentDefaults as defaultContent, sanitizeContent } from "../src/viewer/catalog.ts";
 
 describe("contentAttributes", () => {
   test("setzt fuer jeden Baustein und jede Option ein Merkmal", () => {
@@ -23,7 +20,7 @@ describe("contentAttributes", () => {
 
   test("schreibt ausgeschaltete Optionen und Auswahlwerte", () => {
     const content = sanitizeContent({
-      hintergrund: { on: true },
+      hintergrund: { darstellung: "autodarts" },
       scheibe: { darstellung: "drawn" },
       spieler: { flaeche: false },
     });

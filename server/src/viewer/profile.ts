@@ -1,23 +1,14 @@
 /**
  * Ein Profil ist ein Bildschirm (Beamer, Fernseher ...): Name, Format der
- * Buehne und je Spielart Inhalte und Layout - aber nur fuer angepasste
- * Spielarten. Alle anderen folgen ihrem Standard (standards.ts). Genau ein
- * Profil ist aktiv; alle Geraete zeigen es.
+ * Buehne, Inhalte und Layout - einmal fuer alle Spielarten. Was es in einer
+ * Spielart nicht gibt, laesst der Viewer dort weg. Genau ein Profil ist
+ * aktiv; alle Geraete zeigen es.
  */
-import { isMode, sanitizeModeContent, type Content } from "./catalog.js";
-import {
-  DEFAULT_FORMAT,
-  fitAreaWidths,
-  heightenAreas,
-  sanitizeFormat,
-  sanitizeModeLayout,
-  splitLegacyLayout,
-  type Format,
-  type ModeLayout,
-} from "./layout.js";
-import { standardFor } from "./standards.js";
+import { sanitizeContent, type Content } from "./catalog.js";
+import { DEFAULT_FORMAT, sanitizeFormat, sanitizeLayout, type Format, type Layout } from "./layout.js";
+import { standard } from "./standards.js";
 
-export const PROFILE_VERSION = 7;
+export const PROFILE_VERSION = 8;
 export const MAX_NAME_LENGTH = 40;
 export const FALLBACK_NAME = "Profil";
 
@@ -27,18 +18,13 @@ export const FALLBACK_NAME = "Profil";
  */
 export const VALID_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
-export interface ModeEntry {
-  content: Content;
-  /** Scheibe, Bloecke und Spielerbereiche. */
-  layout: ModeLayout;
-}
-
 export interface Profile {
-  version: 7;
+  version: 8;
   name: string;
   format: Format;
-  /** Nur angepasste Spielarten. */
-  spielarten: Record<string, ModeEntry>;
+  content: Content;
+  /** Scheibe, Bloecke und Spielerbereiche. */
+  layout: Layout;
 }
 
 export interface ProfileWithId extends Profile {
@@ -52,136 +38,31 @@ export interface ProfileSummary {
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 export function sanitizeName(raw: unknown): string {
   const name = typeof raw === "string" ? raw.trim().slice(0, MAX_NAME_LENGTH).trim() : "";
   return name || FALLBACK_NAME;
 }
 
-/** Neues Profil: alle Spielarten im Standard. */
+/** Neues Profil im Standard. */
 export function newProfile(name: unknown, format: Format = DEFAULT_FORMAT): Profile {
-  return { version: PROFILE_VERSION, name: sanitizeName(name), format, spielarten: {} };
-}
-
-/** Eintrag einer Spielart; Fehlendes oder Unbrauchbares aus fallback (Vorgabe: ihr Standard). */
-export function sanitizeModeEntry(stored: unknown, mode: string, fallback: ModeEntry = standardFor(mode)): ModeEntry {
-  const source = asRecord(stored);
-  return {
-    content: sanitizeModeContent(source["content"], mode, fallback.content),
-    layout: sanitizeModeLayout(source["layout"], fallback.layout),
-  };
-}
-
-/** Alle brauchbaren Eintraege; ganz Unbrauchbares faellt weg - die Spielart folgt dann ihrem Standard. */
-function sanitizeEntries(stored: unknown): Record<string, ModeEntry> {
-  const spielarten: Record<string, ModeEntry> = {};
-  for (const [mode, entry] of Object.entries(asRecord(stored))) {
-    if (isMode(mode) && isRecord(entry)) spielarten[mode] = sanitizeModeEntry(entry, mode);
-  }
-  return spielarten;
-}
-
-function sanitizeV7(source: Record<string, unknown>): Profile {
-  return {
-    version: PROFILE_VERSION,
-    name: sanitizeName(source["name"]),
-    format: sanitizeFormat(source["format"]),
-    spielarten: sanitizeEntries(source["spielarten"]),
-  };
+  return { version: PROFILE_VERSION, name: sanitizeName(name), format, ...standard() };
 }
 
 /**
- * Spielerbereiche alter Versionen: bis Version 5 eine Karte hoch (heighten),
- * bis Version 6 so breit wie die alte Karte - jetzt fuer 3 Karten und genau
- * so breit wie eine Karte (heightenAreas, fitAreaWidths).
+ * Macht aus beliebigem gespeichertem Inhalt ein brauchbares Profil; Fehlendes
+ * kommt aus dem Standard. Profile frueherer Versionen (je Spielart) behalten
+ * nur Name und Format und starten sonst im Standard.
  */
-function upgradeAreas(profile: Profile, { heighten }: { heighten: boolean }): Profile {
-  const spielarten: Record<string, ModeEntry> = {};
-  for (const [mode, entry] of Object.entries(profile.spielarten)) {
-    const layout = heighten ? heightenAreas(entry.layout) : entry.layout;
-    spielarten[mode] = { ...entry, layout: fitAreaWidths(layout, profile.format) };
-  }
-  return { ...profile, spielarten };
-}
-
-/** Profil-Version 6 (14. Oktober 2026): wie 7, nur die Bereiche 49 breit. */
-export function fromV6(source: Record<string, unknown>): Profile {
-  return upgradeAreas(sanitizeV7(source), { heighten: false });
-}
-
-/** Profil-Version 5 (13. Oktober 2026): wie 7, nur die Bereiche eine Karte hoch. */
-export function fromV5(source: Record<string, unknown>): Profile {
-  return upgradeAreas(sanitizeV7(source), { heighten: true });
-}
-
-/**
- * Profil-Version 3 (Oktober 2026): ein Satz Inhalte und ein Layout fuer alles.
- * Das wird die angepasste Spielart X01 - so sieht X01 mit 2 Spielern aus wie
- * vorher. Neue Optionen so, dass das Bild gleich bleibt.
- */
-export function fromV3(source: Record<string, unknown>): Profile {
-  const content = asRecord(source["content"]);
-  const spielinfo = asRecord(content["spielinfo"]);
-  const x01Content = {
-    ...content,
-    spieler: { ...asRecord(content["spieler"]), verteilung: "beide" },
-    spielinfo: { ...spielinfo, spielart: spielinfo["spielart"] ?? false },
-  };
-  return {
-    version: PROFILE_VERSION,
-    name: sanitizeName(source["name"]),
-    format: DEFAULT_FORMAT,
-    spielarten: {
-      x01: {
-        content: sanitizeModeContent(x01Content, "x01", standardFor("x01").content),
-        layout: splitLegacyLayout(source["layout"]),
-      },
-    },
-  };
-}
-
-/**
- * Profil-Version 4 (13. Oktober 2026): ein gemeinsamer Teil (Hintergrund,
- * Scheibe samt Lage, Format) und angepasste Spielarten. Der gemeinsame Teil
- * wandert in X01 und in jede angepasste Spielart - dort galt er ja auch.
- */
-export function fromV4(source: Record<string, unknown>): Profile {
-  const gemeinsam = asRecord(source["gemeinsam"]);
-  const shared = asRecord(gemeinsam["content"]);
-  const stored = asRecord(source["spielarten"]);
-  const modes = new Set(["x01", ...Object.keys(stored).filter((mode) => isMode(mode) && isRecord(stored[mode]))]);
-  const spielarten: Record<string, ModeEntry> = {};
-  for (const mode of modes) {
-    const entry = asRecord(stored[mode]);
-    const layout = asRecord(entry["layout"]);
-    spielarten[mode] = sanitizeModeEntry(
-      {
-        content: { ...asRecord(entry["content"]), ...shared },
-        layout: { ...layout, board: gemeinsam["board"] },
-      },
-      mode,
-    );
-  }
-  const profile: Profile = {
-    version: PROFILE_VERSION,
-    name: sanitizeName(source["name"]),
-    format: sanitizeFormat(gemeinsam["format"]),
-    spielarten,
-  };
-  return upgradeAreas(profile, { heighten: true });
-}
-
-/** Macht aus beliebigem gespeichertem Inhalt ein brauchbares Profil. */
 export function sanitizeProfile(stored: unknown): Profile {
   const source = asRecord(stored);
-  if (source["version"] === PROFILE_VERSION) return sanitizeV7(source);
-  if (source["version"] === 6) return fromV6(source);
-  if (source["version"] === 5) return fromV5(source);
-  if (source["version"] === 4) return fromV4(source);
-  if (source["version"] === 3) return fromV3(source);
-  return newProfile(source["name"]);
+  const profile = newProfile(source["name"], sanitizeFormat(source["format"]));
+  if (source["version"] !== PROFILE_VERSION) return profile;
+  return {
+    ...profile,
+    content: sanitizeContent(source["content"], profile.content),
+    layout: sanitizeLayout(source["layout"], profile.layout),
+  };
 }
 
 const UMLAUTS: Record<string, string> = { ä: "ae", ö: "oe", ü: "ue", ß: "ss" };

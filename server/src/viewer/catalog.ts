@@ -7,11 +7,12 @@
  * Viewer ihre Wirkung (meist eine CSS-Regel auf data-<baustein>-<option>).
  *
  * Alte Profile bleiben gueltig: Fehlende Optionen bekommen beim Lesen die
- * Vorgabe. Standards je Spielart stehen in standards.ts.
+ * Vorgabe. Der Standard steht in standards.ts.
  *
- * Spielarten: Alle Bausteine werden je Spielart eingestellt. modes an einem
- * Baustein oder einer Option sagt, in welchen Spielarten es sie gibt; ohne
- * modes gibt es sie ueberall.
+ * Spielarten: Ein Profil stellt alle Bausteine einmal fuer alle Spielarten
+ * ein. modes an einem Baustein oder einer Option sagt, in welchen Spielarten
+ * es sie gibt (die Leiste zeigt das als Hinweis, der Viewer laesst sie sonst
+ * weg); ohne modes gibt es sie ueberall.
  */
 
 export interface ToggleOption {
@@ -129,9 +130,6 @@ export const MODES: GameMode[] = [
   { id: "bermuda", label: "Bermuda", group: "party", variants: ["Bermuda"], verified: false },
 ];
 
-/** Spielart ohne Spiel seit dem Start und Profilteil fuer unbekannte Spielarten. */
-export const FALLBACK_MODE = "x01";
-
 /** "Bob's 27", "bobs27" und "BOBS 27" sind dasselbe. */
 const variantKey = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -142,11 +140,6 @@ export function modeForVariant(variant: unknown): string | null {
 }
 
 export const isMode = (id: unknown): id is string => MODES.some((mode) => mode.id === id);
-
-/** Gibt es den Baustein/die Option in dieser Spielart? null = unbekannte Spielart: nur Allgemeines. */
-export function availableIn(item: { modes?: string[] }, mode: string | null): boolean {
-  return item.modes === undefined || (mode !== null && item.modes.includes(mode));
-}
 
 const X01 = ["x01"];
 
@@ -270,22 +263,21 @@ function isValid(option: Option, raw: unknown): raw is boolean | string {
 }
 
 /**
- * Prueft die Bausteine `parts` einzeln. Der Inhalt kommt aus dem Browser und
- * aus einer von Hand editierbaren Datei - deshalb wird jede Option einzeln
+ * Prueft jeden Baustein einzeln. Der Inhalt kommt aus dem Browser und aus
+ * einer von Hand editierbaren Datei - deshalb wird jede Option einzeln
  * geprueft. Was fehlt oder nicht passt, kommt aus `fallback` (beim Aendern:
- * der bisherige Stand), sonst aus den Vorgaben. Optionen, die es in der
- * Spielart nicht gibt, fallen weg.
+ * der bisherige Stand), sonst aus den Vorgaben. Ein Profil gilt fuer alle
+ * Spielarten - es behaelt auch Optionen, die es nur in einigen gibt.
  */
-function sanitizeParts(parts: Part[], stored: unknown, fallback: Content, mode: string | null): Content {
+export function sanitizeContent(stored: unknown, fallback: Content = {}): Content {
   const source = asRecord(stored);
   const content: Content = {};
-  for (const part of parts) {
+  for (const part of CATALOG.parts) {
     const given = asRecord(source[part.id]);
     const base = fallback[part.id] ?? partDefaults(part);
     const on = given["on"];
     const value: PartContent = { on: part.fixed ? true : typeof on === "boolean" ? on : base.on };
     for (const option of part.options) {
-      if (!availableIn(option, mode)) continue;
       const raw = given[option.id];
       value[option.id] = isValid(option, raw) ? raw : (base[option.id] ?? option.default);
     }
@@ -294,28 +286,5 @@ function sanitizeParts(parts: Part[], stored: unknown, fallback: Content, mode: 
   return content;
 }
 
-const modeParts = (mode: string): Part[] => CATALOG.parts.filter((part) => availableIn(part, mode));
-
-export const modeDefaults = (mode: string): Content => sanitizeParts(modeParts(mode), null, {}, mode);
-
-/**
- * Fruehere Form des Hintergrunds (bis 13.10.): an/aus statt Darstellung, und
- * der Rahmen war ein eigener Baustein.
- */
-function upgradeContent(stored: unknown): unknown {
-  const source = asRecord(stored);
-  const hintergrund = asRecord(source["hintergrund"]);
-  const rahmen = asRecord(source["rahmen"])["on"];
-  if (hintergrund["darstellung"] !== undefined && rahmen === undefined) return stored;
-  const upgraded = { ...hintergrund };
-  if (upgraded["darstellung"] === undefined && typeof hintergrund["on"] === "boolean") {
-    upgraded["darstellung"] = hintergrund["on"] ? "autodarts" : "schwarz";
-  }
-  if (upgraded["rahmen"] === undefined && typeof rahmen === "boolean") upgraded["rahmen"] = rahmen;
-  return { ...source, hintergrund: upgraded };
-}
-
-/** Bausteine einer Spielart; Optionen, die es dort nicht gibt, fallen weg. */
-export function sanitizeModeContent(stored: unknown, mode: string, fallback: Content = modeDefaults(mode)): Content {
-  return sanitizeParts(modeParts(mode), upgradeContent(stored), fallback, mode);
-}
+/** Vorgaben des Katalogs (der Standard weicht davon ab, siehe standards.ts). */
+export const contentDefaults = (): Content => sanitizeContent(null);

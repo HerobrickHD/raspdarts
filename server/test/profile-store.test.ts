@@ -2,9 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { DEFAULT_AREA_W, DEFAULT_BOARD, DEFAULT_MODE_LAYOUT } from "../src/viewer/layout.js";
+import { DEFAULT_AREA_W, DEFAULT_LAYOUT } from "../src/viewer/layout.js";
 import { ProfileError, ProfileStore } from "../src/viewer/profile-store.js";
-import { standardFor } from "../src/viewer/standards.js";
+import { standard } from "../src/viewer/standards.js";
 
 let root: string;
 let dir: string;
@@ -47,27 +47,27 @@ const LEGACY = {
 };
 
 describe("erster Start", () => {
-  test("ohne alte Datei entsteht Standard: ganzes Fenster, alle Spielarten im Standard", () => {
+  test("ohne alte Datei entsteht Standard: ganzes Fenster, Inhalte und Layout im Standard", () => {
     const store = new ProfileStore(dir, legacy);
 
     expect(store.list()).toEqual([{ id: "standard", name: "Standard" }]);
     expect(store.activeId).toBe("standard");
-    expect(store.active()).toEqual({ id: "standard", version: 7, name: "Standard", format: "fenster", spielarten: {} });
+    expect(store.active()).toEqual({ id: "standard", version: 8, name: "Standard", format: "fenster", ...standard() });
     expect(onDisk("standard.json").name).toBe("Standard");
     expect(onDisk("active.json")).toEqual({ id: "standard" });
   });
 
-  test("mit alter Datei (version 2): alles als angepasstes X01", () => {
+  test("mit alter Datei (version 2): ihr Layout und ihre Scheibe", () => {
     mkdirSync(legacy, { recursive: true });
     writeFileSync(join(legacy, "standard.json"), JSON.stringify(LEGACY));
 
-    const x01 = new ProfileStore(dir, legacy).active().spielarten["x01"];
+    const profile = new ProfileStore(dir, legacy).active();
 
-    expect(x01?.layout.board).toEqual(LEGACY.board);
-    expect(x01?.content["scheibe"]?.["darstellung"]).toBe("drawn");
-    expect(x01?.layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
-    expect(x01?.layout.blocks.aufnahme).toEqual({ x: 30, y: 2, scale: 1.4 });
-    expect(x01?.layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: DEFAULT_AREA_W, h: 88 });
+    expect(profile.layout.board).toEqual(LEGACY.board);
+    expect(profile.content["scheibe"]?.["darstellung"]).toBe("drawn");
+    expect(profile.layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
+    expect(profile.layout.blocks.aufnahme).toEqual({ x: 30, y: 2, scale: 1.4 });
+    expect(profile.layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: DEFAULT_AREA_W, h: 88 });
   });
 
   test("uebernimmt nur beim ersten Start", () => {
@@ -80,7 +80,7 @@ describe("erster Start", () => {
     const profile = new ProfileStore(dir, legacy).active();
 
     expect(profile.name).toBe("Beamer");
-    expect(profile.spielarten).toEqual({});
+    expect(profile.layout).toEqual(standard().layout);
   });
 
   test("ein leerer Ordner bekommt wieder Standard", () => {
@@ -90,28 +90,28 @@ describe("erster Start", () => {
   });
 });
 
-describe("Version 3 auf der Karte", () => {
-  test("wird beim Laden umgebaut, die Datei bleibt bis zur naechsten Aenderung Version 3", () => {
+describe("fruehere Version auf der Karte", () => {
+  test("startet beim Laden im Standard (Name und Format bleiben), die Datei bleibt bis zur naechsten Aenderung", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       join(dir, "standard.json"),
       JSON.stringify({
-        version: 3,
-        name: "Standard",
-        content: {},
-        layout: { board: { cx: 42, cy: 28, diameter: 14, rotation: -103 }, blocks: {} },
+        version: 7,
+        name: "Beamer",
+        format: "4:3",
+        spielarten: { x01: { layout: { board: { cx: 42, cy: 28, diameter: 14, rotation: -103 } } } },
       }),
     );
 
     const store = new ProfileStore(dir);
 
-    expect(store.active().version).toBe(7);
-    expect(store.active().spielarten["x01"]?.layout.board).toEqual({ cx: 42, cy: 28, diameter: 14, rotation: -103 });
-    expect(onDisk("standard.json").version).toBe(3);
-
-    store.update("standard", { name: "Standard" });
-    store.flush();
+    expect(store.active()).toEqual({ id: "standard", version: 8, name: "Beamer", format: "4:3", ...standard() });
     expect(onDisk("standard.json").version).toBe(7);
+
+    store.update("standard", { name: "Beamer" });
+    store.flush();
+    expect(onDisk("standard.json").version).toBe(8);
+    expect(onDisk("standard.json")).not.toHaveProperty("spielarten");
   });
 });
 
@@ -121,7 +121,7 @@ describe("Profile", () => {
 
     const tv = store.create("Fernseher Küche");
 
-    expect(tv).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", format: "fenster", spielarten: {} });
+    expect(tv).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", format: "fenster", ...standard() });
     expect(store.activeId).toBe("fernseher-kueche");
     expect(store.create("Fernseher Küche").id).toBe("fernseher-kueche-2");
   });
@@ -146,65 +146,54 @@ describe("Profile", () => {
     expect(after.id).toBe("standard");
     expect(after.name).toBe("Beamer");
     expect(after.format).toBe("fenster");
-    expect(after.spielarten).toEqual({});
+    expect(after.content).toEqual(standard().content);
   });
 
-  test("Scheibe einer Spielart: Unbrauchbares behaelt den bisherigen Wert", () => {
+  test("Scheibe: Unbrauchbares behaelt den bisherigen Wert", () => {
     const store = new ProfileStore(dir);
     const board = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
-    store.update("standard", { spielart: { id: "x01", layout: { board } } });
+    store.update("standard", { layout: { board } });
 
-    const after = store.update("standard", { spielart: { id: "x01", layout: { board: { cx: -5, cy: "x" } } } });
+    const after = store.update("standard", { layout: { board: { cx: -5, cy: "x" } } });
 
-    expect(after.spielarten["x01"]?.layout.board).toEqual({ ...board, cx: 0 });
-    expect(after.spielarten["cricket"]).toBeUndefined();
+    expect(after.layout.board).toEqual({ ...board, cx: 0 });
   });
 
-  test("die erste Aenderung an einer Spielart legt ihren Eintrag aus dem Standard an", () => {
+  test("Inhalte aendern laesst das Layout stehen und umgekehrt", () => {
     const store = new ProfileStore(dir);
+    store.update("standard", { content: { aufnahme: { on: false } } });
+    const blocks = { ...DEFAULT_LAYOUT.blocks, "bereich-links": { x: 1, y: 10, w: 40, h: 90 } };
 
-    const profile = store.update("standard", { spielart: { id: "cricket", content: { aufnahme: { on: false } } } });
+    const profile = store.update("standard", { layout: { blocks } });
 
-    expect(Object.keys(profile.spielarten)).toEqual(["cricket"]);
-    expect(profile.spielarten["cricket"]?.content["aufnahme"]?.on).toBe(false);
-    expect(profile.spielarten["cricket"]?.content["spieler"]).toEqual(standardFor("cricket").content["spieler"]);
-    expect(profile.spielarten["cricket"]?.layout).toEqual(DEFAULT_MODE_LAYOUT);
+    expect(profile.content["aufnahme"]?.on).toBe(false);
+    expect(profile.content["spieler"]).toEqual(standard().content["spieler"]);
+    expect(profile.layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: 40, h: 90 });
+    expect(profile.layout.board).toEqual(DEFAULT_LAYOUT.board);
   });
 
-  test("Layout einer Spielart aendern laesst ihre Inhalte stehen", () => {
+  test("Inhalte: Unbrauchbares behaelt den bisherigen Wert", () => {
     const store = new ProfileStore(dir);
-    store.update("standard", { spielart: { id: "x01", content: { aufnahme: { on: false } } } });
-    const blocks = { ...DEFAULT_MODE_LAYOUT.blocks, "bereich-links": { x: 1, y: 10, w: 40, h: 90 } };
+    store.update("standard", { content: { spieler: { verteilung: "links" } } });
 
-    const profile = store.update("standard", { spielart: { id: "x01", layout: { blocks } } });
+    const profile = store.update("standard", { content: { spieler: { verteilung: "oben", average: false } } });
 
-    expect(profile.spielarten["x01"]?.content["aufnahme"]?.on).toBe(false);
-    expect(profile.spielarten["x01"]?.layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: 40, h: 90 });
+    expect(profile.content["spieler"]).toMatchObject({ verteilung: "links", average: false });
   });
 
-  test("unbekannte Spielart ist ein Fehler des Aufrufers", () => {
+  test("Zuruecksetzen: Inhalte und Layout auf den Standard, Name und Format bleiben", () => {
     const store = new ProfileStore(dir);
+    store.update("standard", {
+      name: "Beamer",
+      format: "4:3",
+      content: { aufnahme: { on: false } },
+      layout: { board: { cx: 10, cy: 20, diameter: 30, rotation: 40 } },
+    });
 
-    expect(errorCode(() => store.update("standard", { spielart: { id: "killer", content: {} } }))).toBe("invalid-mode");
-    expect(errorCode(() => store.update("standard", { spielart: "x01" }))).toBe("invalid-mode");
-    expect(store.active().spielarten).toEqual({});
-  });
+    const profile = store.reset("standard");
 
-  test("spielart nur mit id (ohne Inhalte/Layout) legt nichts an", () => {
-    const store = new ProfileStore(dir);
-
-    expect(store.update("standard", { spielart: { id: "x01" } }).spielarten).toEqual({});
-  });
-
-  test("setzt eine Spielart auf den Standard zurueck, der Rest bleibt", () => {
-    const store = new ProfileStore(dir);
-    store.update("standard", { spielart: { id: "x01", content: { aufnahme: { on: false } } } });
-    store.update("standard", { spielart: { id: "gotcha", content: { aufnahme: { on: false } } } });
-
-    const profile = store.resetMode("standard", "x01");
-
-    expect(Object.keys(profile.spielarten)).toEqual(["gotcha"]);
-    expect(errorCode(() => store.resetMode("standard", "killer"))).toBe("invalid-mode");
+    expect(profile).toEqual({ id: "standard", version: 8, name: "Beamer", format: "4:3", ...standard() });
+    expect(errorCode(() => store.reset("gibtsnicht"))).toBe("not-found");
   });
 
   test("loescht samt Datei, aber nie das letzte; ein geloeschtes aktives macht das erste aktiv", () => {
@@ -235,7 +224,7 @@ describe("Profile", () => {
   test("nach dem Neustart ist alles wieder da", () => {
     const store = new ProfileStore(dir);
     store.create("TV");
-    store.update("tv", { spielart: { id: "x01", content: { spieler: { average: false } } } });
+    store.update("tv", { content: { spieler: { average: false } } });
     store.setActive("standard");
     store.flush();
 
@@ -246,7 +235,7 @@ describe("Profile", () => {
       { id: "tv", name: "TV" },
     ]);
     expect(again.activeId).toBe("standard");
-    expect(again.read("tv").spielarten["x01"]?.content["spieler"]?.["average"]).toBe(false);
+    expect(again.read("tv").content["spieler"]?.["average"]).toBe(false);
   });
 });
 
@@ -291,7 +280,7 @@ describe("Speichern", () => {
 
     const store = new ProfileStore(dir);
 
-    expect(store.read("tv")).toMatchObject({ name: "Profil", format: "fenster", spielarten: {} });
+    expect(store.read("tv")).toMatchObject({ name: "Profil", format: "fenster", ...standard() });
   });
 
   test("kaputtes active.json: das erste Profil nach Name wird aktiv", () => {
@@ -331,35 +320,3 @@ describe("Format im Speicher", () => {
     expect(store.create("Zweites").format).toBe("4:3");
   });
 });
-
-describe("Uebernehmen von einer anderen Spielart", () => {
-  test("kopiert Inhalte und Layout einer angepassten Spielart, das Ziel ist danach angepasst", () => {
-    const store = new ProfileStore(dir);
-    const board = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
-    store.update("standard", { spielart: { id: "x01", content: { hintergrund: { darstellung: "autodarts" } }, layout: { board } } });
-
-    const profile = store.copyMode("standard", "x01", "cricket");
-
-    expect(profile.spielarten["cricket"]?.layout.board).toEqual(board);
-    expect(profile.spielarten["cricket"]?.content["hintergrund"]?.["darstellung"]).toBe("autodarts");
-    expect(profile.spielarten["x01"]?.layout.board).toEqual(board);
-  });
-
-  test("von einer Spielart im Standard kopiert ihren Standard; Optionen, die es im Ziel nicht gibt, fallen weg", () => {
-    const store = new ProfileStore(dir);
-    store.update("standard", { spielart: { id: "gotcha", content: { aufnahme: { on: false } } } });
-
-    const profile = store.copyMode("standard", "x01", "gotcha");
-
-    expect(profile.spielarten["gotcha"]?.content["aufnahme"]?.on).toBe(true);
-    expect(profile.spielarten["gotcha"]?.content["spieler"]).not.toHaveProperty("checkout");
-  });
-
-  test("unbekannte oder gleiche Spielart ist ein Fehler des Aufrufers", () => {
-    const store = new ProfileStore(dir);
-    expect(errorCode(() => store.copyMode("standard", "killer", "x01"))).toBe("invalid-mode");
-    expect(errorCode(() => store.copyMode("standard", "x01", "killer"))).toBe("invalid-mode");
-    expect(errorCode(() => store.copyMode("standard", "x01", "x01"))).toBe("invalid-mode");
-  });
-});
-

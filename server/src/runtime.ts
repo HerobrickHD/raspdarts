@@ -29,7 +29,7 @@ export function createDeps(options: { record: boolean }): Runtime {
   const cams = createCams({ http: autodartsHttp(loadConfig().autodartsUrl), now: Date.now });
   const boardCamera = new BoardCamera({
     cams,
-    wanted: (mode) => wantedCamera(profiles.active(), mode),
+    wanted: () => wantedCamera(profiles.active()),
     notify: (update) => hub.publishCamera(update),
   });
   return {

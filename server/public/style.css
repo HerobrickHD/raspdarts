@@ -833,23 +833,6 @@ body {
   outline-offset: 2px;
 }
 
-.chip {
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #292c33;
-  color: var(--ad-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.chip.is-custom {
-  background: rgba(11, 85, 223, 0.2);
-  color: #8fb4ff;
-}
-
 /* Segmente: Spielerzahl und Auswahl-Optionen (Darstellung, Verteilung). */
 .segments {
   display: flex;
@@ -975,6 +958,14 @@ body {
 
 .option-label {
   font-size: 12px;
+  font-weight: 600;
+  color: var(--ad-muted);
+}
+
+/* Gibt es nicht in allen Spielarten: "nur X01". */
+.only-in {
+  margin-left: 6px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ad-muted);
 }

@@ -1,14 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  CATALOG,
-  FALLBACK_MODE,
-  MODES,
-  availableIn,
-  isMode,
-  modeDefaults,
-  modeForVariant,
-  sanitizeModeContent,
-} from "../src/viewer/catalog.js";
+import { CATALOG, MODES, contentDefaults, isMode, modeForVariant, sanitizeContent } from "../src/viewer/catalog.js";
 
 describe("Katalog", () => {
   test("Ids sind eindeutig, keine Option heisst 'on'", () => {
@@ -21,7 +12,7 @@ describe("Katalog", () => {
     }
   });
 
-  test("alle Bausteine gehoeren zur Spielart; Hintergrund ist immer da, mit Darstellung und Rahmen", () => {
+  test("Hintergrund ist immer da, mit Darstellung und Rahmen", () => {
     expect(CATALOG.parts.map((p) => p.id)).toEqual(["hintergrund", "scheibe", "aufnahme", "spielinfo", "spieler"]);
     for (const part of CATALOG.parts) expect(part, part.id).not.toHaveProperty("scope");
     const hintergrund = CATALOG.parts[0]!;
@@ -31,8 +22,8 @@ describe("Katalog", () => {
 });
 
 describe("Vorgaben", () => {
-  test("enthalten jeden Baustein mit an/aus und jeder Option, die es in X01 gibt", () => {
-    const content = modeDefaults("x01");
+  test("enthalten jeden Baustein mit an/aus und jeder Option - auch denen, die es nur in einigen Spielarten gibt", () => {
+    const content = contentDefaults();
     for (const part of CATALOG.parts) {
       expect(content[part.id]?.on, part.id).toBe(part.default);
       for (const option of part.options) {
@@ -42,7 +33,7 @@ describe("Vorgaben", () => {
   });
 
   test("Vorgaben wie in der Spec", () => {
-    const c = modeDefaults("x01");
+    const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
     expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, darts: true, letzterDart: true });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
@@ -63,56 +54,50 @@ describe("Vorgaben", () => {
   });
 
   test("liefern jedes Mal eine eigene Kopie", () => {
-    const a = modeDefaults("x01");
+    const a = contentDefaults();
     a["scheibe"]!.on = false;
-    expect(modeDefaults("x01")["scheibe"]?.on).toBe(true);
-  });
-
-  test("modeDefaults enthaelt nur, was es in der Spielart gibt", () => {
-    const gotcha = modeDefaults("gotcha");
-    expect(Object.keys(gotcha)).toEqual(["hintergrund", "scheibe", "aufnahme", "spielinfo", "spieler"]);
-    expect(gotcha["spieler"]).not.toHaveProperty("checkout");
-    expect(gotcha["spieler"]).not.toHaveProperty("average");
-    expect(gotcha["spieler"]).not.toHaveProperty("legs");
-    expect(gotcha["spielinfo"]).toEqual({ on: true, spielart: true });
-    expect(modeDefaults("random-checkout")["spieler"]).toHaveProperty("checkout", true);
-    expect(modeDefaults("cricket")["spieler"]).toHaveProperty("legs", true);
+    expect(contentDefaults()["scheibe"]?.on).toBe(true);
   });
 });
 
 describe("Pruefung der Inhalte", () => {
   test("Unbrauchbares ergibt die Vorgaben", () => {
     for (const stored of [null, "kaputt", 42, []]) {
-      expect(sanitizeModeContent(stored, "x01")).toEqual(modeDefaults("x01"));
+      expect(sanitizeContent(stored)).toEqual(contentDefaults());
     }
   });
 
   test("verwirft unbekannte Bausteine und Optionen", () => {
-    const c = sanitizeModeContent({ disco: { on: true }, scheibe: { glitzer: true } }, "x01");
+    const c = sanitizeContent({ disco: { on: true }, scheibe: { glitzer: true } });
     expect(c).not.toHaveProperty("disco");
     expect(c["scheibe"]).not.toHaveProperty("glitzer");
   });
 
   test("falsch getypte Werte und ungueltige Auswahl bekommen die Vorgabe", () => {
-    const c = sanitizeModeContent({ scheibe: { on: "ja", darstellung: "disco", darts: 1 }, spieler: { name: "nein" } }, "x01");
+    const c = sanitizeContent({ scheibe: { on: "ja", darstellung: "disco", darts: 1 }, spieler: { name: "nein" } });
     expect(c["scheibe"]).toMatchObject({ on: true, darstellung: "light", darts: true });
     expect(c["spieler"]?.["name"]).toBe(true);
   });
 
-  test("uebernimmt gueltige Werte, Optionen anderer Spielarten fallen weg", () => {
-    const c = sanitizeModeContent(
-      { hintergrund: { darstellung: "autodarts", rahmen: true }, scheibe: { darstellung: "lines" }, spieler: { checkout: false } },
-      "gotcha",
-    );
+  test("uebernimmt gueltige Werte, auch von Optionen, die es nur in einigen Spielarten gibt", () => {
+    const c = sanitizeContent({
+      hintergrund: { darstellung: "autodarts", rahmen: true },
+      scheibe: { darstellung: "lines" },
+      spieler: { checkout: false },
+    });
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "autodarts", rahmen: true });
     expect(c["scheibe"]?.["darstellung"]).toBe("lines");
-    expect(c["spieler"]).not.toHaveProperty("checkout");
+    expect(c["spieler"]?.["checkout"]).toBe(false);
+  });
+
+  test("Hintergrund laesst sich nicht ausschalten", () => {
+    expect(sanitizeContent({ hintergrund: { on: false, darstellung: "schwarz" } })["hintergrund"]?.on).toBe(true);
   });
 
   test("Fehlendes und Unbrauchbares kommt aus fallback", () => {
-    const fallback = modeDefaults("x01");
+    const fallback = contentDefaults();
     fallback["aufnahme"] = { on: false, darts: false, summe: true };
-    const content = sanitizeModeContent({ spieler: { verteilung: "oben" } }, "x01", fallback);
+    const content = sanitizeContent({ spieler: { verteilung: "oben" } }, fallback);
     expect(content["aufnahme"]).toEqual({ on: false, darts: false, summe: true });
     expect(content["spieler"]?.["verteilung"]).toBe("beide");
   });
@@ -133,7 +118,6 @@ describe("Spielarten", () => {
       "gotcha",
       "bermuda",
     ]);
-    expect(MODES.find((m) => m.id === FALLBACK_MODE)?.verified).toBe(true);
     expect(MODES.filter((m) => m.verified).map((m) => m.id)).toEqual(["x01"]);
   });
 
@@ -170,35 +154,6 @@ describe("Spielarten", () => {
   });
 });
 
-describe("availableIn", () => {
-  test("ohne modes ueberall, mit modes nur dort, bei unbekannter Spielart nur Allgemeines", () => {
-    expect(availableIn({}, "gotcha")).toBe(true);
-    expect(availableIn({}, null)).toBe(true);
-    expect(availableIn({ modes: ["x01"] }, "x01")).toBe(true);
-    expect(availableIn({ modes: ["x01"] }, "cricket")).toBe(false);
-    expect(availableIn({ modes: ["x01"] }, null)).toBe(false);
-  });
-});
-
-describe("Hintergrund aus aelteren Profilen", () => {
-  test("Hintergrund an wird Darstellung Autodarts, aus wird Schwarz", () => {
-    expect(sanitizeModeContent({ hintergrund: { on: true } }, "x01")["hintergrund"]).toEqual({
-      on: true,
-      darstellung: "autodarts",
-      rahmen: false,
-    });
-    expect(sanitizeModeContent({ hintergrund: { on: false } }, "x01")["hintergrund"]?.["darstellung"]).toBe("schwarz");
-  });
-
-  test("der fruehere Baustein Rahmen wird zur Option im Hintergrund", () => {
-    expect(sanitizeModeContent({ rahmen: { on: true } }, "x01")["hintergrund"]?.["rahmen"]).toBe(true);
-  });
-
-  test("Hintergrund laesst sich nicht ausschalten", () => {
-    expect(sanitizeModeContent({ hintergrund: { on: false, darstellung: "schwarz" } }, "x01")["hintergrund"]?.on).toBe(true);
-  });
-});
-
 describe("Darstellung der Scheibe", () => {
   test("Reihenfolge: Kamera, Gezeichnet, Linien, Nur Licht", () => {
     const scheibe = CATALOG.parts.find((p) => p.id === "scheibe")!;
@@ -221,7 +176,7 @@ describe("Darstellung der Scheibe", () => {
     ]);
     expect(kamera.default).toBe("0");
     expect(kamera.showIf).toEqual({ option: "darstellung", value: "kamera" });
-    expect(sanitizeModeContent({ scheibe: { darstellung: "kamera", kamera: "2" } }, "x01")["scheibe"]).toMatchObject({
+    expect(sanitizeContent({ scheibe: { darstellung: "kamera", kamera: "2" } })["scheibe"]).toMatchObject({
       darstellung: "kamera",
       kamera: "2",
     });

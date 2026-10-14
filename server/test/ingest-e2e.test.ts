@@ -117,7 +117,7 @@ describe("/ws", () => {
     for (const viewer of [a, b]) {
       await vi.waitFor(() =>
         expect(profileMessages(viewer.messages).at(-1)).toMatchObject({
-          profile: { id: "tv", version: 7, spielarten: {} },
+          profile: { id: "tv", version: 8, name: "TV" },
           profiles: [{ id: "standard" }, { id: "tv" }],
         }),
       );

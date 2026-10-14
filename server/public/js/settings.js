@@ -1,12 +1,11 @@
 /*
  * Einstellungen: Seitenleiste rechts, und die Buehne daneben ist direkt
- * bearbeitbar (editor.js). Haelt Spielart und Spielerzahl der Vorschau,
- * spricht mit dem Pi und meldet alles als editing - dann zeigen alle Geraete
- * Beispieldaten der gewaehlten Spielart, auch wenn ein Spiel laeuft. Nach dem
- * Schliessen wieder das Spiel.
+ * bearbeitbar (editor.js). Haelt die Spielerzahl der Vorschau, spricht mit
+ * dem Pi und meldet alles als editing - dann zeigen alle Geraete
+ * Beispieldaten (X01), auch wenn ein Spiel laeuft. Nach dem Schliessen
+ * wieder das Spiel.
  */
 import { api } from "./profile-api.js";
-import { withContent, withFormat } from "./resolve-profile.js";
 import { createPanel } from "./settings-panel.js";
 
 /* Der Pi beendet editing nach 60 s ohne Meldung; solange eingestellt wird,
@@ -20,8 +19,6 @@ export function createSettings({
   editor,
   sync,
   getView,
-  getGameMode,
-  getResolved,
   applyLocalProfile,
   onChange,
   cameraUrl,
@@ -31,14 +28,14 @@ export function createSettings({
   const root = viewer.querySelector("#settings");
   let step = null;
   /* Was die Leiste gerade einstellt und zeigt. */
-  const preview = { spielart: "x01", spieler: 2 };
+  const preview = { spieler: 2 };
   let keepalive = null;
   let hideTimer = null;
 
   const profileId = () => getView().profile?.id;
   const path = (id, suffix = "") => `/api/profiles/${encodeURIComponent(id)}${suffix}`;
   const report = (error) => panel.setStatus(`Fehlgeschlagen: ${error.message}`);
-  const editing = () => (step ? { schritt: step, spielart: preview.spielart, spieler: preview.spieler } : null);
+  const editing = () => (step ? { schritt: step, spieler: preview.spieler } : null);
 
   function announce() {
     sync.queue(profileId(), { editing: editing() });
@@ -52,32 +49,20 @@ export function createSettings({
     sync.flush();
   }
 
-  /* Eine Aenderung an den Inhalten der Spielart: sofort im eigenen Bild, gedrosselt an den Pi. */
+  /* Eine Aenderung an den Inhalten: sofort im eigenen Bild, gedrosselt an den Pi. */
   function changeContent(content) {
-    const { profile, catalog } = getView();
-    const next = withContent(profile, catalog, preview.spielart, content);
-    if (next === profile) return;
-    applyLocalProfile(next);
-    const patch = { spielart: { id: preview.spielart, content: next.spielarten[preview.spielart].content } };
-    sync.queue(profile.id, { ...patch, editing: editing() });
+    const { profile } = getView();
+    if (JSON.stringify(content) === JSON.stringify(profile.content)) return;
+    applyLocalProfile({ ...profile, content });
+    sync.queue(profile.id, { content, editing: editing() });
   }
 
   const panel = createPanel(root, {
     onContent: changeContent,
     onFormat(format) {
       const { profile } = getView();
-      applyLocalProfile(withFormat(profile, format));
+      applyLocalProfile({ ...profile, format });
       sync.queue(profile.id, { format, editing: editing() });
-    },
-    onCopy(id, from, to) {
-      sync.flush();
-      api("POST", path(id, "/copy"), { von: from, nach: to }).catch(report);
-    },
-    onMode(mode) {
-      preview.spielart = mode;
-      announce();
-      refresh();
-      onChange();
     },
     onPlayers: (count) => setPlayers(count),
     onSelect(id) {
@@ -96,9 +81,9 @@ export function createSettings({
       sync.flush();
       api("DELETE", path(id)).then(afterSwitch).catch(report);
     },
-    onReset(id, mode) {
+    onReset(id) {
       sync.flush();
-      api("POST", path(id, "/reset"), { spielart: mode }).catch(report);
+      api("POST", path(id, "/reset")).catch(report);
     },
     onClose: () => open(null),
   });
@@ -112,15 +97,12 @@ export function createSettings({
 
   function refresh() {
     const { catalog, profile, profiles } = getView();
-    const resolved = getResolved();
-    if (!catalog || !profile || !resolved) return;
-    panel.render({ catalog, profile, profiles, mode: preview.spielart, players: preview.spieler, resolved, cameraUrl });
+    if (!catalog || !profile) return;
+    panel.render({ catalog, profile, profiles, players: preview.spieler, cameraUrl });
   }
 
   function open(next) {
     if (!getView().profile) return; // noch kein Profil vom Pi
-    // Laeuft ein Spiel, schlaegt die Leiste beim Oeffnen dessen Spielart vor - nur als Startpunkt.
-    if (next && !step && getGameMode() !== null) preview.spielart = getGameMode();
     // Frische Vorschaubilder fuer die Kamera-Wahl - einmal je Oeffnen.
     if (next && !step) refreshCameras();
     step = next;

@@ -1,43 +1,39 @@
 import { describe, expect, test } from "vitest";
-import { MODES, sanitizeModeContent } from "../src/viewer/catalog.js";
-import { DEFAULT_MODE_LAYOUT, sanitizeModeLayout } from "../src/viewer/layout.js";
-import { STANDARDS, standardFor, viewerCatalog } from "../src/viewer/standards.js";
+import { MODES, sanitizeContent } from "../src/viewer/catalog.js";
+import { DEFAULT_LAYOUT, sanitizeLayout } from "../src/viewer/layout.js";
+import { standard, viewerCatalog } from "../src/viewer/standards.js";
 
-describe("Standards", () => {
-  test("jede Spielart hat genau einen Standard", () => {
-    expect(STANDARDS.map((s) => s.mode)).toEqual(MODES.map((m) => m.id));
+describe("Standard", () => {
+  test("ist schon gueltig (Pruefung aendert nichts)", () => {
+    const { content, layout } = standard();
+    expect(sanitizeContent(content)).toEqual(content);
+    expect(sanitizeLayout(layout)).toEqual(layout);
   });
 
-  test("jeder Standard ist schon gueltig (Pruefung aendert nichts)", () => {
-    for (const { id } of MODES) {
-      const standard = standardFor(id);
-      expect(sanitizeModeContent(standard.content, id), id).toEqual(standard.content);
-      expect(sanitizeModeLayout(standard.layout), id).toEqual(standard.layout);
-    }
+  test("wie die alte Vorlage Projektion, Scheibe in der Mitte, Bereiche wie die alten Karten", () => {
+    const { content, layout } = standard();
+    expect(content["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
+    expect(content["scheibe"]).toMatchObject({ on: true, darstellung: "light", zahlenring: false });
+    expect(content["spielinfo"]?.on).toBe(false);
+    expect(content["spieler"]?.on).toBe(true);
+    expect(content["aufnahme"]?.on).toBe(true);
+    expect(layout).toEqual(DEFAULT_LAYOUT);
   });
 
-  test("zu Beginn: wie die alte Vorlage Projektion, Scheibe in der Mitte, Bereiche wie die alten Karten", () => {
-    const x01 = standardFor("x01");
-    expect(x01.content["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(x01.content["scheibe"]).toMatchObject({ on: true, darstellung: "light", zahlenring: false });
-    expect(x01.content["spielinfo"]?.on).toBe(false);
-    expect(x01.content["spieler"]?.on).toBe(true);
-    expect(x01.content["aufnahme"]?.on).toBe(true);
-    expect(x01.layout).toEqual(DEFAULT_MODE_LAYOUT);
+  test("enthaelt auch Optionen, die es nur in einigen Spielarten gibt", () => {
+    expect(standard().content["spieler"]).toMatchObject({ checkout: true, average: true, legs: true });
   });
 
-  test("standardFor liefert Kopien", () => {
-    standardFor("x01").layout.blocks.spielinfo.x = 99;
-    expect(standardFor("x01").layout.blocks.spielinfo.x).toBe(DEFAULT_MODE_LAYOUT.blocks.spielinfo.x);
+  test("liefert Kopien", () => {
+    standard().layout.blocks.spielinfo.x = 99;
+    expect(standard().layout.blocks.spielinfo.x).toBe(DEFAULT_LAYOUT.blocks.spielinfo.x);
   });
 
-  test("Katalog fuer den Viewer: Bausteine, Spielarten, Gruppen, alle Standards", () => {
+  test("Katalog fuer den Viewer: Bausteine, Spielarten, Gruppen", () => {
     const catalog = viewerCatalog();
     expect(catalog.modes).toEqual(MODES);
-    expect(Object.keys(catalog.standards)).toEqual(MODES.map((m) => m.id));
-    expect(catalog.standards["cricket"]).toEqual(standardFor("cricket"));
-    expect(catalog).not.toHaveProperty("shared");
     expect(catalog.groups).toEqual({ spiele: "Spiele", training: "Training", party: "Party" });
+    expect(catalog).not.toHaveProperty("standards");
     expect(catalog).not.toHaveProperty("templates");
   });
 });

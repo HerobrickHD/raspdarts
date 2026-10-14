@@ -22,8 +22,8 @@ const store = () => new ProfileStore(mkdtempSync(join(tmpdir(), "hub-test-")));
 const PLAYING: ViewerState = toViewerState(
   JSON.parse(readFileSync("test/fixtures/autodarts-2026-10-08.ndjson", "utf8").split("\n")[106]!).frame,
 );
-const LAYOUT: Editing = { schritt: "layout", spielart: "x01", spieler: 2 };
-const INHALTE: Editing = { schritt: "inhalte", spielart: "cricket", spieler: 4 };
+const LAYOUT: Editing = { schritt: "layout", spieler: 2 };
+const INHALTE: Editing = { schritt: "inhalte", spieler: 4 };
 
 let hub: DisplayHub;
 afterEach(() => {
@@ -155,21 +155,13 @@ describe("Kamera-Bilder", () => {
 });
 
 describe("parseEditing", () => {
-  test("Schritt, Spielart und Spielerzahl; sonst wird nicht eingestellt", () => {
-    expect(parseEditing({ schritt: "layout", spielart: "cricket", spieler: 4 })).toEqual({
-      schritt: "layout",
-      spielart: "cricket",
-      spieler: 4,
-    });
+  test("Schritt und Spielerzahl (eine Spielart von alten Fenstern zaehlt nicht); sonst wird nicht eingestellt", () => {
+    expect(parseEditing({ schritt: "layout", spielart: "cricket", spieler: 4 })).toEqual({ schritt: "layout", spieler: 4 });
     for (const raw of [null, undefined, "layout", true, { schritt: "fertig" }]) expect(parseEditing(raw)).toBeNull();
   });
 
-  test("unbekannte Spielart → X01, Spielerzahl ausserhalb 1-6 → 2", () => {
-    expect(parseEditing({ schritt: "inhalte", spielart: "killer", spieler: 9 })).toEqual({
-      schritt: "inhalte",
-      spielart: "x01",
-      spieler: 2,
-    });
+  test("Spielerzahl ausserhalb 1-6 → 2", () => {
+    expect(parseEditing({ schritt: "inhalte", spieler: 9 })?.spieler).toBe(2);
     expect(parseEditing({ schritt: "inhalte", spieler: 2.5 })?.spieler).toBe(2);
   });
 });

@@ -30,10 +30,10 @@ describe("sampleState", () => {
 });
 
 describe("previewState", () => {
-  const game = { phase: "playing", mode: "x01", players: [{ seat: 1, name: "testuser01" }, { seat: 2, name: "TEST" }] };
+  const game = { phase: "playing", mode: "cricket", players: [{ seat: 1, name: "testuser01" }, { seat: 2, name: "TEST" }] };
 
-  test("bei offener Leiste immer Beispieldaten - auch wenn ein Spiel dieser Spielart laeuft", () => {
-    const shown = previewState(game, { schritt: "inhalte", spielart: "x01", spieler: 4 });
+  test("bei offener Leiste immer Beispieldaten X01 - auch wenn ein Cricket-Spiel laeuft", () => {
+    const shown = previewState(game, { schritt: "inhalte", spieler: 4 });
     expect(shown.players.map((p) => p.name)).toEqual(["Spieler 1", "Spieler 2", "Spieler 3", "Spieler 4"]);
     expect(shown.mode).toBe("x01");
   });

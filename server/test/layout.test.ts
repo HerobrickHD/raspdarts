@@ -3,11 +3,11 @@ import {
   CARD,
   DEFAULT_BOARD,
   DEFAULT_AREA_W,
-  DEFAULT_MODE_LAYOUT,
+  DEFAULT_LAYOUT,
   fitAreaWidth,
   fromLegacyLayout,
   sanitizeBoard,
-  sanitizeModeLayout,
+  sanitizeLayout,
   splitLegacyLayout,
 } from "../src/viewer/layout.js";
 
@@ -28,29 +28,29 @@ describe("sanitizeBoard", () => {
   });
 });
 
-describe("sanitizeModeLayout", () => {
+describe("sanitizeLayout", () => {
   test("Standard: Scheibe, Spielinfo, Aufnahme und zwei Bereiche wie die alten Karten 1 und 2", () => {
-    expect(sanitizeModeLayout(null)).toEqual(DEFAULT_MODE_LAYOUT);
-    expect(DEFAULT_MODE_LAYOUT.board).toEqual(DEFAULT_BOARD);
+    expect(sanitizeLayout(null)).toEqual(DEFAULT_LAYOUT);
+    expect(DEFAULT_LAYOUT.board).toEqual(DEFAULT_BOARD);
     // So breit wie eine Karte, wenn 3 in die Hoehe passen; rechts bleibt die rechte Kante von frueher (16:9).
     expect(DEFAULT_AREA_W).toBeCloseTo((CARD.w * (88 - 3)) / (CARD.h * 3));
-    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: DEFAULT_AREA_W, h: 88 });
-    const right = DEFAULT_MODE_LAYOUT.blocks["bereich-rechts"];
+    expect(DEFAULT_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: DEFAULT_AREA_W, h: 88 });
+    const right = DEFAULT_LAYOUT.blocks["bereich-rechts"];
     expect(right).toMatchObject({ y: 10, w: DEFAULT_AREA_W, h: 88 });
     expect(right.x).toBeCloseTo(71 + ((49 - DEFAULT_AREA_W) * 9) / 16);
   });
 
   test("begrenzt Bereiche: Position 0-100, Breite 5-300, Hoehe 5-100", () => {
-    const layout = sanitizeModeLayout({
+    const layout = sanitizeLayout({
       blocks: { "bereich-links": { x: -3, y: 140, w: 1, h: 500 } },
     });
     expect(layout.blocks["bereich-links"]).toEqual({ x: 0, y: 100, w: 5, h: 100 });
   });
 
   test("unbrauchbarer Block kommt aus fallback, unbekannte fallen weg", () => {
-    const fallback = structuredClone(DEFAULT_MODE_LAYOUT);
+    const fallback = structuredClone(DEFAULT_LAYOUT);
     fallback.blocks.aufnahme = { x: 9, y: 9, scale: 2 };
-    const layout = sanitizeModeLayout(
+    const layout = sanitizeLayout(
       { blocks: { aufnahme: { x: "a" }, "spieler-3": { x: 1, y: 1, scale: 1 } } },
       fallback,
     );
@@ -59,9 +59,9 @@ describe("sanitizeModeLayout", () => {
   });
 
   test("die Scheibe gehoert zum Layout der Spielart und wird einzeln geprueft", () => {
-    const fallback = structuredClone(DEFAULT_MODE_LAYOUT);
+    const fallback = structuredClone(DEFAULT_LAYOUT);
     fallback.board = { cx: 40, cy: 30, diameter: 14, rotation: -103 };
-    expect(sanitizeModeLayout({ board: { cx: 120, cy: "x" } }, fallback).board).toEqual({
+    expect(sanitizeLayout({ board: { cx: 120, cy: "x" } }, fallback).board).toEqual({
       cx: 100,
       cy: 30,
       diameter: 14,
@@ -70,9 +70,9 @@ describe("sanitizeModeLayout", () => {
   });
 
   test("liefert jedes Mal eine eigene Kopie", () => {
-    const a = sanitizeModeLayout(null);
+    const a = sanitizeLayout(null);
     a.blocks.spielinfo.x = 77;
-    expect(sanitizeModeLayout(null).blocks.spielinfo.x).toBe(DEFAULT_MODE_LAYOUT.blocks.spielinfo.x);
+    expect(sanitizeLayout(null).blocks.spielinfo.x).toBe(DEFAULT_LAYOUT.blocks.spielinfo.x);
   });
 });
 
@@ -113,7 +113,7 @@ describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
   });
 
   test("ohne Karten gelten die Standardbereiche", () => {
-    expect(splitLegacyLayout({})).toEqual(DEFAULT_MODE_LAYOUT);
+    expect(splitLegacyLayout({})).toEqual(DEFAULT_LAYOUT);
   });
 });
 

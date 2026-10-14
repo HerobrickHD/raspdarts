@@ -4,6 +4,7 @@ import { buildApp, isAllowedHost } from "../src/http.js";
 import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js";
 import type { DisplaySocket } from "../src/viewer/display-hub.js";
 import { toViewerState } from "../src/viewer/game-state.js";
+import { standard } from "../src/viewer/standards.js";
 import { testDeps } from "./helpers.js";
 
 let app: FastifyInstance;
@@ -145,10 +146,10 @@ describe("Profil-API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       id: "standard",
-      version: 7,
+      version: 8,
       name: "Standard",
       format: "fenster",
-      spielarten: {},
+      ...standard(),
     });
   });
 
@@ -159,34 +160,36 @@ describe("Profil-API", () => {
     const response = await call("POST", "/api/profiles", { name: "Fernseher Küche" });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 7, spielarten: {} });
+    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 8, ...standard() });
     expect(deps.profiles.activeId).toBe("fernseher-kueche");
   });
 
-  test("aendert Format und eine Spielart, setzt editing fuer das aktive", async () => {
+  test("aendert Format, Inhalte und Layout, setzt editing fuer das aktive", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
 
     const response = await call("PUT", "/api/profiles/standard", {
       name: "Beamer",
       format: "4:3",
-      spielart: { id: "cricket", content: { hintergrund: { darstellung: "autodarts" }, aufnahme: { on: false } } },
-      editing: { schritt: "inhalte", spielart: "cricket", spieler: 3 },
+      content: { hintergrund: { darstellung: "autodarts" }, aufnahme: { on: false } },
+      layout: { board: { cx: 40, cy: 45, diameter: 80, rotation: 1.5 } },
+      editing: { schritt: "inhalte", spieler: 3 },
     });
 
     expect(response.statusCode).toBe(200);
     const profile = response.json();
     expect(profile.name).toBe("Beamer");
     expect(profile.format).toBe("4:3");
-    expect(profile.spielarten.cricket.content.hintergrund.darstellung).toBe("autodarts");
-    expect(profile.spielarten.cricket.content.aufnahme.on).toBe(false);
-    expect(deps.hub.editing).toEqual({ schritt: "inhalte", spielart: "cricket", spieler: 3 });
+    expect(profile.content.hintergrund.darstellung).toBe("autodarts");
+    expect(profile.content.aufnahme.on).toBe(false);
+    expect(profile.layout.board).toEqual({ cx: 40, cy: 45, diameter: 80, rotation: 1.5 });
+    expect(deps.hub.editing).toEqual({ schritt: "inhalte", spieler: 3 });
   });
 
   test("ein PUT ohne editing laesst den Schritt stehen, editing null beendet ihn", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    const layout = { schritt: "layout", spielart: "x01", spieler: 2 };
+    const layout = { schritt: "layout", spieler: 2 };
     await call("PUT", "/api/profiles/standard", { editing: layout });
 
     await call("PUT", "/api/profiles/standard", { name: "Beamer" });
@@ -201,42 +204,27 @@ describe("Profil-API", () => {
     app = await buildApp(deps);
     await call("POST", "/api/profiles", { name: "TV" });
 
-    await call("PUT", "/api/profiles/standard", { editing: { schritt: "layout", spielart: "x01", spieler: 2 } });
+    await call("PUT", "/api/profiles/standard", { editing: { schritt: "layout", spieler: 2 } });
 
     expect(deps.hub.editing).toBeNull();
   });
 
-  test("unbekannte Spielart beim Aendern oder Zuruecksetzen ergibt 400", async () => {
-    app = await buildApp(testDeps());
-
-    const put = await call("PUT", "/api/profiles/standard", { spielart: { id: "killer", content: {} } });
-    const reset = await call("POST", "/api/profiles/standard/reset", { spielart: "killer" });
-
-    expect(put.statusCode).toBe(400);
-    expect(reset.statusCode).toBe(400);
-  });
-
-  test("setzt eine Spielart samt Scheibe auf den Standard zurueck", async () => {
+  test("setzt Inhalte und Layout samt Scheibe auf den Standard zurueck, Name und Format bleiben", async () => {
     app = await buildApp(testDeps());
     const board = { cx: 40, cy: 45, diameter: 80, rotation: 1.5 };
-    await call("PUT", "/api/profiles/standard", { spielart: { id: "x01", layout: { board } } });
+    await call("PUT", "/api/profiles/standard", { name: "Beamer", format: "4:3", layout: { board }, content: { aufnahme: { on: false } } });
 
-    const response = await call("POST", "/api/profiles/standard/reset", { spielart: "x01" });
+    const response = await call("POST", "/api/profiles/standard/reset");
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().spielarten).toEqual({});
+    expect(response.json()).toEqual({ id: "standard", version: 8, name: "Beamer", format: "4:3", ...standard() });
+    expect((await call("POST", "/api/profiles/gibtsnicht/reset")).statusCode).toBe(404);
   });
 
-  test("uebernimmt eine Spielart in eine andere; Unbekanntes ergibt 400", async () => {
+  test("Uebernehmen von einer Spielart gibt es nicht mehr", async () => {
     app = await buildApp(testDeps());
-    const board = { cx: 40, cy: 45, diameter: 80, rotation: 1.5 };
-    await call("PUT", "/api/profiles/standard", { spielart: { id: "x01", layout: { board } } });
 
-    const response = await call("POST", "/api/profiles/standard/copy", { von: "x01", nach: "cricket" });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().spielarten.cricket.layout.board).toEqual(board);
-    expect((await call("POST", "/api/profiles/standard/copy", { von: "x01", nach: "killer" })).statusCode).toBe(400);
+    expect((await call("POST", "/api/profiles/standard/copy", { von: "x01", nach: "cricket" })).statusCode).toBe(404);
   });
 
   test("loescht ein Profil, aber nie das letzte", async () => {

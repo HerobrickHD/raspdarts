@@ -3,7 +3,8 @@
  *
  * Spielregeln kennt der Viewer nicht - Rest, Bust, Checkout und Sieger kommen
  * fertig vom Pi. Was angezeigt wird und wo, steht im aktiven Profil: das
- * Format der Buehne und je Spielart Inhalte und Layout (resolve-profile.js).
+ * Format der Buehne, Inhalte und Layout - fuer alle Spielarten gleich. Was es
+ * in der angezeigten Spielart nicht gibt, bleibt weg (content-view.js).
  */
 import { arrangeCards } from "./areas.js";
 import { renderHead, renderPlayers, renderTurn } from "./blocks.js";
@@ -14,8 +15,7 @@ import { applyContent } from "./content-view.js";
 import { createEditor } from "./editor.js";
 import { applyLayout } from "./layout-view.js";
 import { createSync } from "./profile-sync.js";
-import { FALLBACK_MODE, resolveProfile } from "./resolve-profile.js";
-import { previewState } from "./sample-state.js";
+import { PREVIEW_MODE, previewState } from "./sample-state.js";
 import { createSettings } from "./settings.js";
 import { fitStage } from "./stage.js";
 
@@ -46,8 +46,8 @@ const camera = createCameraFeed({
 const cameraAsked = new Set();
 
 let state = { phase: "idle" };
-/* Spielart des letzten Spiels - bleibt nach dem Spiel stehen; vor dem ersten X01. */
-let lastMode = FALLBACK_MODE;
+/* Spielart des letzten Spiels (null = unbekannt) - bleibt nach dem Spiel stehen; vor dem ersten X01. */
+let lastMode = PREVIEW_MODE;
 /* Vom Pi: Katalog, aktives Profil, Profilliste und wer gerade einstellt. */
 const view = { catalog: null, profile: null, profiles: [], remoteEditing: null };
 
@@ -55,24 +55,20 @@ const sync = createSync({
   onStatus: (text) => settings.setStatus(text),
 });
 
-/* Eigene Leiste oder die eines anderen Geraets: { schritt, spielart, spieler } oder null. */
+/* Eigene Leiste oder die eines anderen Geraets: { schritt, spieler } oder null. */
 const editing = () => settings.editing() ?? view.remoteEditing;
 
 /**
- * Die Spielart, nach der gezeichnet wird: beim Einstellen die aus der Leiste,
- * sonst die des Spiels (null = unbekannt), nach dem Spiel die letzte.
+ * Die Spielart, nach der gezeichnet wird: beim Einstellen die der
+ * Beispieldaten, sonst die des Spiels (null = unbekannt), nach dem Spiel die letzte.
  */
 function shownMode() {
-  const edit = editing();
-  if (edit) return edit.spielart;
+  if (editing()) return PREVIEW_MODE;
   if (state.phase === "playing") return state.mode;
   return lastMode;
 }
 
 const shownState = () => previewState(state, editing());
-
-const resolved = () =>
-  view.catalog && view.profile ? resolveProfile(view.profile, view.catalog, shownMode()) : null;
 
 const modeLabel = (mode) =>
   view.catalog?.modes.find((m) => m.id === mode)?.label ?? (state.phase === "playing" ? state.variant : "");
@@ -88,9 +84,6 @@ const editor = createEditor({
   viewer,
   sync,
   getProfile: () => view.profile,
-  getCatalog: () => view.catalog,
-  getMode: () => shownMode() ?? FALLBACK_MODE,
-  getLayout: () => resolved()?.layout ?? null,
   getEditing: () => settings.editing(),
   applyLocalProfile,
 });
@@ -100,8 +93,6 @@ const settings = createSettings({
   editor,
   sync,
   getView: () => view,
-  getGameMode: () => (state.phase === "playing" ? (state.mode ?? FALLBACK_MODE) : null),
-  getResolved: resolved,
   applyLocalProfile,
   onChange: () => render(),
   cameraUrl: (n) => camera.url(n),
@@ -128,7 +119,7 @@ function render() {
   placeStage();
   const shown = shownState();
   const mode = shownMode();
-  const current = resolved();
+  const current = view.catalog ? view.profile : null;
   viewer.dataset.phase = shown.phase;
   viewer.dataset.spielart = mode ?? "unbekannt";
   if (current) {
@@ -169,7 +160,7 @@ function onMessage(message) {
   if (message.type === "camera") camera.update(message.cam, message.version);
   if (message.type === "state") {
     state = message.state;
-    if (state.phase === "playing") lastMode = state.mode ?? FALLBACK_MODE;
+    if (state.phase === "playing") lastMode = state.mode;
   }
   if (message.type === "catalog") view.catalog = message.catalog;
   if (message.type === "profile") {

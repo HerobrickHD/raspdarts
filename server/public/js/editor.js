@@ -6,8 +6,8 @@
  * Jede Aenderung gilt sofort im eigenen Bild und geht gedrosselt an den Pi
  * (profile-sync.js), der sie an alle Viewer weiterreicht - so folgt der Beamer
  * live, waehrend man am Laptop zieht. Ausgelegt auf Maus und Tastatur.
- * Die Scheibe gilt fuer alle Spielarten, Bloecke und Spielerbereiche fuer die
- * angezeigte (editor-changes.js).
+ * Alles gehoert zum Layout des Profils und gilt fuer alle Spielarten
+ * (editor-changes.js).
  * Knopf, Seitenleiste, Esc und Lebenszeichen gehoeren zu settings.js.
  */
 import { layoutChange } from "./editor-changes.js";
@@ -138,9 +138,6 @@ export function createEditor({
   viewer,
   sync,
   getProfile,
-  getCatalog,
-  getMode,
-  getLayout,
   getEditing,
   applyLocalProfile,
 }) {
@@ -148,12 +145,12 @@ export function createEditor({
   let selected = "scheibe";
 
   function change(mutate) {
-    const before = getLayout();
-    if (!before) return;
+    const profile = getProfile();
+    if (!profile) return;
+    const before = profile.layout;
     const after = structuredClone(before);
     mutate(after);
-    const profile = getProfile();
-    const { profile: next, patch } = layoutChange(profile, getCatalog(), getMode(), before, after);
+    const { profile: next, patch } = layoutChange(profile, before, after);
     if (Object.keys(patch).length === 0) return;
     applyLocalProfile(next);
     sync.queue(profile.id, { ...patch, editing: getEditing() });
@@ -186,7 +183,7 @@ export function createEditor({
     if (!editing || event.button !== 0) return;
     const block = event.target.closest(".block[data-block]");
     if (!block) return;
-    const startLayout = getLayout();
+    const startLayout = getProfile()?.layout;
     if (!startLayout) return;
     event.preventDefault();
     // preventDefault laesst den Fokus in der Leiste - dann gingen die Pfeile

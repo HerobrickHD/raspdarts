@@ -55,11 +55,14 @@ export function sampleState(mode, count) {
   };
 }
 
+/** Beim Einstellen immer X01 - die Spielart mit den meisten Bausteinen. */
+export const PREVIEW_MODE = "x01";
+
 /**
  * Was die Geraete zeigen: Beim Einstellen haben sie mit dem laufenden Spiel
- * nichts zu tun - immer Beispieldaten der gewaehlten Spielart und
- * Spielerzahl. Nach "Fertig" wieder das echte Spiel.
+ * nichts zu tun - immer Beispieldaten (X01) mit der gewaehlten Spielerzahl.
+ * Nach "Fertig" wieder das echte Spiel.
  */
 export function previewState(state, editing) {
-  return editing ? sampleState(editing.spielart, editing.spieler) : state;
+  return editing ? sampleState(PREVIEW_MODE, editing.spieler) : state;
 }

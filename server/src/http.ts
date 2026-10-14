@@ -71,7 +71,6 @@ const CAM_FAILURE_CODES: Record<CamFailure, number> = {
 
 const PROFILE_ERROR_CODES: Record<ProfileErrorCode, number> = {
   "invalid-id": 400,
-  "invalid-mode": 400,
   "not-found": 404,
   "last-profile": 409,
 };
@@ -147,7 +146,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const profile = deps.profiles.update(id, {
         name: body["name"],
         format: body["format"],
-        spielart: body["spielart"],
+        content: body["content"],
+        layout: body["layout"],
       });
       // Einstellen betrifft, was die Viewer zeigen - also nur das aktive Profil.
       if (body["editing"] !== undefined && id === deps.profiles.activeId) {
@@ -160,17 +160,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.post<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id/reset", async (request, reply) =>
     withProfiles(reply, () => {
-      const profile = deps.profiles.resetMode(request.params.id, fields(request.body)["spielart"]);
-      deps.hub.publishProfile();
-      return profile;
-    }),
-  );
-
-  // Inhalte und Layout einer Spielart in eine andere kopieren ("Uebernehmen von").
-  app.post<{ Params: { id: string }; Body: unknown }>("/api/profiles/:id/copy", async (request, reply) =>
-    withProfiles(reply, () => {
-      const body = fields(request.body);
-      const profile = deps.profiles.copyMode(request.params.id, body["von"], body["nach"]);
+      const profile = deps.profiles.reset(request.params.id);
       deps.hub.publishProfile();
       return profile;
     }),

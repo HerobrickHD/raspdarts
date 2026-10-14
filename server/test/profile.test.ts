@@ -1,17 +1,15 @@
 import { describe, expect, test } from "vitest";
-import { modeDefaults } from "../src/viewer/catalog.js";
-import { CARD, DEFAULT_AREA_W, DEFAULT_BOARD } from "../src/viewer/layout.js";
+import { DEFAULT_BOARD } from "../src/viewer/layout.js";
 import {
   FALLBACK_NAME,
   VALID_ID,
   newProfile,
-  sanitizeModeEntry,
   sanitizeName,
   sanitizeProfile,
   slugify,
   uniqueId,
 } from "../src/viewer/profile.js";
-import { standardFor } from "../src/viewer/standards.js";
+import { standard } from "../src/viewer/standards.js";
 
 describe("sanitizeName", () => {
   test.each([
@@ -30,8 +28,8 @@ describe("sanitizeName", () => {
 });
 
 describe("newProfile", () => {
-  test("Version 7: Name, Format, keine angepassten Spielarten", () => {
-    expect(newProfile("Wohnzimmer", "4:3")).toEqual({ version: 7, name: "Wohnzimmer", format: "4:3", spielarten: {} });
+  test("Version 8: Name, Format, Inhalte und Layout aus dem Standard", () => {
+    expect(newProfile("Wohnzimmer", "4:3")).toEqual({ version: 8, name: "Wohnzimmer", format: "4:3", ...standard() });
   });
 
   test("ohne Format ganzes Fenster, ohne Namen Profil", () => {
@@ -40,199 +38,46 @@ describe("newProfile", () => {
   });
 });
 
-describe("sanitizeModeEntry", () => {
-  test("ergaenzt aus dem Standard der Spielart und wirft Fremdes weg", () => {
-    const entry = sanitizeModeEntry({ content: { spieler: { average: false, name: false } } }, "gotcha");
-    expect(entry.content["spieler"]).not.toHaveProperty("average");
-    expect(entry.content["spieler"]?.["name"]).toBe(false);
-    expect(entry.content["spielinfo"]).toEqual(standardFor("gotcha").content["spielinfo"]);
-    expect(entry.layout).toEqual(standardFor("gotcha").layout);
-  });
-
-  test("Inhalte einer Spielart nutzen modeDefaults nur, wo der Standard nichts sagt", () => {
-    const entry = sanitizeModeEntry({}, "x01");
-    expect(entry.content["aufnahme"]).toEqual(modeDefaults("x01")["aufnahme"]);
-  });
-});
-
 describe("sanitizeProfile", () => {
-  test("Version 7: prueft Format und jede Spielart, unbekannte Spielarten fallen weg", () => {
+  test("Version 8: prueft Format, Inhalte und Layout; Fehlendes aus dem Standard", () => {
     const profile = sanitizeProfile({
-      version: 7,
+      version: 8,
       name: " Beamer ",
       format: "16:10",
-      spielarten: {
-        cricket: { content: { hintergrund: { on: true } }, layout: { board: { cx: 300 } } },
-        killer: { content: {} },
-        x01: "kaputt",
-      },
+      content: { aufnahme: { on: false }, spieler: { average: false }, disco: { on: true } },
+      layout: { board: { cx: 300 } },
     });
     expect(profile.name).toBe("Beamer");
     expect(profile.format).toBe("16:10");
-    expect(Object.keys(profile.spielarten)).toEqual(["cricket"]);
-    expect(profile.spielarten["cricket"]?.content["hintergrund"]?.on).toBe(true);
-    expect(profile.spielarten["cricket"]?.layout.board).toEqual({ ...DEFAULT_BOARD, cx: 100 });
+    expect(profile.content["aufnahme"]?.on).toBe(false);
+    expect(profile.content["spieler"]?.["average"]).toBe(false);
+    expect(profile.content).not.toHaveProperty("disco");
+    // Nicht gespeichert: wie im Standard (ohne Zahlenring, Spielinfo aus)
+    expect(profile.content["scheibe"]?.["zahlenring"]).toBe(false);
+    expect(profile.content["spielinfo"]?.on).toBe(false);
+    expect(profile.layout.board).toEqual({ ...DEFAULT_BOARD, cx: 100 });
+    expect(profile.layout.blocks).toEqual(standard().layout.blocks);
   });
 
-  test("Version 7 ohne oder mit unbekanntem Format: ganzes Fenster", () => {
-    expect(sanitizeProfile({ version: 7, name: "P", spielarten: {} }).format).toBe("fenster");
-    expect(sanitizeProfile({ version: 7, name: "P", format: "21:9", spielarten: {} }).format).toBe("fenster");
+  test("Version 8 ohne oder mit unbekanntem Format: ganzes Fenster", () => {
+    expect(sanitizeProfile({ version: 8, name: "P" }).format).toBe("fenster");
+    expect(sanitizeProfile({ version: 8, name: "P", format: "21:9" }).format).toBe("fenster");
   });
 
-  test("Version 7 behaelt Bereiche, wie sie sind - auch breite", () => {
+  test("Version 8 behaelt Bereiche, wie sie sind - auch breite", () => {
     const area = { x: 3, y: 40, w: 60, h: 20 };
-    const profile = sanitizeProfile({
+    const profile = sanitizeProfile({ version: 8, name: "P", layout: { blocks: { "bereich-links": area } } });
+    expect(profile.layout.blocks["bereich-links"]).toEqual(area);
+  });
+
+  test("fruehere Versionen (je Spielart): Name und Format bleiben, sonst Standard", () => {
+    const v7 = {
       version: 7,
-      name: "P",
-      spielarten: { x01: { layout: { blocks: { "bereich-links": area } } } },
-    });
-    expect(profile.spielarten["x01"]?.layout.blocks["bereich-links"]).toEqual(area);
-  });
-
-  test("Version 6 (Bereiche schon hoch, aber 49 breit): Kartenbreite, aussen bleibt die Kante", () => {
-    const profile = sanitizeProfile({
-      version: 6,
-      name: "Standard",
-      format: "16:9",
-      spielarten: {
-        x01: {
-          layout: {
-            blocks: {
-              "bereich-links": { x: 1.4, y: 10, w: 49, h: 88 },
-              "bereich-rechts": { x: 71, y: 10, w: 49, h: 88 },
-            },
-          },
-        },
-      },
-    });
-    expect(profile.version).toBe(7);
-    const blocks = profile.spielarten["x01"]!.layout.blocks;
-    expect(blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: DEFAULT_AREA_W, h: 88 });
-    expect(blocks["bereich-rechts"]).toMatchObject({ y: 10, w: DEFAULT_AREA_W, h: 88 });
-    expect(blocks["bereich-rechts"].x).toBeCloseTo(71 + ((49 - DEFAULT_AREA_W) * 9) / 16);
-  });
-
-  test("Version 5: Bereiche bekommen die Hoehe fuer 3 Karten und Kartenbreite, aussen bleibt die Kante", () => {
-    const board = { cx: 40, cy: 45, diameter: 60, rotation: 10 };
-    const profile = sanitizeProfile({
-      version: 5,
-      name: "Standard",
-      format: "16:9",
-      spielarten: {
-        x01: {
-          content: { aufnahme: { on: false } },
-          layout: {
-            board,
-            blocks: {
-              spielinfo: { x: 2, y: 3, scale: 1 },
-              aufnahme: { x: 32.5, y: 3.8, scale: 1 },
-              "bereich-links": { x: 1.4, y: 32.7, w: 49, h: 34 },
-              "bereich-rechts": { x: 66, y: 29.5, w: 37.24, h: 25.84 },
-            },
-          },
-        },
-      },
-    });
-    expect(profile.version).toBe(7);
-    expect(profile.format).toBe("16:9");
-    const x01 = profile.spielarten["x01"]!;
-    expect(x01.content["aufnahme"]?.on).toBe(false);
-    expect(x01.layout.board).toEqual(board);
-    expect(x01.layout.blocks.spielinfo).toEqual({ x: 2, y: 3, scale: 1 });
-    expect(x01.layout.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: DEFAULT_AREA_W, h: 88 });
-    // 37,24 breit (Karte 0,76) passt schon - bleibt.
-    expect(x01.layout.blocks["bereich-rechts"]).toEqual({ x: 66, y: 10, w: 37.24, h: 88 });
-  });
-
-  test("Version 3 wird umgebaut: alles wird angepasstes X01, Karten 1/2 werden Bereiche", () => {
-    const v3 = {
-      version: 3,
-      name: "Standard",
-      content: {
-        hintergrund: { on: true },
-        scheibe: { on: true, darstellung: "light", zahlenring: false, darts: true, letzterDart: true },
-        aufnahme: { on: true, darts: true, summe: false },
-        spielinfo: { on: false, punktzahl: true, legs: true, modus: true },
-        spieler: {
-          on: true,
-          flaeche: false,
-          profilbild: true,
-          name: true,
-          flagge: true,
-          rest: true,
-          legs: true,
-          checkout: true,
-          average: false,
-          dartzahl: true,
-        },
-      },
-      layout: {
-        board: { cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 },
-        blocks: {
-          spielinfo: { x: 2, y: 3, scale: 1 },
-          aufnahme: { x: 33, y: 4, scale: 0.9 },
-          "spieler-1": { x: 1.4, y: 32.7, scale: 0.7 },
-          "spieler-2": { x: 71, y: 32.7, scale: 0.7 },
-        },
-      },
-    };
-    const profile = sanitizeProfile(v3);
-
-    expect(profile.version).toBe(7);
-    expect(profile.format).toBe("fenster");
-    expect(Object.keys(profile.spielarten)).toEqual(["x01"]);
-    const x01 = profile.spielarten["x01"]!;
-    expect(x01.layout.board).toEqual(v3.layout.board);
-    expect(x01.content["hintergrund"]).toEqual({ on: true, darstellung: "autodarts", rahmen: false });
-    expect(x01.content["scheibe"]).toEqual({ ...v3.content.scheibe, kamera: "0" });
-    expect(x01.content["aufnahme"]).toEqual(v3.content.aufnahme);
-    expect(x01.content["spieler"]).toMatchObject({ verteilung: "beide", flaeche: false, average: false });
-    expect(x01.content["spielinfo"]).toMatchObject({ on: false, spielart: false });
-    expect(x01.layout.blocks.aufnahme).toEqual({ x: 33, y: 4, scale: 0.9 });
-    expect(x01.layout.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: CARD.w * 0.7, h: 88 });
-  });
-
-  test("Version 3 mit Spielinfo an bekommt keinen neuen Chip Spielart (Bild bleibt gleich)", () => {
-    const profile = sanitizeProfile({
-      version: 3,
-      name: "Standard",
-      content: { spielinfo: { on: true, punktzahl: true, legs: true, modus: true } },
-      layout: {},
-    });
-    expect(profile.spielarten["x01"]?.content["spielinfo"]).toEqual({
-      on: true,
-      spielart: false,
-      punktzahl: true,
-      legs: true,
-      modus: true,
-    });
-  });
-
-  test("Version 4: gemeinsamer Teil wandert in X01 und jede angepasste Spielart, Format bleibt", () => {
-    const gemeinsam = {
-      content: { hintergrund: { on: true }, scheibe: { darstellung: "drawn" } },
-      board: { cx: 40, cy: 30, diameter: 14, rotation: -103 },
+      name: "Beamer",
       format: "4:3",
+      spielarten: { x01: { content: { aufnahme: { on: false } }, layout: { board: { cx: 10 } } } },
     };
-    const profile = sanitizeProfile({
-      version: 4,
-      name: "P",
-      gemeinsam,
-      spielarten: { gotcha: { content: { aufnahme: { on: false } }, layout: {} } },
-    });
-    expect(profile.version).toBe(7);
-    expect(profile.format).toBe("4:3");
-    expect(Object.keys(profile.spielarten).sort()).toEqual(["gotcha", "x01"]);
-    for (const mode of ["x01", "gotcha"]) {
-      const entry = profile.spielarten[mode]!;
-      expect(entry.layout.board, mode).toEqual(gemeinsam.board);
-      expect(entry.content["hintergrund"]?.["darstellung"], mode).toBe("autodarts");
-      expect(entry.content["scheibe"]?.["darstellung"], mode).toBe("drawn");
-    }
-    expect(profile.spielarten["gotcha"]?.content["aufnahme"]?.on).toBe(false);
-  });
-
-  test("ohne Version 3 bis 7: neues Profil, der Name bleibt", () => {
+    expect(sanitizeProfile(v7)).toEqual(newProfile("Beamer", "4:3"));
     expect(sanitizeProfile({ version: 1, name: "Alt" })).toEqual(newProfile("Alt"));
     expect(sanitizeProfile(null)).toEqual(newProfile("Profil"));
   });

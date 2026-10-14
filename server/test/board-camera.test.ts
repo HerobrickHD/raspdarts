@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { BoardCamera, cameraTrigger, wantedCamera } from "../src/viewer/board-camera.js";
 import { newProfile } from "../src/viewer/profile.js";
-import { standardFor } from "../src/viewer/standards.js";
 import type { CamImage } from "../src/system/cams.js";
 import type { ViewerState } from "../src/viewer/game-state.js";
 
@@ -153,20 +152,16 @@ describe("BoardCamera", () => {
 });
 
 describe("wantedCamera", () => {
-  test("Kamera der gezeigten Spielart, wenn ihre Scheibe die Kamera zeigt", () => {
+  test("Kamera des Profils, wenn seine Scheibe die Kamera zeigt", () => {
     const profile = newProfile("P");
-    expect(wantedCamera(profile, "x01")).toBeNull();
-    profile.spielarten["x01"] = structuredClone(standardFor("x01"));
-    profile.spielarten["x01"].content["scheibe"] = { ...profile.spielarten["x01"].content["scheibe"]!, darstellung: "kamera", kamera: "2" };
-    expect(wantedCamera(profile, "x01")).toBe(2);
-    expect(wantedCamera(profile, null)).toBe(2);
-    expect(wantedCamera(profile, "cricket")).toBeNull();
+    expect(wantedCamera(profile)).toBeNull();
+    profile.content["scheibe"] = { ...profile.content["scheibe"]!, darstellung: "kamera", kamera: "2" };
+    expect(wantedCamera(profile)).toBe(2);
   });
 
   test("Scheibe aus: keine Kamera", () => {
     const profile = newProfile("P");
-    profile.spielarten["x01"] = structuredClone(standardFor("x01"));
-    profile.spielarten["x01"].content["scheibe"] = { ...profile.spielarten["x01"].content["scheibe"]!, on: false, darstellung: "kamera" };
-    expect(wantedCamera(profile, "x01")).toBeNull();
+    profile.content["scheibe"] = { ...profile.content["scheibe"]!, on: false, darstellung: "kamera" };
+    expect(wantedCamera(profile)).toBeNull();
   });
 });

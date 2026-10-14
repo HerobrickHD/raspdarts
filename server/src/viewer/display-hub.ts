@@ -6,11 +6,10 @@
  * sich spaeter verbindet, ist sofort richtig.
  *
  * "editing" sagt allen Viewern, dass gerade eingestellt wird, in welchem
- * Schritt, fuer welche Spielart und mit wie vielen Spielern in der Vorschau -
- * dann zeigen sie ohne Spiel Beispieldaten, beim Layout die Scheibe als Linien. Bleibt eine Meldung aus (Fenster geschlossen), faellt es
+ * Schritt und mit wie vielen Spielern in der Vorschau - dann zeigen sie
+ * Beispieldaten, beim Layout die Scheibe als Linien. Bleibt eine Meldung aus (Fenster geschlossen), faellt es
  * nach dem Zeitlimit zurueck; ein Wechsel des aktiven Profils beendet es.
  */
-import { FALLBACK_MODE, isMode } from "./catalog.js";
 import { IDLE, type ViewerState } from "./game-state.js";
 import type { ProfileSummary, ProfileWithId } from "./profile.js";
 import { viewerCatalog, type ViewerCatalog } from "./standards.js";
@@ -26,10 +25,9 @@ export interface ProfileSource {
   list(): ProfileSummary[];
 }
 
-/** Wer gerade einstellt: Schritt, die Spielart in der Leiste und die Spielerzahl der Vorschau. */
+/** Wer gerade einstellt: Schritt und Spielerzahl der Vorschau (Beispieldaten X01). */
 export interface Editing {
   schritt: "inhalte" | "layout";
-  spielart: string;
   spieler: number;
 }
 
@@ -52,7 +50,6 @@ export function parseEditing(raw: unknown): Editing | null {
   const spieler = source["spieler"];
   return {
     schritt,
-    spielart: isMode(source["spielart"]) ? source["spielart"] : FALLBACK_MODE,
     spieler: typeof spieler === "number" && Number.isInteger(spieler) && spieler >= 1 && spieler <= 6 ? spieler : 2,
   };
 }

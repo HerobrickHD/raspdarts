@@ -3,7 +3,8 @@
  * gross er ist. Was angezeigt wird (und wie die Scheibe aussieht), steht in den
  * Inhalten des Profils (catalog.ts), nicht hier.
  *
- * Alles gilt je Spielart: Lage der Scheibe, Bloecke und Spielerbereiche.
+ * Ein Layout je Profil, fuer alle Spielarten: Lage der Scheibe, Bloecke und
+ * Spielerbereiche.
  *
  * Positionen sind Prozentwerte der Bildflaeche, Groessen haengen an der
  * Bildhoehe - keine Pixel. Ein eingerichtetes Layout passt dadurch auch nach
@@ -38,16 +39,16 @@ export interface Area {
   h: number;
 }
 
-export interface ModeBlocks {
+export interface LayoutBlocks {
   spielinfo: BlockLayout;
   aufnahme: BlockLayout;
   "bereich-links": Area;
   "bereich-rechts": Area;
 }
 
-export interface ModeLayout {
+export interface Layout {
   board: BoardLayout;
-  blocks: ModeBlocks;
+  blocks: LayoutBlocks;
 }
 
 /**
@@ -94,7 +95,7 @@ export const DEFAULT_AREA_W = CARD.w * cardScaleIn({ w: Infinity, h: AREA_SPAN.h
 /** Breite zu Hoehe der Buehne je Format; beim ganzen Fenster wird 16:9 angenommen. */
 const STAGE_ASPECT: Record<Format, number> = { fenster: 16 / 9, "16:9": 16 / 9, "16:10": 16 / 10, "4:3": 4 / 3 };
 
-export const DEFAULT_MODE_LAYOUT: ModeLayout = {
+export const DEFAULT_LAYOUT: Layout = {
   board: { ...DEFAULT_BOARD },
   blocks: {
     spielinfo: { x: 2, y: 3, scale: 1 },
@@ -164,11 +165,11 @@ function sanitizeArea(stored: unknown, fallback: Area): Area {
 }
 
 /**
- * Scheibe, Bloecke und Bereiche einer Spielart; jeder Wert einzeln geprueft,
+ * Scheibe, Bloecke und Bereiche eines Profils; jeder Wert einzeln geprueft,
  * Unbrauchbares aus fallback. Eine kaputte Datei darf den Viewer nie
  * unbedienbar machen.
  */
-export function sanitizeModeLayout(stored: unknown, fallback: ModeLayout = DEFAULT_MODE_LAYOUT): ModeLayout {
+export function sanitizeLayout(stored: unknown, fallback: Layout = DEFAULT_LAYOUT): Layout {
   const source = asRecord(stored);
   const blocks = asRecord(source["blocks"]);
   return {
@@ -191,18 +192,6 @@ export function heightenArea(area: Area): Area {
   return { x: area.x, ...AREA_SPAN, w: area.w };
 }
 
-/** Bereiche einer Spielart wie heightenArea. */
-export function heightenAreas(layout: ModeLayout): ModeLayout {
-  return {
-    ...layout,
-    blocks: {
-      ...layout.blocks,
-      "bereich-links": heightenArea(layout.blocks["bereich-links"]),
-      "bereich-rechts": heightenArea(layout.blocks["bereich-rechts"]),
-    },
-  };
-}
-
 /**
  * Bereich, der breiter ist als die Karten darin (bis Profil-Version 6): auf
  * Kartenbreite. Links bleibt die linke Kante, rechts die rechte - die Karten
@@ -216,8 +205,8 @@ export function fitAreaWidth(area: Area, side: "links" | "rechts", format: Forma
   return sanitizeArea({ ...area, x, w }, area);
 }
 
-/** Beide Bereiche einer Spielart wie fitAreaWidth. */
-export function fitAreaWidths(layout: ModeLayout, format: Format): ModeLayout {
+/** Beide Bereiche wie fitAreaWidth. */
+export function fitAreaWidths(layout: Layout, format: Format): Layout {
   return {
     ...layout,
     blocks: {
@@ -241,11 +230,11 @@ function cardToArea(stored: unknown, fallback: Area): Area {
  * Aufnahme und sechs feste Kartenplaetze. Karte 1 und 2 werden die Bereiche
  * links und rechts (cardToArea).
  */
-export function splitLegacyLayout(stored: unknown): ModeLayout {
+export function splitLegacyLayout(stored: unknown): Layout {
   const source = asRecord(stored);
   const blocks = asRecord(source["blocks"]);
-  const defaults = DEFAULT_MODE_LAYOUT.blocks;
-  const layout = sanitizeModeLayout({
+  const defaults = DEFAULT_LAYOUT.blocks;
+  const layout = sanitizeLayout({
     board: source["board"],
     blocks: {
       spielinfo: blocks["spielinfo"],
@@ -268,7 +257,7 @@ export type LegacyBoardMode = "light" | "drawn";
  */
 export function fromLegacyLayout(
   stored: unknown,
-): { layout: ModeLayout; boardMode: LegacyBoardMode } | null {
+): { layout: Layout; boardMode: LegacyBoardMode } | null {
   const source = asRecord(stored);
   if (source["version"] !== 2) return null;
   const blocks = { ...asRecord(source["blocks"]) };
