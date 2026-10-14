@@ -62,6 +62,16 @@ Jede Nachricht hat die Form `{ channel, topic, data }`. Mitgeschnitten wurden:
 
 Alles außer `<matchId>.state` ergibt IDLE und ändert die Anzeige nicht.
 
+### Stand beim Spielstart (Mitschnitt vom 2026-10-13)
+
+Über den WebSocket kommt der erste `<matchId>.state` erst mit dem ersten
+Pfeil – nach `lobbies … start` und `users … active-match` folgt nur
+`game-events`, kein Zustand. Die Seite holt den Anfangsstand selbst per axios
+(XMLHttpRequest) mit `GET https://api.autodarts.com/gs/v0/matches/{id}/state`.
+`page-hook.js` liest diese Antwort mit und reicht sie als
+`{ channel: "autodarts.matches", topic: "<id>.state", data }` weiter, also wie
+eine WebSocket-Nachricht.
+
 ### Match-State-Nachricht (`data`, gekürzt)
 
 ```json
