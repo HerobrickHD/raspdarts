@@ -279,6 +279,13 @@ Version 5 und die alten Karten 1/2: Lage links/rechts und Breite bleiben, die
 Höhe wird `y: 10, h: 88`. Die Vorschau mit 1–6 Spielern steht jetzt oben im
 Kasten Spielerkarten statt bei Spielart.
 
+*Nachtrag 14.10. (Profil Version 7):* Der Bereich ist so breit wie die Karte
+darin (Standard `w ≈ 40,8`; rechts `x ≈ 75,6`, damit die rechte Kante wie
+früher bleibt). Profile bis Version 6 mit breiteren Bereichen werden auf
+Kartenbreite gebracht: links bleibt die linke, rechts die rechte Kante
+(x in % der Bühnenbreite, umgerechnet mit dem Format; „Ganzes Fenster“ als
+16:9).
+
 ## Schnittstelle
 
 Schreibende Aufrufe brauchen wie bisher `X-Raspdarts: 1`.

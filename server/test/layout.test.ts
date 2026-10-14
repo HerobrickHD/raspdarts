@@ -2,7 +2,9 @@ import { describe, expect, test } from "vitest";
 import {
   CARD,
   DEFAULT_BOARD,
+  DEFAULT_AREA_W,
   DEFAULT_MODE_LAYOUT,
+  fitAreaWidth,
   fromLegacyLayout,
   sanitizeBoard,
   sanitizeModeLayout,
@@ -30,8 +32,12 @@ describe("sanitizeModeLayout", () => {
   test("Standard: Scheibe, Spielinfo, Aufnahme und zwei Bereiche wie die alten Karten 1 und 2", () => {
     expect(sanitizeModeLayout(null)).toEqual(DEFAULT_MODE_LAYOUT);
     expect(DEFAULT_MODE_LAYOUT.board).toEqual(DEFAULT_BOARD);
-    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: 49, h: 88 });
-    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-rechts"]).toEqual({ x: 71, y: 10, w: 49, h: 88 });
+    // So breit wie eine Karte, wenn 3 in die Hoehe passen; rechts bleibt die rechte Kante von frueher (16:9).
+    expect(DEFAULT_AREA_W).toBeCloseTo((CARD.w * (88 - 3)) / (CARD.h * 3));
+    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: DEFAULT_AREA_W, h: 88 });
+    const right = DEFAULT_MODE_LAYOUT.blocks["bereich-rechts"];
+    expect(right).toMatchObject({ y: 10, w: DEFAULT_AREA_W, h: 88 });
+    expect(right.x).toBeCloseTo(71 + ((49 - DEFAULT_AREA_W) * 9) / 16);
   });
 
   test("begrenzt Bereiche: Position 0-100, Breite 5-300, Hoehe 5-100", () => {
@@ -70,6 +76,20 @@ describe("sanitizeModeLayout", () => {
   });
 });
 
+describe("fitAreaWidth", () => {
+  test("breiter als die Karte: links bleibt die linke Kante, rechts die rechte (nach Format)", () => {
+    const wide = { x: 60, y: 10, w: 49, h: 88 };
+    expect(fitAreaWidth(wide, "links", "16:9")).toEqual({ ...wide, w: DEFAULT_AREA_W });
+    expect(fitAreaWidth(wide, "rechts", "4:3").x).toBeCloseTo(60 + ((49 - DEFAULT_AREA_W) * 3) / 4);
+    expect(fitAreaWidth(wide, "rechts", "fenster").x).toBeCloseTo(60 + ((49 - DEFAULT_AREA_W) * 9) / 16);
+  });
+
+  test("schmaler als die Karte oder genau passend: bleibt", () => {
+    const narrow = { x: 3, y: 10, w: 30, h: 88 };
+    expect(fitAreaWidth(narrow, "rechts", "16:9")).toEqual(narrow);
+  });
+});
+
 describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
   test("Scheibe getrennt, Karte 1/2 werden Bereiche fuer 3 Karten (Lage links/rechts und Breite bleiben), 3-6 fallen weg", () => {
     const layout = splitLegacyLayout({
@@ -85,8 +105,10 @@ describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
     expect(layout.board).toEqual({ cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 });
     expect(layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
     expect(layout.blocks.aufnahme).toEqual({ x: 30, y: 2, scale: 1.4 });
+    // Links passt die Karte (0,8) in die Hoehe - Breite bleibt. Rechts (1,1) zu breit: Kartenbreite, rechte Kante bleibt.
     expect(layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: CARD.w * 0.8, h: 88 });
-    expect(layout.blocks["bereich-rechts"]).toEqual({ x: 70, y: 10, w: CARD.w * 1.1, h: 88 });
+    expect(layout.blocks["bereich-rechts"]).toMatchObject({ y: 10, w: DEFAULT_AREA_W, h: 88 });
+    expect(layout.blocks["bereich-rechts"].x).toBeCloseTo(70 + ((CARD.w * 1.1 - DEFAULT_AREA_W) * 9) / 16);
     expect(Object.keys(layout.blocks).sort()).toEqual(["aufnahme", "bereich-links", "bereich-rechts", "spielinfo"]);
   });
 
@@ -106,7 +128,7 @@ describe("fromLegacyLayout (version 2)", () => {
     expect(legacy?.boardMode).toBe("drawn");
     expect(legacy?.layout.board).toEqual({ cx: 48.2, cy: 47.5, diameter: 81.3, rotation: -2.4 });
     expect(legacy?.layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
-    expect(legacy?.layout.blocks["bereich-links"]).toEqual({ x: 2, y: 10, w: 49, h: 88 });
+    expect(legacy?.layout.blocks["bereich-links"]).toEqual({ x: 2, y: 10, w: DEFAULT_AREA_W, h: 88 });
   });
 
   test("ohne oder mit unbekanntem boardMode gilt Nur Licht", () => {

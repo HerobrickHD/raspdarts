@@ -79,13 +79,29 @@ export const DEFAULT_BOARD: BoardLayout = { cx: 50, cy: 51, diameter: 50, rotati
  */
 export const AREA_SPAN = { y: 10, h: 88 } as const;
 
+/** Wie public/js/areas.js: Abstand zwischen den Karten, Karten je Bereich. */
+const CARD_GAP = 1.5;
+const CARDS_PER_AREA = 3;
+
+/** Groesse der Karten in einem Bereich (areas.js, bei hoechstens 3 Karten je Seite). */
+export function cardScaleIn(area: { w: number; h: number }): number {
+  return Math.min(area.w / CARD.w, (area.h - CARD_GAP * (CARDS_PER_AREA - 1)) / (CARD.h * CARDS_PER_AREA));
+}
+
+/** Breite des Standardbereichs: genau eine Karte, wenn 3 in die Hoehe passen. */
+export const DEFAULT_AREA_W = CARD.w * cardScaleIn({ w: Infinity, h: AREA_SPAN.h });
+
+/** Breite zu Hoehe der Buehne je Format; beim ganzen Fenster wird 16:9 angenommen. */
+const STAGE_ASPECT: Record<Format, number> = { fenster: 16 / 9, "16:9": 16 / 9, "16:10": 16 / 10, "4:3": 4 / 3 };
+
 export const DEFAULT_MODE_LAYOUT: ModeLayout = {
   board: { ...DEFAULT_BOARD },
   blocks: {
     spielinfo: { x: 2, y: 3, scale: 1 },
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
-    "bereich-links": { x: 1.4, ...AREA_SPAN, w: CARD.w },
-    "bereich-rechts": { x: 71, ...AREA_SPAN, w: CARD.w },
+    "bereich-links": { x: 1.4, y: AREA_SPAN.y, w: DEFAULT_AREA_W, h: AREA_SPAN.h },
+    // Rechte Kante wie frueher bei 71 % mit 49 breit (16:9) - die Karten stehen wie vorher.
+    "bereich-rechts": { x: 71 + (CARD.w - DEFAULT_AREA_W) / STAGE_ASPECT["16:9"], y: AREA_SPAN.y, w: DEFAULT_AREA_W, h: AREA_SPAN.h },
   },
 };
 
@@ -187,6 +203,31 @@ export function heightenAreas(layout: ModeLayout): ModeLayout {
   };
 }
 
+/**
+ * Bereich, der breiter ist als die Karten darin (bis Profil-Version 6): auf
+ * Kartenbreite. Links bleibt die linke Kante, rechts die rechte - die Karten
+ * stehen wie vorher. x ist Prozent der Buehnenbreite, w vh; dafuer braucht es
+ * das Format.
+ */
+export function fitAreaWidth(area: Area, side: "links" | "rechts", format: Format): Area {
+  const w = CARD.w * cardScaleIn(area);
+  if (area.w - w < 1e-9) return area;
+  const x = side === "links" ? area.x : area.x + (area.w - w) / STAGE_ASPECT[format];
+  return sanitizeArea({ ...area, x, w }, area);
+}
+
+/** Beide Bereiche einer Spielart wie fitAreaWidth. */
+export function fitAreaWidths(layout: ModeLayout, format: Format): ModeLayout {
+  return {
+    ...layout,
+    blocks: {
+      ...layout.blocks,
+      "bereich-links": fitAreaWidth(layout.blocks["bereich-links"], "links", format),
+      "bereich-rechts": fitAreaWidth(layout.blocks["bereich-rechts"], "rechts", format),
+    },
+  };
+}
+
 /** Eine alte Karte (Position + Skalierung) als Bereich: so breit wie die Karte, so hoch wie fuer 3 Karten. */
 function cardToArea(stored: unknown, fallback: Area): Area {
   const { x, y, scale } = asRecord(stored);
@@ -204,7 +245,7 @@ export function splitLegacyLayout(stored: unknown): ModeLayout {
   const source = asRecord(stored);
   const blocks = asRecord(source["blocks"]);
   const defaults = DEFAULT_MODE_LAYOUT.blocks;
-  return sanitizeModeLayout({
+  const layout = sanitizeModeLayout({
     board: source["board"],
     blocks: {
       spielinfo: blocks["spielinfo"],
@@ -213,6 +254,8 @@ export function splitLegacyLayout(stored: unknown): ModeLayout {
       "bereich-rechts": cardToArea(blocks["spieler-2"], defaults["bereich-rechts"]),
     },
   });
+  // Alte Layouts kennen kein Format - ganzes Fenster.
+  return fitAreaWidths(layout, DEFAULT_FORMAT);
 }
 
 /** Darstellung der Scheibe in den alten Layout-Dateien. */

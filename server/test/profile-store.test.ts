@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { DEFAULT_BOARD, DEFAULT_MODE_LAYOUT } from "../src/viewer/layout.js";
+import { DEFAULT_AREA_W, DEFAULT_BOARD, DEFAULT_MODE_LAYOUT } from "../src/viewer/layout.js";
 import { ProfileError, ProfileStore } from "../src/viewer/profile-store.js";
 import { standardFor } from "../src/viewer/standards.js";
 
@@ -52,7 +52,7 @@ describe("erster Start", () => {
 
     expect(store.list()).toEqual([{ id: "standard", name: "Standard" }]);
     expect(store.activeId).toBe("standard");
-    expect(store.active()).toEqual({ id: "standard", version: 6, name: "Standard", format: "fenster", spielarten: {} });
+    expect(store.active()).toEqual({ id: "standard", version: 7, name: "Standard", format: "fenster", spielarten: {} });
     expect(onDisk("standard.json").name).toBe("Standard");
     expect(onDisk("active.json")).toEqual({ id: "standard" });
   });
@@ -67,7 +67,7 @@ describe("erster Start", () => {
     expect(x01?.content["scheibe"]?.["darstellung"]).toBe("drawn");
     expect(x01?.layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
     expect(x01?.layout.blocks.aufnahme).toEqual({ x: 30, y: 2, scale: 1.4 });
-    expect(x01?.layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: 49, h: 88 });
+    expect(x01?.layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: DEFAULT_AREA_W, h: 88 });
   });
 
   test("uebernimmt nur beim ersten Start", () => {
@@ -105,13 +105,13 @@ describe("Version 3 auf der Karte", () => {
 
     const store = new ProfileStore(dir);
 
-    expect(store.active().version).toBe(6);
+    expect(store.active().version).toBe(7);
     expect(store.active().spielarten["x01"]?.layout.board).toEqual({ cx: 42, cy: 28, diameter: 14, rotation: -103 });
     expect(onDisk("standard.json").version).toBe(3);
 
     store.update("standard", { name: "Standard" });
     store.flush();
-    expect(onDisk("standard.json").version).toBe(6);
+    expect(onDisk("standard.json").version).toBe(7);
   });
 });
 

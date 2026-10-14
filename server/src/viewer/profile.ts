@@ -7,6 +7,7 @@
 import { isMode, sanitizeModeContent, type Content } from "./catalog.js";
 import {
   DEFAULT_FORMAT,
+  fitAreaWidths,
   heightenAreas,
   sanitizeFormat,
   sanitizeModeLayout,
@@ -16,7 +17,7 @@ import {
 } from "./layout.js";
 import { standardFor } from "./standards.js";
 
-export const PROFILE_VERSION = 6;
+export const PROFILE_VERSION = 7;
 export const MAX_NAME_LENGTH = 40;
 export const FALLBACK_NAME = "Profil";
 
@@ -33,7 +34,7 @@ export interface ModeEntry {
 }
 
 export interface Profile {
-  version: 6;
+  version: 7;
   name: string;
   format: Format;
   /** Nur angepasste Spielarten. */
@@ -82,7 +83,7 @@ function sanitizeEntries(stored: unknown): Record<string, ModeEntry> {
   return spielarten;
 }
 
-function sanitizeV6(source: Record<string, unknown>): Profile {
+function sanitizeV7(source: Record<string, unknown>): Profile {
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
@@ -91,18 +92,28 @@ function sanitizeV6(source: Record<string, unknown>): Profile {
   };
 }
 
-/** Bis Version 5 war ein Spielerbereich eine Karte hoch - jetzt fuer 3 Karten (heightenAreas). */
-function heightenProfile(profile: Profile): Profile {
+/**
+ * Spielerbereiche alter Versionen: bis Version 5 eine Karte hoch (heighten),
+ * bis Version 6 so breit wie die alte Karte - jetzt fuer 3 Karten und genau
+ * so breit wie eine Karte (heightenAreas, fitAreaWidths).
+ */
+function upgradeAreas(profile: Profile, { heighten }: { heighten: boolean }): Profile {
   const spielarten: Record<string, ModeEntry> = {};
   for (const [mode, entry] of Object.entries(profile.spielarten)) {
-    spielarten[mode] = { ...entry, layout: heightenAreas(entry.layout) };
+    const layout = heighten ? heightenAreas(entry.layout) : entry.layout;
+    spielarten[mode] = { ...entry, layout: fitAreaWidths(layout, profile.format) };
   }
   return { ...profile, spielarten };
 }
 
-/** Profil-Version 5 (13. Oktober 2026): wie 6, nur die Bereiche eine Karte hoch. */
+/** Profil-Version 6 (14. Oktober 2026): wie 7, nur die Bereiche 49 breit. */
+export function fromV6(source: Record<string, unknown>): Profile {
+  return upgradeAreas(sanitizeV7(source), { heighten: false });
+}
+
+/** Profil-Version 5 (13. Oktober 2026): wie 7, nur die Bereiche eine Karte hoch. */
 export function fromV5(source: Record<string, unknown>): Profile {
-  return heightenProfile(sanitizeV6(source));
+  return upgradeAreas(sanitizeV7(source), { heighten: true });
 }
 
 /**
@@ -153,18 +164,20 @@ export function fromV4(source: Record<string, unknown>): Profile {
       mode,
     );
   }
-  return heightenProfile({
+  const profile: Profile = {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
     format: sanitizeFormat(gemeinsam["format"]),
     spielarten,
-  });
+  };
+  return upgradeAreas(profile, { heighten: true });
 }
 
 /** Macht aus beliebigem gespeichertem Inhalt ein brauchbares Profil. */
 export function sanitizeProfile(stored: unknown): Profile {
   const source = asRecord(stored);
-  if (source["version"] === PROFILE_VERSION) return sanitizeV6(source);
+  if (source["version"] === PROFILE_VERSION) return sanitizeV7(source);
+  if (source["version"] === 6) return fromV6(source);
   if (source["version"] === 5) return fromV5(source);
   if (source["version"] === 4) return fromV4(source);
   if (source["version"] === 3) return fromV3(source);
