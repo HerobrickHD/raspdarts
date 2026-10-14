@@ -650,15 +650,50 @@ body {
   font-size: 13px;
 }
 
-/* Nur dieser Teil rollt - Kopf und Fuss stehen fest. */
+/* Nur dieser Teil rollt - Kopf und Fuss stehen fest. Der Platz der
+   Scrollbar ist immer reserviert, damit die Kaesten beim Aufklappen nicht
+   schmaler werden; rechts dafuer weniger Rand. */
 .panel-body {
   flex: 1;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
+  padding: 12px 6px 12px 12px;
+}
+
+/* Scrollbar der Leiste und der Dialoge: schmal, Griff in der Kantenfarbe. */
+.panel-body::-webkit-scrollbar,
+.dialog::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-body::-webkit-scrollbar-track,
+.dialog::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-body::-webkit-scrollbar-thumb,
+.dialog::-webkit-scrollbar-thumb {
+  background: var(--ad-line);
+  border-radius: 999px;
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover,
+.dialog::-webkit-scrollbar-thumb:hover {
+  background: var(--ad-muted);
+}
+
+/* Firefox kennt nur schmal und Farben. Chrome ignoriert ::-webkit-scrollbar,
+   sobald scrollbar-color gesetzt ist - deshalb nur ohne ::-webkit-scrollbar. */
+@supports not selector(::-webkit-scrollbar) {
+  .panel-body,
+  .dialog {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ad-line) transparent;
+  }
 }
 
 .settings .panel-card {
