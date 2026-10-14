@@ -268,6 +268,17 @@ h: 34 }`, `bereich-rechts { x: 71, y: 32.7, w: 49, h: 34 }` – entspricht den
 bisherigen Karten 1 und 2. Bei mehr Spielern muss man die Bereiche höher
 ziehen; dafür gibt es die Vorschau mit 1 bis 6 Spielern.
 
+*Nachtrag 14.10. (Profil Version 6):* Ein Bereich ist für 3 Karten (6 Spieler)
+ausgelegt; die Kartengröße hängt nur am Bereich, nicht an der Spielerzahl
+(erst mehr als 3 Karten auf einer Seite machen sie kleiner). Verteilt mit
+gleichen Abständen oben, dazwischen und unten: 1 Karte mittig, 2 bei etwa
+einem und zwei Dritteln, 3 füllen den Bereich. Standardlage jetzt
+`bereich-links { x: 1.4, y: 10, w: 49, h: 88 }`, `bereich-rechts { x: 71,
+y: 10, w: 49, h: 88 }` (Karten ≈ 83 % der früheren Einzelkarte). Profile bis
+Version 5 und die alten Karten 1/2: Lage links/rechts und Breite bleiben, die
+Höhe wird `y: 10, h: 88`. Die Vorschau mit 1–6 Spielern steht jetzt oben im
+Kasten Spielerkarten statt bei Spielart.
+
 ## Schnittstelle
 
 Schreibende Aufrufe brauchen wie bisher `X-Raspdarts: 1`.

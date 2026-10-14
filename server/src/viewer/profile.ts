@@ -7,6 +7,7 @@
 import { isMode, sanitizeModeContent, type Content } from "./catalog.js";
 import {
   DEFAULT_FORMAT,
+  heightenAreas,
   sanitizeFormat,
   sanitizeModeLayout,
   splitLegacyLayout,
@@ -15,7 +16,7 @@ import {
 } from "./layout.js";
 import { standardFor } from "./standards.js";
 
-export const PROFILE_VERSION = 5;
+export const PROFILE_VERSION = 6;
 export const MAX_NAME_LENGTH = 40;
 export const FALLBACK_NAME = "Profil";
 
@@ -32,7 +33,7 @@ export interface ModeEntry {
 }
 
 export interface Profile {
-  version: 5;
+  version: 6;
   name: string;
   format: Format;
   /** Nur angepasste Spielarten. */
@@ -81,13 +82,27 @@ function sanitizeEntries(stored: unknown): Record<string, ModeEntry> {
   return spielarten;
 }
 
-function sanitizeV5(source: Record<string, unknown>): Profile {
+function sanitizeV6(source: Record<string, unknown>): Profile {
   return {
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
     format: sanitizeFormat(source["format"]),
     spielarten: sanitizeEntries(source["spielarten"]),
   };
+}
+
+/** Bis Version 5 war ein Spielerbereich eine Karte hoch - jetzt fuer 3 Karten (heightenAreas). */
+function heightenProfile(profile: Profile): Profile {
+  const spielarten: Record<string, ModeEntry> = {};
+  for (const [mode, entry] of Object.entries(profile.spielarten)) {
+    spielarten[mode] = { ...entry, layout: heightenAreas(entry.layout) };
+  }
+  return { ...profile, spielarten };
+}
+
+/** Profil-Version 5 (13. Oktober 2026): wie 6, nur die Bereiche eine Karte hoch. */
+export function fromV5(source: Record<string, unknown>): Profile {
+  return heightenProfile(sanitizeV6(source));
 }
 
 /**
@@ -138,18 +153,19 @@ export function fromV4(source: Record<string, unknown>): Profile {
       mode,
     );
   }
-  return {
+  return heightenProfile({
     version: PROFILE_VERSION,
     name: sanitizeName(source["name"]),
     format: sanitizeFormat(gemeinsam["format"]),
     spielarten,
-  };
+  });
 }
 
 /** Macht aus beliebigem gespeichertem Inhalt ein brauchbares Profil. */
 export function sanitizeProfile(stored: unknown): Profile {
   const source = asRecord(stored);
-  if (source["version"] === PROFILE_VERSION) return sanitizeV5(source);
+  if (source["version"] === PROFILE_VERSION) return sanitizeV6(source);
+  if (source["version"] === 5) return fromV5(source);
   if (source["version"] === 4) return fromV4(source);
   if (source["version"] === 3) return fromV3(source);
   return newProfile(source["name"]);

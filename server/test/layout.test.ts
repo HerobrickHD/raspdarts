@@ -30,8 +30,8 @@ describe("sanitizeModeLayout", () => {
   test("Standard: Scheibe, Spielinfo, Aufnahme und zwei Bereiche wie die alten Karten 1 und 2", () => {
     expect(sanitizeModeLayout(null)).toEqual(DEFAULT_MODE_LAYOUT);
     expect(DEFAULT_MODE_LAYOUT.board).toEqual(DEFAULT_BOARD);
-    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 32.7, w: 49, h: 34 });
-    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-rechts"]).toEqual({ x: 71, y: 32.7, w: 49, h: 34 });
+    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-links"]).toEqual({ x: 1.4, y: 10, w: 49, h: 88 });
+    expect(DEFAULT_MODE_LAYOUT.blocks["bereich-rechts"]).toEqual({ x: 71, y: 10, w: 49, h: 88 });
   });
 
   test("begrenzt Bereiche: Position 0-100, Breite 5-300, Hoehe 5-100", () => {
@@ -71,7 +71,7 @@ describe("sanitizeModeLayout", () => {
 });
 
 describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
-  test("Scheibe getrennt, Karte 1/2 werden Bereiche in Kartengroesse, 3-6 fallen weg", () => {
+  test("Scheibe getrennt, Karte 1/2 werden Bereiche fuer 3 Karten (Lage links/rechts und Breite bleiben), 3-6 fallen weg", () => {
     const layout = splitLegacyLayout({
       board: { cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 },
       blocks: {
@@ -85,8 +85,8 @@ describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
     expect(layout.board).toEqual({ cx: 42.8987, cy: 28.7953, diameter: 14.04, rotation: -103.05 });
     expect(layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
     expect(layout.blocks.aufnahme).toEqual({ x: 30, y: 2, scale: 1.4 });
-    expect(layout.blocks["bereich-links"]).toEqual({ x: 1, y: 30, w: CARD.w * 0.8, h: CARD.h * 0.8 });
-    expect(layout.blocks["bereich-rechts"]).toEqual({ x: 70, y: 31, w: CARD.w * 1.1, h: CARD.h * 1.1 });
+    expect(layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: CARD.w * 0.8, h: 88 });
+    expect(layout.blocks["bereich-rechts"]).toEqual({ x: 70, y: 10, w: CARD.w * 1.1, h: 88 });
     expect(Object.keys(layout.blocks).sort()).toEqual(["aufnahme", "bereich-links", "bereich-rechts", "spielinfo"]);
   });
 
@@ -106,7 +106,7 @@ describe("fromLegacyLayout (version 2)", () => {
     expect(legacy?.boardMode).toBe("drawn");
     expect(legacy?.layout.board).toEqual({ cx: 48.2, cy: 47.5, diameter: 81.3, rotation: -2.4 });
     expect(legacy?.layout.blocks.spielinfo).toEqual({ x: 5, y: 6, scale: 1.2 });
-    expect(legacy?.layout.blocks["bereich-links"]).toEqual({ x: 2, y: 3, w: 49, h: 34 });
+    expect(legacy?.layout.blocks["bereich-links"]).toEqual({ x: 2, y: 10, w: 49, h: 88 });
   });
 
   test("ohne oder mit unbekanntem boardMode gilt Nur Licht", () => {

@@ -145,7 +145,7 @@ describe("Profil-API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       id: "standard",
-      version: 5,
+      version: 6,
       name: "Standard",
       format: "fenster",
       spielarten: {},
@@ -159,7 +159,7 @@ describe("Profil-API", () => {
     const response = await call("POST", "/api/profiles", { name: "Fernseher Küche" });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 5, spielarten: {} });
+    expect(response.json()).toMatchObject({ id: "fernseher-kueche", name: "Fernseher Küche", version: 6, spielarten: {} });
     expect(deps.profiles.activeId).toBe("fernseher-kueche");
   });
 

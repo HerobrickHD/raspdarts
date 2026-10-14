@@ -73,13 +73,19 @@ export const CARD = { w: 49, h: 34 } as const;
 
 export const DEFAULT_BOARD: BoardLayout = { cx: 50, cy: 51, diameter: 50, rotation: 0 };
 
+/**
+ * Hoehe der Spielerbereiche: fuer 3 Karten je Seite (6 Spieler), unter der
+ * Spielinfo bis kurz vor den unteren Rand (public/js/areas.js).
+ */
+export const AREA_SPAN = { y: 10, h: 88 } as const;
+
 export const DEFAULT_MODE_LAYOUT: ModeLayout = {
   board: { ...DEFAULT_BOARD },
   blocks: {
     spielinfo: { x: 2, y: 3, scale: 1 },
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
-    "bereich-links": { x: 1.4, y: 32.7, w: CARD.w, h: CARD.h },
-    "bereich-rechts": { x: 71, y: 32.7, w: CARD.w, h: CARD.h },
+    "bereich-links": { x: 1.4, ...AREA_SPAN, w: CARD.w },
+    "bereich-rechts": { x: 71, ...AREA_SPAN, w: CARD.w },
   },
 };
 
@@ -160,18 +166,39 @@ export function sanitizeModeLayout(stored: unknown, fallback: ModeLayout = DEFAU
   };
 }
 
-/** Eine alte Karte (Position + Skalierung) als Bereich, in den sie genau passt. */
+/**
+ * Bereich aus der Zeit, als ein Bereich eine Karte hoch war (bis Profil-
+ * Version 5): Lage links/rechts und Breite bleiben, die Hoehe wird die fuer
+ * 3 Karten - sonst wuerden die Karten darin winzig.
+ */
+export function heightenArea(area: Area): Area {
+  return { x: area.x, ...AREA_SPAN, w: area.w };
+}
+
+/** Bereiche einer Spielart wie heightenArea. */
+export function heightenAreas(layout: ModeLayout): ModeLayout {
+  return {
+    ...layout,
+    blocks: {
+      ...layout.blocks,
+      "bereich-links": heightenArea(layout.blocks["bereich-links"]),
+      "bereich-rechts": heightenArea(layout.blocks["bereich-rechts"]),
+    },
+  };
+}
+
+/** Eine alte Karte (Position + Skalierung) als Bereich: so breit wie die Karte, so hoch wie fuer 3 Karten. */
 function cardToArea(stored: unknown, fallback: Area): Area {
   const { x, y, scale } = asRecord(stored);
   if (!isNumber(x) || !isNumber(y) || !isNumber(scale)) return { ...fallback };
   const block = sanitizeBlock(stored, { x: 0, y: 0, scale: 1 });
-  return sanitizeArea({ x: block.x, y: block.y, w: CARD.w * block.scale, h: CARD.h * block.scale }, fallback);
+  return heightenArea(sanitizeArea({ x: block.x, y: block.y, w: CARD.w * block.scale, h: CARD.h * block.scale }, fallback));
 }
 
 /**
  * Layout aus Profil-Version 3 (bis Oktober 2026): Scheibe, Spielinfo,
- * Aufnahme und sechs feste Kartenplaetze. Karte 1 und 2 werden die Bereiche,
- * in die sie mit 2 Spielern genau passen - das Bild bleibt gleich.
+ * Aufnahme und sechs feste Kartenplaetze. Karte 1 und 2 werden die Bereiche
+ * links und rechts (cardToArea).
  */
 export function splitLegacyLayout(stored: unknown): ModeLayout {
   const source = asRecord(stored);

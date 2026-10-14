@@ -1,7 +1,7 @@
 /*
  * Seitenleiste im Stil von Autodarts: Profil und Format, Spielart mit
- * Vorschau, Zuruecksetzen und Uebernehmen, darunter die Bausteine als Kaesten
- * mit Schaltern. Die Liste entsteht aus dem Katalog vom Pi - eine neue Option
+ * Zuruecksetzen und Uebernehmen, darunter die Bausteine als Kaesten mit
+ * Schaltern (bei den Spielerkarten oben die Vorschau mit 1-6 Spielern). Die Liste entsteht aus dem Katalog vom Pi - eine neue Option
  * im Katalog erscheint hier ohne Aenderung an dieser Datei.
  *
  * Nichts darf springen: Rueckfragen, Formulare und die Tastenkuerzel kommen
@@ -265,6 +265,11 @@ export function createPanel(root, handlers) {
   const playerButtons = [1, 2, 3, 4, 5, 6].map((n) =>
     button(String(n), () => handlers.onPlayers(n), { className: "segment" }),
   );
+  /* Steht oben im Kasten Spielerkarten (buildPart). */
+  const playersField = node("div", { className: "field" }, [
+    node("span", { textContent: "Vorschau mit Spielern" }),
+    node("div", { className: "segments" }, playerButtons),
+  ]);
 
   /* --- Bausteine ---------------------------------------------------------- */
 
@@ -310,8 +315,10 @@ export function createPanel(root, handlers) {
 
   function buildPart(part) {
     const shown = part.options.filter((option) => availableIn(option, mode));
+    const children = shown.map((option) => buildOption(part, option));
+    if (part.id === "spieler") children.unshift(playersField);
     // Feste Bausteine (Hintergrund) haben keinen eigenen Schalter.
-    const section = card(part.id, part.label, shown.map((option) => buildOption(part, option)), {
+    const section = card(part.id, part.label, children, {
       extra: part.fixed ? [] : [switchInput({ part: part.id }, part.label)],
       className: "part",
     });
@@ -370,10 +377,6 @@ export function createPanel(root, handlers) {
       [
         modeSelect,
         node("div", { className: "btn-row" }, [resetButton, copyButton]),
-        node("div", { className: "field" }, [
-          node("span", { textContent: "Vorschau mit Spielern" }),
-          node("div", { className: "segments" }, playerButtons),
-        ]),
       ],
       { summary: modeSummary, extra: [modeState] },
     ),
