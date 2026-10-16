@@ -80,7 +80,10 @@ type Fields = Record<string, unknown>;
 const fields = (body: unknown): Fields => (typeof body === "object" && body !== null ? body : {}) as Fields;
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false });
+  // Beim Beenden (Neustart nach einem Update) alle Verbindungen sofort trennen:
+  // Browser halten vorsorglich leere Verbindungen offen, auf die close() sonst
+  // ewig wartet - systemd toetet den Dienst dann erst nach 90 s.
+  const app = Fastify({ logger: false, forceCloseConnections: true });
 
   app.addHook("onRequest", async (request, reply) => {
     // Geprueft wird die erkannte Route, nicht die rohe URL (Prozent-Kodierung).
@@ -93,7 +96,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
   });
 
-  await app.register(fastifyWebsocket);
+  // Websockets hart trennen statt auf die Antwort der Gegenseite zu warten:
+  // ein schlafendes Geraet antwortet nie, ws wartet dann 30 s. Viewer und
+  // Extension verbinden sich ohnehin von selbst neu.
+  await app.register(fastifyWebsocket, {
+    preClose(this: FastifyInstance, done: () => void) {
+      for (const client of this.websocketServer.clients) client.terminate();
+      this.websocketServer.close(() => done());
+    },
+  });
   await app.register(fastifyStatic, { root: PUBLIC_DIR });
 
   // Alle Viewer zeigen das aktive Profil; ?display= alter Kiosk-Adressen wird ignoriert.

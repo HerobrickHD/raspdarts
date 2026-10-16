@@ -1,3 +1,4 @@
+import { connect, type AddressInfo } from "node:net";
 import { afterEach, describe, expect, test } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp, isAllowedHost } from "../src/http.js";
@@ -502,5 +503,41 @@ describe("/api/ingest/reset", () => {
     const response = await app.inject({ method: "POST", url: "/api/ingest/reset" });
 
     expect(response.statusCode).toBe(403);
+  });
+});
+
+describe("Beenden", () => {
+  /* Nach einem Update startet systemd den Dienst neu; haengt das Beenden, toetet systemd ihn erst nach 90 s. */
+  const closesWithin = async (ms: number) => {
+    const started = Date.now();
+    await Promise.race([app.close(), new Promise((_, reject) => setTimeout(() => reject(new Error("haengt")), ms))]);
+    return Date.now() - started;
+  };
+
+  const listen = async () => {
+    app = await buildApp(testDeps());
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    return (app.server.address() as AddressInfo).port;
+  };
+
+  test("wartet nicht auf eine Verbindung ohne Anfrage (Browser oeffnen sie vorsorglich)", async () => {
+    const port = await listen();
+    const socket = connect(port, "127.0.0.1");
+    await new Promise((resolve) => socket.once("connect", resolve));
+    expect(await closesWithin(2000)).toBeLessThan(2000);
+    socket.destroy();
+  });
+
+  test("wartet nicht auf einen Viewer, der nicht mehr antwortet (Geraet schlaeft)", async () => {
+    const port = await listen();
+    const socket = connect(port, "127.0.0.1");
+    socket.write(
+      "GET /ws HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n" +
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n",
+    );
+    await new Promise((resolve) => socket.once("data", resolve));
+    socket.pause(); // liest nichts mehr, antwortet nie auf das Schliessen
+    expect(await closesWithin(2000)).toBeLessThan(2000);
+    socket.destroy();
   });
 });
