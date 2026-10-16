@@ -208,6 +208,9 @@ function connect() {
 window.addEventListener("resize", placeStage);
 const resizeWatch = new ResizeObserver(() => placeStage());
 resizeWatch.observe(panelEl);
+/* Das Kamerabild haengt an der Groesse der Scheibe - die aendert sich auch ohne Nachricht vom Pi (Fenster, Vollbild). */
+const boardWatch = new ResizeObserver(() => renderCamera(view.catalog ? view.profile : null));
+boardWatch.observe(boardBlock);
 
 render();
 connect();

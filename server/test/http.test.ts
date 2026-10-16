@@ -109,6 +109,7 @@ describe("isAllowedHost", () => {
     "raspdarts.local",
     "RASPDARTS.LOCAL:8743",
     "raspdarts",
+    "raspdarts.fritz.box:8743",
     "localhost:8743",
     "127.0.0.1",
     "192.168.1.42:8743",
@@ -117,7 +118,7 @@ describe("isAllowedHost", () => {
     expect(isAllowedHost(host)).toBe(true);
   });
 
-  test.each(["evil.example", "raspdarts.local.evil.example", undefined, ""])(
+  test.each(["evil.example", "raspdarts.local.evil.example", "raspdarts.fritz.box.evil.example", undefined, ""])(
     "verweigert %s",
     (host) => {
       expect(isAllowedHost(host)).toBe(false);

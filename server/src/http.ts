@@ -8,7 +8,8 @@
  * die jemand im Heimnetz oeffnet, den Pi steuern.
  *
  * Zusaetzlich muss der Host-Header zu /api passen (raspdarts.local, raspdarts,
- * localhost oder eine IP-Adresse). Sonst koennte eine Webseite ihren eigenen
+ * raspdarts.fritz.box - Fire TV kennt kein .local -, localhost oder eine
+ * IP-Adresse). Sonst koennte eine Webseite ihren eigenen
  * Namen per DNS-Rebinding auf die Adresse des Pi legen, damit same-origin
  * werden und den Header selbst setzen.
  */
@@ -27,7 +28,7 @@ import type { SystemStatus } from "./system/status.js";
 
 export const CLIENT_HEADER = "x-raspdarts";
 
-const ALLOWED_HOSTNAMES = new Set(["raspdarts.local", "raspdarts", "localhost"]);
+const ALLOWED_HOSTNAMES = new Set(["raspdarts.local", "raspdarts", "raspdarts.fritz.box", "localhost"]);
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 const IPV6_BRACKETED = /^\[[0-9a-f:.]+\]$/;
 
