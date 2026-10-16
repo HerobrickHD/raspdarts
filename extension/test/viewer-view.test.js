@@ -83,3 +83,12 @@ describe('pickBoardId', () => {
     expect(vv.pickBoardId({ ok: true, data: { board_id: null } }, '')).toBeNull();
   });
 });
+
+describe('viewerLinks', () => {
+  test('beide Adressen des Pi, .local zuerst (Fire TV kennt nur fritz.box)', () => {
+    expect(vv.viewerLinks()).toEqual([
+      { href: 'http://raspdarts.local:8743/', label: 'raspdarts.local ↗' },
+      { href: 'http://raspdarts.fritz.box:8743/', label: 'raspdarts.fritz.box ↗' },
+    ]);
+  });
+});

@@ -19,6 +19,12 @@
     shadow.innerHTML = `<style>${css}</style>${html}`;
     shadow.querySelectorAll('[data-text]').forEach((el) => { el.textContent = t[el.dataset.text]; });
     shadow.querySelectorAll('[data-asset]').forEach((el) => { el.src = chrome.runtime.getURL(el.dataset.asset); });
+    for (const { href, label } of root.raspdartsViewerView.viewerLinks()) {
+      const link = Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener', title: t.viewerOpen });
+      link.className = 'ghost link';
+      link.textContent = label;
+      shadow.querySelector('[data-field="viewerLinks"]').append(link);
+    }
 
     const field = (name) => shadow.querySelector(`[data-field="${name}"]`);
     let resolveDialog = null;

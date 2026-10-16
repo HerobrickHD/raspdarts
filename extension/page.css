@@ -278,7 +278,8 @@ button.ghost:hover:not(:disabled) { color: var(--color-red-50, #e24e67); backgro
   color: var(--color-black-20, #cacfd9);
 }
 
-/* Link "Viewer oeffnen" im Kopf des Viewer-Blocks, aussehend wie button.ghost */
+/* Links zum Viewer (beide Adressen) im Kopf des Viewer-Blocks, aussehend wie button.ghost */
+.links { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 a.link {
   display: inline-flex;
   align-items: center;

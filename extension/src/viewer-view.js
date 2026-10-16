@@ -32,5 +32,13 @@
     return typeof storedId === 'string' && storedId.length > 0 ? storedId : null;
   }
 
-  root.raspdartsViewerView = { pickBoardId, viewerBlock, viewerButtonState };
+  // Beide Namen des Pi: .local fuer PC und Handy, fritz.box fuer Geraete ohne
+  // .local (Fire TV). Welcher im jeweiligen Browser geht, wissen wir nicht.
+  const VIEWER_URLS = ['http://raspdarts.local:8743/', 'http://raspdarts.fritz.box:8743/'];
+
+  function viewerLinks() {
+    return VIEWER_URLS.map((href) => ({ href, label: `${new URL(href).hostname} ↗` }));
+  }
+
+  root.raspdartsViewerView = { pickBoardId, viewerBlock, viewerButtonState, viewerLinks };
 })(globalThis);
