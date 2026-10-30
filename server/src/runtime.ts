@@ -39,7 +39,6 @@ export function createDeps(options: { record: boolean }): Runtime {
     ingest: new Ingest(createFramePipeline(hub, recorder, boardCamera)),
     status: createStatusReader(),
     jobs: new JobRunner(),
-    cams,
     boardCamera,
   };
 }

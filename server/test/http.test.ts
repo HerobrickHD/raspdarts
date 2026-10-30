@@ -2,7 +2,6 @@ import { connect, type AddressInfo } from "node:net";
 import { afterEach, describe, expect, test } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp, isAllowedHost } from "../src/http.js";
-import { createCams, type AutodartsHttp, type Cams } from "../src/system/cams.js";
 import type { DisplaySocket } from "../src/viewer/display-hub.js";
 import { toViewerState } from "../src/viewer/game-state.js";
 import { standard } from "../src/viewer/standards.js";
@@ -322,109 +321,12 @@ describe("/api/status", () => {
 });
 
 describe("/api/cams", () => {
-  const get = (url: string, headers: Record<string, string> = { "x-raspdarts": "1" }) =>
-    app.inject({ method: "GET", url, headers });
-
-  test("liefert Board-ID, Kameraanzahl und Zaehler", async () => {
+  test("gibt es nicht mehr - nur der fruehere Kameras-Knopf der Extension hat es benutzt", async () => {
     app = await buildApp(testDeps());
+    const headers = { "x-raspdarts": "1" };
 
-    const response = await get("/api/cams");
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ board_id: "b-1", cams: 3, fetched: 0 });
-  });
-
-  test("verlangt den X-Raspdarts-Header", async () => {
-    app = await buildApp(testDeps());
-
-    expect((await get("/api/cams", {})).statusCode).toBe(403);
-    expect((await get("/api/cams/0", {})).statusCode).toBe(403);
-  });
-
-  test("meldet 502, wenn Autodarts nicht antwortet", async () => {
-    const cams: Cams = {
-      info: async () => {
-        throw new Error("Zeitlimit");
-      },
-      image: async () => ({ ok: false, reason: "unavailable" }),
-    };
-    app = await buildApp(testDeps({ cams }));
-
-    const response = await get("/api/cams");
-
-    expect(response.statusCode).toBe(502);
-    expect(response.json()).toEqual({ error: "unavailable" });
-  });
-
-  test("gibt den API-Key aus der Autodarts-Config nie weiter", async () => {
-    const http: AutodartsHttp = {
-      json: async (path) =>
-        path === "/api/config"
-          ? { auth: { api_key: "GEHEIM-123", board_id: "b-1" }, cam: { cams: ["a"] } }
-          : { running: true, connected: true },
-      bytes: async () => Buffer.from("jpeg"),
-    };
-    app = await buildApp(testDeps({ cams: createCams({ http, now: () => 0 }) }));
-
-    const response = await get("/api/cams");
-
-    expect(response.statusCode).toBe(200);
-    expect(response.body).not.toContain("GEHEIM");
-    expect(response.body).not.toContain("api_key");
-  });
-
-  test("liefert das Bild als JPEG, das nicht zwischengespeichert wird", async () => {
-    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    const asked: number[] = [];
-    const cams: Cams = {
-      info: async () => ({ board_id: "b-1", cams: 3, fetched: 0 }),
-      image: async (n) => {
-        asked.push(n);
-        return { ok: true, jpeg };
-      },
-    };
-    app = await buildApp(testDeps({ cams }));
-
-    const response = await get("/api/cams/2");
-
-    expect(response.statusCode).toBe(200);
-    expect(response.headers["content-type"]).toBe("image/jpeg");
-    expect(response.headers["cache-control"]).toBe("no-store");
-    expect(response.rawPayload).toEqual(jpeg);
-    expect(asked).toEqual([2]);
-  });
-
-  test.each([
-    ["not-found", 404],
-    ["board-stopped", 409],
-    ["unavailable", 502],
-  ] as const)("Grund %s ergibt %i", async (reason, code) => {
-    const cams: Cams = {
-      info: async () => ({ board_id: "b-1", cams: 3, fetched: 0 }),
-      image: async () => ({ ok: false, reason }),
-    };
-    app = await buildApp(testDeps({ cams }));
-
-    const response = await get("/api/cams/0");
-
-    expect(response.statusCode).toBe(code);
-    expect(response.json()).toEqual({ error: reason });
-  });
-
-  test("eine Nummer, die keine ganze Zahl ist, wird als ungueltig weitergegeben", async () => {
-    const asked: number[] = [];
-    const cams: Cams = {
-      info: async () => ({ board_id: "b-1", cams: 3, fetched: 0 }),
-      image: async (n) => {
-        asked.push(n);
-        return { ok: false, reason: "not-found" };
-      },
-    };
-    app = await buildApp(testDeps({ cams }));
-
-    expect((await get("/api/cams/abc")).statusCode).toBe(404);
-    expect((await get("/api/cams/1.5")).statusCode).toBe(404);
-    expect(asked).toEqual([-1, -1]);
+    expect((await app.inject({ method: "GET", url: "/api/cams", headers })).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: "/api/cams/0", headers })).statusCode).toBe(404);
   });
 });
 

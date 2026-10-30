@@ -63,19 +63,9 @@ function deferred<T>() {
 }
 
 describe("parseCamsConfig", () => {
-  test("nimmt nur die Board-ID und zaehlt belegte Kamera-Plaetze", () => {
-    expect(parseCamsConfig(CONFIG)).toEqual({ board_id: "b-1", cams: 3 });
-  });
-
-  test("Autodarts ab 2.1.0 schreibt boardId statt board_id", () => {
-    expect(parseCamsConfig({ auth: { apiKey: "GEHEIM-123", boardId: "b-2" }, cam: { cams: ["a", "b"] } })).toEqual({
-      board_id: "b-2",
-      cams: 2,
-    });
-  });
-
-  test("ohne Board-ID bleibt board_id null", () => {
-    expect(parseCamsConfig({ auth: {}, cam: { cams: ["a"] } })).toEqual({ board_id: null, cams: 1 });
+  test("zaehlt nur belegte Kamera-Plaetze - nichts aus auth", () => {
+    expect(parseCamsConfig(CONFIG)).toEqual({ cams: 3 });
+    expect(parseCamsConfig({ auth: {}, cam: { cams: ["a"] } })).toEqual({ cams: 1 });
   });
 
   test("Unerwartetes ergibt null", () => {
@@ -122,51 +112,32 @@ describe("cached", () => {
   });
 });
 
-describe("info", () => {
-  test("liefert Board-ID, Kameraanzahl und Zaehler – aber nie den API-Key", async () => {
-    const { cams } = setup();
-
-    const info = await cams.info();
-
-    expect(info).toEqual({ board_id: "b-1", cams: 3, fetched: 0 });
-    expect(JSON.stringify(info)).not.toContain("GEHEIM");
-  });
-
+describe("Config", () => {
   test("liest die Config hoechstens alle 30 s", async () => {
     const { fake, clock, cams } = setup();
 
-    await cams.info();
+    await cams.image(0);
     clock.now = 29_999;
-    await cams.info();
+    await cams.image(0);
     expect(fake.count("/api/config")).toBe(1);
 
     clock.now = 60_000;
-    await cams.info();
+    await cams.image(0);
     expect(fake.count("/api/config")).toBe(2);
   });
 
-  test("wirft, wenn Autodarts nicht antwortet, und versucht es nach einer Sekunde erneut", async () => {
+  test("fragt die Config nach einem Fehler hoechstens einmal pro Sekunde und versucht es dann erneut", async () => {
     const { fake, clock, cams } = setup();
     fake.config = new Error("Zeitlimit");
 
-    await expect(cams.info()).rejects.toThrow();
-    fake.config = CONFIG;
-    clock.now = 1000;
-    expect((await cams.info()).cams).toBe(3);
-  });
-
-  test("fragt die Config nach einem Fehler hoechstens einmal pro Sekunde", async () => {
-    const { fake, clock, cams } = setup();
-    fake.config = new Error("Zeitlimit");
-
-    await expect(cams.info()).rejects.toThrow();
+    expect(await cams.image(0)).toEqual({ ok: false, reason: "unavailable" });
     clock.now = 500;
-    await expect(cams.info()).rejects.toThrow();
     expect(await cams.image(0)).toEqual({ ok: false, reason: "unavailable" });
     expect(fake.count("/api/config")).toBe(1);
 
+    fake.config = CONFIG;
     clock.now = 1500;
-    await expect(cams.info()).rejects.toThrow();
+    expect((await cams.image(0)).ok).toBe(true);
     expect(fake.count("/api/config")).toBe(2);
   });
 });
@@ -282,18 +253,6 @@ describe("image", () => {
     clock.now = 1500;
     await cams.image(0);
     expect(fake.count("/api/img/cams/0")).toBe(2);
-  });
-
-  test("der Zaehler in info() zaehlt die Bildabrufe bei Autodarts", async () => {
-    const { clock, cams } = setup();
-
-    await cams.image(0);
-    await cams.image(0);
-    await cams.image(1);
-    clock.now = 1000;
-    await cams.image(0);
-
-    expect((await cams.info()).fetched).toBe(3);
   });
 });
 

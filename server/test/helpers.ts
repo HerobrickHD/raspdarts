@@ -8,7 +8,6 @@ import { Ingest } from "../src/viewer/ingest.js";
 import { ProfileStore } from "../src/viewer/profile-store.js";
 import { createFramePipeline } from "../src/viewer/pipeline.js";
 import type { AppDeps } from "../src/http.js";
-import type { Cams } from "../src/system/cams.js";
 import { JobRunner } from "../src/system/jobs.js";
 import type { SystemStatus } from "../src/system/status.js";
 
@@ -37,11 +36,6 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     jobs: new JobRunner(() => {
       throw new Error("In Tests werden keine echten Skripte gestartet");
     }),
-    cams: {
-      info: async () => ({ board_id: "b-1", cams: 3, fetched: 0 }),
-      image: async () => ({ ok: false, reason: "board-stopped" }),
-      calibration: async () => null,
-    } satisfies Cams,
     boardCamera: { info: async () => ({ cams: [] }), latest: () => null, refresh: () => {} },
     ...overrides,
   };

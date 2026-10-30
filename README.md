@@ -98,8 +98,6 @@ Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boar
 | WS | `/ingest` | Spieldaten von der Extension |
 | POST | `/api/ingest/reset` | Viewer auf „Warte auf Spieldaten“ (Extension beim Ausschalten der Weitergabe) |
 | GET | `/api/status` | Systemwerte, Autodarts-Version und -Zustand, Beamer-Verbindung |
-| GET | `/api/cams` | Board-ID, Anzahl Kameras, Zähler der Bildabrufe bei Autodarts |
-| GET | `/api/cams/:n` | Standbild von Kamera n (JPEG); höchstens 1 Abruf pro Sekunde und Kamera bei Autodarts, `409` wenn das Board nicht läuft |
 | GET | `/api/board-camera` | Kamera-Ansicht: je Kamera Version des letzten Bilds und Entzerrung |
 | GET | `/api/board-camera/:n` | letztes Bild der Kamera n für die Kamera-Ansicht (ohne Abruf bei Autodarts) |
 | POST | `/api/board-camera/refresh` | `{cams}` – frische Bilder holen (gebremst, im Standby nicht) |

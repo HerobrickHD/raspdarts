@@ -24,19 +24,10 @@ export interface CamsDeps {
   now: () => number;
 }
 
-export interface CamsInfo {
-  board_id: string | null;
-  cams: number;
-  /** Bildabrufe bei Autodarts seit dem Start (fuer die Abnahme-Messung). */
-  fetched: number;
-}
-
 export type CamFailure = "not-found" | "board-stopped" | "unavailable";
 export type CamImage = { ok: true; jpeg: Buffer } | { ok: false; reason: CamFailure };
 
 export interface Cams {
-  /** Wirft, wenn Autodarts nicht antwortet. */
-  info(): Promise<CamsInfo>;
   /** fresh: neues Bild holen, auch wenn das gemerkte juenger als eine Sekunde ist (Kamera-Ansicht nach einem Wurf). */
   image(n: number, options?: { fresh?: boolean }): Promise<CamImage>;
   /** Ringpunkte der Kalibrierung je Kamera (Autodarts: /api/config/calibration/ellipses); null, wenn nicht lesbar. */
@@ -51,19 +42,12 @@ const CONFIG_TTL_MS = 30_000;
 const CALIBRATION_TTL_MS = 60_000;
 const FAILURE_TTL_MS = 1000;
 
-/** Nimmt aus der Autodarts-Config nur Board-ID und Anzahl belegter Kamera-Plaetze. */
-export function parseCamsConfig(body: unknown): { board_id: string | null; cams: number } | null {
+/** Nimmt aus der Autodarts-Config nur die Anzahl belegter Kamera-Plaetze. */
+export function parseCamsConfig(body: unknown): { cams: number } | null {
   if (typeof body !== "object" || body === null) return null;
-  const { auth, cam } = body as Record<string, unknown>;
-  const list = (cam as Record<string, unknown> | null | undefined)?.["cams"];
+  const list = ((body as Record<string, unknown>)["cam"] as Record<string, unknown> | null | undefined)?.["cams"];
   if (!Array.isArray(list)) return null;
-  // Autodarts bis 2.0.x schreibt board_id, ab 2.1.0 boardId.
-  const fields = auth as Record<string, unknown> | null | undefined;
-  const id = fields?.["boardId"] ?? fields?.["board_id"];
-  return {
-    board_id: typeof id === "string" && id.length > 0 ? id : null,
-    cams: list.filter((entry) => typeof entry === "string" && entry.length > 0).length,
-  };
+  return { cams: list.filter((entry) => typeof entry === "string" && entry.length > 0).length };
 }
 
 /**
@@ -96,8 +80,6 @@ export function cached<T>(ttlMs: number, now: () => number, load: () => Promise<
 }
 
 export function createCams(deps: CamsDeps): Cams {
-  let fetched = 0;
-
   const configOk = cached(CONFIG_TTL_MS, deps.now, async () => {
     const parsed = parseCamsConfig(await deps.http.json("/api/config", TIMEOUT_MS));
     if (!parsed) throw new Error("Unerwartete Config");
@@ -111,7 +93,7 @@ export function createCams(deps: CamsDeps): Cams {
       return null;
     }
   });
-  async function config(): Promise<{ board_id: string | null; cams: number }> {
+  async function config(): Promise<{ cams: number }> {
     const result = await configOrNull();
     if (!result) throw new Error("Autodarts-Config nicht lesbar");
     return result;
@@ -142,7 +124,6 @@ export function createCams(deps: CamsDeps): Cams {
     let load = images.get(n);
     if (!load) {
       load = cached(IMAGE_TTL_MS, deps.now, async (): Promise<CamImage> => {
-        fetched += 1;
         try {
           return { ok: true, jpeg: await deps.http.bytes(`/api/img/cams/${n}`, TIMEOUT_MS) };
         } catch {
@@ -155,10 +136,6 @@ export function createCams(deps: CamsDeps): Cams {
   }
 
   return {
-    async info() {
-      const { board_id, cams } = await config();
-      return { board_id, cams, fetched };
-    },
     calibration: () => calibration(),
     async image(n, options = {}) {
       let cams: number;
