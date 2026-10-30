@@ -57,7 +57,9 @@ export function parseCamsConfig(body: unknown): { board_id: string | null; cams:
   const { auth, cam } = body as Record<string, unknown>;
   const list = (cam as Record<string, unknown> | null | undefined)?.["cams"];
   if (!Array.isArray(list)) return null;
-  const id = (auth as Record<string, unknown> | null | undefined)?.["board_id"];
+  // Autodarts bis 2.0.x schreibt board_id, ab 2.1.0 boardId.
+  const fields = auth as Record<string, unknown> | null | undefined;
+  const id = fields?.["boardId"] ?? fields?.["board_id"];
   return {
     board_id: typeof id === "string" && id.length > 0 ? id : null,
     cams: list.filter((entry) => typeof entry === "string" && entry.length > 0).length,

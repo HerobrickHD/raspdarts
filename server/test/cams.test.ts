@@ -67,6 +67,13 @@ describe("parseCamsConfig", () => {
     expect(parseCamsConfig(CONFIG)).toEqual({ board_id: "b-1", cams: 3 });
   });
 
+  test("Autodarts ab 2.1.0 schreibt boardId statt board_id", () => {
+    expect(parseCamsConfig({ auth: { apiKey: "GEHEIM-123", boardId: "b-2" }, cam: { cams: ["a", "b"] } })).toEqual({
+      board_id: "b-2",
+      cams: 2,
+    });
+  });
+
   test("ohne Board-ID bleibt board_id null", () => {
     expect(parseCamsConfig({ auth: {}, cam: { cams: ["a"] } })).toEqual({ board_id: null, cams: 1 });
   });
