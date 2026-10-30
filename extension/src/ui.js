@@ -1,21 +1,15 @@
 'use strict';
 
-// Gemeinsamer Unterbau fuer unsere Knoepfe auf der Karte des Raspdarts-Boards
-// (play.autodarts.com/boards): Board-ID, Karte finden, Knopf einsetzen,
-// Fenster ueber der Seite, Seitenwechsel. Genutzt von cams.js und viewer.js.
-// Siehe docs/superpowers/specs/2026-10-12-viewer-fenster-design.md.
+// Gemeinsamer Unterbau der Extension: Texte, Nachrichten an den
+// Background-Teil, Speicher, Zustand eines Knopfs und das Fenster ueber der
+// Seite. Genutzt von viewer.js.
 (function (root) {
-  const { pickBoardId } = root.raspdartsViewerView;
-  const { isBoardsPage } = root.raspdartsCamsView;
   const { detectLanguage, getTexts } = root.raspdartsTexts;
-  const BOARD_ID_KEY = 'boardId';
 
   // Symbole aus Lucide (https://lucide.dev), ISC-Lizenz, Copyright (c) Lucide Contributors.
   const svg = (body) => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
     + ` stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
   const ICONS = {
-    camera: svg('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>'
-      + '<circle cx="12" cy="13" r="3"/>'),
     monitor: svg('<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/>'
       + '<line x1="12" x2="12" y1="17" y2="21"/>'),
     monitorOff: svg('<path d="M17 17H4a2 2 0 0 1-2-2V5c0-1.5 1-2 1-2"/><path d="M22 15V5a2 2 0 0 0-2-2H9"/>'
@@ -38,7 +32,6 @@
   `;
 
   let cachedTexts = null;
-  let visit = null;
 
   function texts() {
     if (!cachedTexts) {
@@ -77,65 +70,6 @@
         resolve();
       }
     });
-  }
-
-  // cams ist null, wenn der Pi nicht antwortet und nur die gemerkte ID bekannt ist.
-  async function loadBoard() {
-    const [result, stored] = await Promise.all([
-      sendToBackground({ type: 'fetch', url: '/api/cams' }),
-      storageGet(BOARD_ID_KEY),
-    ]);
-    const boardId = pickBoardId(result, stored);
-    if (!boardId) return null;
-    if (boardId !== stored) storageSet(BOARD_ID_KEY, boardId);
-    const cams = result?.ok && Number.isInteger(result.data?.cams) ? result.data.cams : null;
-    return { boardId, cams };
-  }
-
-  function boardForVisit() {
-    if (!visit) visit = loadBoard();
-    return visit;
-  }
-
-  // Aufbau der Karte (Stand 12.10.2026):
-  //   Karte > Kopfzeile (Name, Einstellungen, Zustands-Abzeichen) … Knopfzeile
-  //   Knopfzeile > linke Gruppe (Starten/Stoppen, Kalibrieren, Board Manager)
-  //              | rechte Gruppe (ID kopieren, "Board folgen"-Link, …)
-  function locateCard(boardId) {
-    const follow = document.querySelector(`a[href="/boards/${CSS.escape(boardId)}/follow"]`);
-    const row = follow?.parentElement?.parentElement;
-    const card = row?.parentElement;
-    const leftGroup = row?.firstElementChild;
-    const head = card?.firstElementChild;
-    if (!card || !leftGroup || !head || leftGroup === follow.parentElement) return null;
-    return {
-      leftGroup,
-      autodartsButtons: [...leftGroup.children].filter((el) => !el.dataset.raspdarts),
-      badge: head.querySelector('.rounded-full'),
-      name: head.querySelector('span')?.textContent.trim() || 'Board',
-    };
-  }
-
-  // Der Knopf steckt in einem <span>, das den Hinweis traegt: Autodarts'
-  // Klassen schalten bei deaktivierten Knoepfen die Maus ab, dann zeigte der
-  // Knopf selbst keinen Hinweis.
-  function ensureButton(parts, { id, after, onClick }) {
-    let wrap = document.getElementById(id);
-    if (wrap && parts.leftGroup.contains(wrap)) return wrap;
-    wrap?.remove();
-    wrap = document.createElement('span');
-    wrap.id = id;
-    wrap.dataset.raspdarts = '1';
-    wrap.style.display = 'inline-flex';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    const model = parts.autodartsButtons[1] ?? parts.autodartsButtons[0];
-    btn.className = model?.className ?? '';
-    btn.addEventListener('click', onClick);
-    wrap.append(btn);
-    if (after) after.after(wrap);
-    else parts.leftGroup.append(wrap);
-    return wrap;
   }
 
   // Schreibt nur, was sich aendert: jede Aenderung am DOM weckt die
@@ -199,29 +133,5 @@
     return { shadow, body: shadow.querySelector('.body'), close };
   }
 
-  // Autodarts wechselt Seiten ohne Neuladen und baut Karten neu auf; das
-  // Abzeichen aendert dabei seinen Text.
-  function watchBoardsPage({ onEnter, onChange, onLeave }) {
-    let active = false;
-    function check() {
-      const onBoards = isBoardsPage(location.pathname);
-      if (onBoards && !active) {
-        active = true;
-        onEnter();
-      } else if (!onBoards && active) {
-        active = false;
-        visit = null;
-        onLeave();
-      } else if (onBoards) {
-        onChange();
-      }
-    }
-    check();
-    new MutationObserver(check).observe(document.body, { childList: true, subtree: true, characterData: true });
-  }
-
-  root.raspdartsBoardCard = {
-    ICONS, boardForVisit, ensureButton, loadBoard, locateCard, openOverlay,
-    sendToBackground, setButton, storageGet, storageSet, texts, watchBoardsPage,
-  };
+  root.raspdartsUi = { ICONS, openOverlay, sendToBackground, setButton, storageGet, storageSet, texts };
 })(globalThis);

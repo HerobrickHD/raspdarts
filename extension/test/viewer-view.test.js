@@ -68,22 +68,6 @@ describe('viewerBlock', () => {
   });
 });
 
-describe('pickBoardId', () => {
-  test('nimmt die ID vom Pi', () => {
-    expect(vv.pickBoardId({ ok: true, data: { board_id: 'b-1', cams: 3 } }, 'alt')).toBe('b-1');
-  });
-
-  test('Pi nicht erreichbar: gemerkte ID', () => {
-    expect(vv.pickBoardId({ ok: false, error: 'Unreachable' }, 'alt')).toBe('alt');
-    expect(vv.pickBoardId(undefined, 'alt')).toBe('alt');
-  });
-
-  test('weder Pi noch gemerkte ID: null', () => {
-    expect(vv.pickBoardId({ ok: false }, undefined)).toBeNull();
-    expect(vv.pickBoardId({ ok: true, data: { board_id: null } }, '')).toBeNull();
-  });
-});
-
 describe('viewerLinks', () => {
   test('beide Adressen des Pi, .local zuerst (Fire TV kennt nur fritz.box)', () => {
     expect(vv.viewerLinks()).toEqual([

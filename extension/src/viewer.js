@@ -8,7 +8,7 @@
   const { ACTIONS, buildView, errorMessage } = globalThis.raspdartsViewModel;
   const { viewerBlock, viewerButtonState } = globalThis.raspdartsViewerView;
   const { FORWARD_KEY, isForwardingOn } = globalThis.raspdartsForwarding;
-  const card = globalThis.raspdartsBoardCard;
+  const card = globalThis.raspdartsUi;
 
   const BUTTON_ID = 'raspdarts-viewer-btn';
   const STATUS_INTERVAL_MS = 10_000;

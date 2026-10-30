@@ -1,7 +1,7 @@
 'use strict';
 
-// Reine Logik fuer den Viewer-Knopf auf der Board-Karte und den Viewer-Block
-// im Fenster. Ohne DOM, damit sie sich ohne Browser testen laesst.
+// Reine Logik fuer den Raspdarts-Knopf in der Navigationsleiste und den
+// Viewer-Block im Fenster. Ohne DOM, damit sie sich ohne Browser testen laesst.
 // Siehe docs/superpowers/specs/2026-10-12-viewer-fenster-design.md.
 (function (root) {
   function viewerButtonState(on, t) {
@@ -25,13 +25,6 @@
     return { ...base, stateText: t.viewerConnectedAgo.replace('{s}', String(seconds)), stateTone: 'ok' };
   }
 
-  // apiResult: Antwort des Background-Teils auf GET /api/cams.
-  function pickBoardId(apiResult, storedId) {
-    const fromPi = apiResult?.ok ? apiResult.data?.board_id : null;
-    if (typeof fromPi === 'string' && fromPi.length > 0) return fromPi;
-    return typeof storedId === 'string' && storedId.length > 0 ? storedId : null;
-  }
-
   // Beide Namen des Pi: .local fuer PC und Handy, fritz.box fuer Geraete ohne
   // .local (Fire TV). Welcher im jeweiligen Browser geht, wissen wir nicht.
   const VIEWER_URLS = ['http://raspdarts.local:8743/', 'http://raspdarts.fritz.box:8743/'];
@@ -40,5 +33,5 @@
     return VIEWER_URLS.map((href) => ({ href, label: `${new URL(href).hostname} ↗` }));
   }
 
-  root.raspdartsViewerView = { pickBoardId, viewerBlock, viewerButtonState, viewerLinks };
+  root.raspdartsViewerView = { viewerBlock, viewerButtonState, viewerLinks };
 })(globalThis);
