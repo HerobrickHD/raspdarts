@@ -27,15 +27,33 @@
 
   // --- Knopf ---------------------------------------------------------------------
 
-  // Wie Autodarts' runde Symbol-Knoepfe in der Leiste (Freunde, Glocke).
-  const NAV_BUTTON_CLASS = 'relative size-8 flex items-center justify-center rounded-full text-mono-white hover:text-blue-30 transition-all';
+  // Wie Autodarts' Symbol-Knoepfe in der jeweiligen Leiste.
+  const NAV_STYLE = {
+    className: 'relative size-8 flex items-center justify-center rounded-full text-mono-white hover:text-blue-30 transition-all',
+    css: 'width: 32px; height: 32px; padding: 6px;',
+  };
+  const MATCH_STYLE = {
+    className: 'relative text-secondary-on hover:text-blue-40 transition-colors',
+    css: 'width: 28px; height: 28px; padding: 4px;',
+  };
 
-  // Aufbau der Leiste (Stand 31.10.2026): header > ... > Gruppe rechts mit
-  // dem Profilbild-Knopf (darin [data-slot="avatar"]) - so unabhaengig von
-  // der Sprache zu finden. Ohne Profilbild (abgemeldet) kein Knopf.
-  function refreshButton() {
+  // Aufbau der Leisten (Stand 31.10.2026), unabhaengig von der Sprache:
+  //   ueberall: header > ... > Gruppe rechts mit dem Profilbild-Knopf (darin
+  //             [data-slot="avatar"]) - unser Knopf links davor;
+  //   im Spiel (/matches/…): kein Profilbild, header > Gruppe rechts
+  //             (Zuschauer, Statistik, Zahnrad) - unser Knopf vor dem ersten Knopf.
+  // Sonst (z. B. abgemeldet) kein Knopf.
+  function findPlace() {
     const avatar = document.querySelector('header button:has([data-slot="avatar"])');
-    if (!avatar) return;
+    if (avatar) return { before: avatar, style: NAV_STYLE };
+    if (!location.pathname.startsWith('/matches/')) return null;
+    const first = document.querySelector('header > :last-child > button');
+    return first ? { before: first, style: MATCH_STYLE } : null;
+  }
+
+  function refreshButton() {
+    const place = findPlace();
+    if (!place) return;
     let wrap = document.getElementById(BUTTON_ID);
     if (!wrap) {
       // Der Knopf steckt in einem <span>, das den Hinweis traegt.
@@ -45,13 +63,17 @@
       wrap.style.display = 'inline-flex';
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = NAV_BUTTON_CLASS;
-      btn.style.cssText = 'width: 32px; height: 32px; padding: 6px;';
       btn.addEventListener('click', openWindow);
       wrap.append(btn);
     }
+    // Nur Aenderungen schreiben - jede weckt den MutationObserver.
+    const btn = wrap.firstElementChild;
+    if (btn.className !== place.style.className) {
+      btn.className = place.style.className;
+      btn.style.cssText = place.style.css;
+    }
     // Autodarts baut die Leiste beim Seitenwechsel neu - dann wieder davor.
-    if (avatar.previousElementSibling !== wrap) avatar.before(wrap);
+    if (place.before.previousElementSibling !== wrap) place.before.before(wrap);
     const state = viewerButtonState(forwardOn, ui.texts());
     ui.setButton(wrap, {
       icon: ui.ICONS[state.icon],

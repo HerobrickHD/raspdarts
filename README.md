@@ -74,7 +74,7 @@ cd extension && bash build.sh
 - **Firefox (≥ 128):** `about:debugging#/runtime/this-firefox` → „Temporäres Add-on laden“ → `extension/dist/firefox/manifest.json`.
   Falls das Raspdarts-Fenster den Pi nicht erreicht: unter `about:addons` → Raspdarts → Berechtigungen den Zugriff auf `raspdarts.local` erlauben.
 
-Die Extension fügt auf `play.autodarts.com/boards` der Karte des Raspdarts-Boards zwei Knöpfe hinzu: **Kameras** (Standbilder der Kameras) und **Viewer** anstelle von „Board Manager“ (Weitergabe der Spieldaten an/aus, Pi-Werte, Aktualisieren, Neu starten, Herunterfahren, Deinstallieren).
+Die Extension setzt in die Navigationsleiste von `play.autodarts.com` links neben das Profilbild einen **Raspdarts-Knopf** (Monitor; durchgestrichen, wenn die Weitergabe aus ist). Er öffnet das Raspdarts-Fenster: Weitergabe der Spieldaten an/aus, Links zum Viewer, Pi-Werte, Aktualisieren, Neu starten, Herunterfahren, Deinstallieren. Die Board-Karte unter `/boards` bleibt unverändert – Kamerabilder zeigt Autodarts' eigener Board Manager.
 
 ## Sicherheit
 
