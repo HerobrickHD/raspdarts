@@ -158,7 +158,7 @@ ist; der Beamer zeigt sie unverändert.
 Darunter die **Spielart** wählen (Zusatz „angepasst“ oder „Standard“) und ihre
 Bausteine einstellen: Hintergrund (Schwarz oder Autodarts, dazu Rahmen – weiße
 Linie am Bildrand zum Ausrichten des Beamers), Scheibe (Kamera, Gezeichnet, Linien,
-Nur Licht; Zahlenring, Darts, Leuchten). **Kamera** zeigt das echte, entzerrte Bild
+Nur Licht; Zahlenring mit Ausrichtung „Wie bisher“ oder „Gerade“ und Zahlen-Abstand 0–40 mm per Schieberegler, Darts, Leuchten). **Kamera** zeigt das echte, entzerrte Bild
 einer Autodarts-Kamera (Wahl über drei Vorschaubilder); ein neues Bild kommt nach
 jedem Pfeil und wenn die Pfeile heraus sind, nie im Standby, Aufnahme, Spielinfo, Spielerkarten (mit Verteilung und Teilen).
 „Auf Standard zurücksetzen“ verwirft die Anpassung dieser Spielart samt Lage der

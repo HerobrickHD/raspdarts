@@ -140,6 +140,11 @@ function render() {
   }
   messageEl.textContent = shown.phase === "idle" ? "Warte auf ein Spiel" : "";
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
+  board.setNumbers({
+    offset: Number(current?.content.scheibe?.zahlenAbstand ?? 0),
+    upright: current?.content.scheibe?.zahlenAusrichtung === "gerade",
+    boardRotation: current?.layout.board.rotation ?? 0,
+  });
   renderCamera(current);
   board.render(shown);
   if (shown.phase === "playing" && current) {

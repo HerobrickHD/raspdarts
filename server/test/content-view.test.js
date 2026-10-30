@@ -64,9 +64,15 @@ describe("contentAttributes", () => {
     expect(contentAttributes(CATALOG, {}, "x01")).toEqual(contentAttributes(CATALOG, defaultContent(), "x01"));
   });
 
-  test("jede Option wirkt im Stylesheet (Darstellung der Scheibe setzt app.js)", () => {
+  test("jede Option wirkt im Stylesheet (Darstellung und Zahlen der Scheibe setzt app.js)", () => {
     const css = readFileSync("public/style.css", "utf8");
-    const handledInCode = ["data-scheibe-darstellung", "data-scheibe-kamera"];
+    const handledInCode = [
+      "data-scheibe-darstellung",
+      "data-scheibe-kamera",
+      // Lage der Zahlen rechnet board.js (numberSpots)
+      "data-scheibe-zahlenausrichtung",
+      "data-scheibe-zahlenabstand",
+    ];
     for (const name of Object.keys(contentAttributes(CATALOG, defaultContent(), "x01"))) {
       if (handledInCode.includes(name)) continue;
       expect(css, name).toContain(`[${name}=`);

@@ -268,6 +268,15 @@ export function createPanel(root, handlers) {
 
   function buildOptionElement(part, option) {
     if (part.id === "scheibe" && option.id === "kamera") return buildCameraPicks(part, option);
+    if (option.type === "range") {
+      const input = node("input", { type: "range", className: "range", min: option.min, max: option.max, step: option.step });
+      Object.assign(input.dataset, { part: part.id, option: option.id, unit: option.unit });
+      input.setAttribute("aria-label", option.label);
+      return node("label", { className: "option-choice" }, [
+        node("span", { className: "option-label" }, [option.label, ...onlyIn(option)]),
+        node("div", { className: "range-row" }, [input, node("span", { className: "range-value" })]),
+      ]);
+    }
     if (option.type === "toggle") {
       return node("label", { className: "option-row" }, [
         node("span", {}, [option.label, ...onlyIn(option)]),
@@ -301,14 +310,25 @@ export function createPanel(root, handlers) {
     partList.replaceChildren(...catalog.parts.map(buildPart));
   }
 
-  partList.addEventListener("change", (event) => {
-    const input = event.target;
+  function contentFrom(input) {
     const { part, option } = input.dataset;
-    if (!part || !profile) return;
     const content = structuredClone(profile.content);
     if (!option) content[part].on = input.checked;
+    else if (input.type === "range") content[part][option] = Number(input.value);
     else content[part][option] = input.type === "radio" ? input.value : input.checked;
-    handlers.onContent(content);
+    return content;
+  }
+
+  partList.addEventListener("change", (event) => {
+    if (!event.target.dataset.part || !profile) return;
+    handlers.onContent(contentFrom(event.target));
+  });
+
+  /* Schieberegler wirken schon beim Ziehen; ein Zug ist ein Schritt fuer Zurueck. */
+  partList.addEventListener("input", (event) => {
+    const input = event.target;
+    if (input.type !== "range" || !input.dataset.part || !profile) return;
+    handlers.onContent(contentFrom(input), `range:${input.dataset.part}.${input.dataset.option}`);
   });
 
   /* --- Aufbau ------------------------------------------------------------- */
@@ -380,7 +400,11 @@ export function createPanel(root, handlers) {
       if (!value) continue;
       const option = input.dataset.option;
       if (!option) input.checked = value.on;
-      else if (input.type === "radio") input.checked = value[option] === input.value;
+      else if (input.type === "range") {
+        input.value = String(value[option]);
+        const shown = `${String(value[option]).replace(".", ",")} ${input.dataset.unit}`;
+        input.nextElementSibling.textContent = shown;
+      } else if (input.type === "radio") input.checked = value[option] === input.value;
       else input.checked = value[option] === true;
     }
     for (const section of partList.querySelectorAll(".part")) {

@@ -35,7 +35,21 @@ export interface ChoiceOption {
   showIf?: { option: string; value: string };
 }
 
-export type Option = ToggleOption | ChoiceOption;
+/** Schieberegler; der Wert ist eine Zahl von min bis max im Raster step. */
+export interface RangeOption {
+  id: string;
+  label: string;
+  type: "range";
+  min: number;
+  max: number;
+  step: number;
+  /** Einheit fuer die Anzeige neben dem Wert, z. B. "mm" */
+  unit: string;
+  default: number;
+  modes?: string[];
+}
+
+export type Option = ToggleOption | ChoiceOption | RangeOption;
 
 export interface Part {
   id: string;
@@ -51,11 +65,11 @@ export interface Part {
 
 export interface PartContent {
   on: boolean;
-  [option: string]: boolean | string;
+  [option: string]: boolean | string | number;
 }
 
 export type Content = Record<string, PartContent>;
-export type ContentPatch = Record<string, Record<string, boolean | string>>;
+export type ContentPatch = Record<string, Record<string, boolean | string | number>>;
 
 export type ModeGroup = "spiele" | "training" | "party";
 
@@ -196,6 +210,28 @@ export const CATALOG: Catalog = {
           showIf: { option: "darstellung", value: "kamera" },
         },
         toggle("zahlenring", "Zahlenring"),
+        {
+          // ring: entlang des Rings, unten umgedreht (wie bisher); gerade: alle aufrecht auf dem Bild.
+          id: "zahlenAusrichtung",
+          label: "Zahlen ausrichten",
+          type: "choice",
+          choices: [
+            { id: "ring", label: "Wie bisher" },
+            { id: "gerade", label: "Gerade" },
+          ],
+          default: "ring",
+        },
+        {
+          // Zusaetzlicher Abstand der Zahlen nach aussen, in mm auf der Scheibe.
+          id: "zahlenAbstand",
+          label: "Zahlen-Abstand",
+          type: "range",
+          min: 0,
+          max: 40,
+          step: 0.5,
+          unit: "mm",
+          default: 0,
+        },
         toggle("darts", "Darts einzeichnen"),
         toggle("letzterDart", "Letzten Dart leuchten"),
       ],
@@ -256,10 +292,16 @@ function partDefaults(part: Part): PartContent {
   return value;
 }
 
-function isValid(option: Option, raw: unknown): raw is boolean | string {
-  return option.type === "toggle"
-    ? typeof raw === "boolean"
-    : typeof raw === "string" && option.choices.some((choice) => choice.id === raw);
+function isValid(option: Option, raw: unknown): raw is boolean | string | number {
+  if (option.type === "toggle") return typeof raw === "boolean";
+  if (option.type === "range") return typeof raw === "number" && Number.isFinite(raw);
+  return typeof raw === "string" && option.choices.some((choice) => choice.id === raw);
+}
+
+/** Zahl auf das Raster des Reglers und in seine Grenzen. */
+function toRange(option: RangeOption, raw: number): number {
+  const snapped = Math.round(raw / option.step) * option.step;
+  return Math.min(option.max, Math.max(option.min, Number(snapped.toFixed(6))));
 }
 
 /**
@@ -279,7 +321,9 @@ export function sanitizeContent(stored: unknown, fallback: Content = {}): Conten
     const value: PartContent = { on: part.fixed ? true : typeof on === "boolean" ? on : base.on };
     for (const option of part.options) {
       const raw = given[option.id];
-      value[option.id] = isValid(option, raw) ? raw : (base[option.id] ?? option.default);
+      const valid = isValid(option, raw);
+      value[option.id] =
+        valid && option.type === "range" ? toRange(option, raw as number) : valid ? raw : (base[option.id] ?? option.default);
     }
     content[part.id] = value;
   }

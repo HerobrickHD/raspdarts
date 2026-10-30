@@ -35,7 +35,7 @@ describe("Vorgaben", () => {
   test("Vorgaben wie in der Spec", () => {
     const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, darts: true, letzterDart: true });
+    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, darts: true, letzterDart: true });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
     expect(c["spieler"]).toEqual({
@@ -180,5 +180,34 @@ describe("Darstellung der Scheibe", () => {
       darstellung: "kamera",
       kamera: "2",
     });
+  });
+});
+
+describe("Zahlenring: Ausrichtung und Abstand", () => {
+  test("Vorgabe wie bisher: entlang des Rings, 0 mm", () => {
+    const scheibe = contentDefaults()["scheibe"]!;
+    expect(scheibe["zahlenAusrichtung"]).toBe("ring");
+    expect(scheibe["zahlenAbstand"]).toBe(0);
+  });
+
+  test("Abstand ist eine Zahl von 0 bis 40 in Schritten von 0,5", () => {
+    const abstand = (raw: unknown) => sanitizeContent({ scheibe: { zahlenAbstand: raw } })["scheibe"]!["zahlenAbstand"];
+    expect(abstand(12)).toBe(12);
+    expect(abstand(12.3)).toBe(12.5);
+    expect(abstand(99)).toBe(40);
+    expect(abstand(-3)).toBe(0);
+    expect(abstand("10")).toBe(0);
+    expect(abstand(Number.NaN)).toBe(0);
+  });
+
+  test("Ausrichtung gerade wird angenommen, Unbekanntes nicht", () => {
+    const ausrichtung = (raw: unknown) => sanitizeContent({ scheibe: { zahlenAusrichtung: raw } })["scheibe"]!["zahlenAusrichtung"];
+    expect(ausrichtung("gerade")).toBe("gerade");
+    expect(ausrichtung("schief")).toBe("ring");
+  });
+
+  test("ein ungueltiger Abstand behaelt den bisherigen Wert", () => {
+    const before = sanitizeContent({ scheibe: { zahlenAbstand: 20 } });
+    expect(sanitizeContent({ scheibe: { zahlenAbstand: "x" } }, before)["scheibe"]!["zahlenAbstand"]).toBe(20);
   });
 });

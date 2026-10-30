@@ -51,14 +51,15 @@ export function createSettings({
     sync.flush();
   }
 
-  /* Eine Aenderung an den Inhalten: sofort im eigenen Bild, gedrosselt an den Pi. */
-  function changeContent(content) {
+  /* Eine Aenderung an den Inhalten: sofort im eigenen Bild, gedrosselt an den Pi.
+     key fasst Schritte fuer Zurueck zusammen (Schieberegler beim Ziehen). */
+  function changeContent(content, key = null) {
     const { profile } = getView();
     if (JSON.stringify(content) === JSON.stringify(profile.content)) return;
     const next = { ...profile, content };
     applyLocalProfile(next);
     sync.queue(profile.id, { content, editing: editing() });
-    undo.record(profile, next);
+    undo.record(profile, next, key);
   }
 
   const panel = createPanel(root, {

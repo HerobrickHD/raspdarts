@@ -24,6 +24,22 @@ export const SEGMENT_DEG = 18;
 const MISS = { multiplier: 0, number: 0, ring: null };
 const round = (n) => Number(n.toFixed(3));
 
+/**
+ * Lage der Zahlen um die Scheibe: offset = zusaetzlicher Abstand nach aussen
+ * in mm; upright = alle aufrecht auf dem Bild (gegen die Drehung der Scheibe
+ * boardRotation), sonst entlang des Rings und unten umgedreht.
+ */
+export function numberSpots({ offset, upright, boardRotation }) {
+  const radius = (RADIUS.doubleOuter + RADIUS.board) / 2 + offset;
+  return NUMBERS.map((number, index) => {
+    const angle = index * SEGMENT_DEG;
+    const { x, y } = pointAt(radius, angle);
+    // Unten stehende Zahlen nicht auf den Kopf stellen.
+    const along = angle > 90 && angle < 270 ? angle - 180 : angle;
+    return { number, x, y, turn: upright ? -boardRotation : along };
+  });
+}
+
 /** Autodarts-Koordinaten (1 = Aussenkante Double, y nach oben) → mm. */
 export function coordsToPoint(coords) {
   return { x: coords.x * RADIUS.doubleOuter, y: -coords.y * RADIUS.doubleOuter };

@@ -7,6 +7,7 @@ import {
   fieldAt,
   fieldCenter,
   fieldPath,
+  numberSpots,
 } from "../public/js/geometry.js";
 import { toField } from "../src/viewer/game-state.ts";
 
@@ -111,5 +112,35 @@ describe("fieldPath", () => {
     expect(Math.hypot(x, y)).toBeCloseTo(107, 2);
     expect(x).toBeLessThan(0);
     expect(y).toBeLessThan(0);
+  });
+});
+
+describe("numberSpots", () => {
+  const base = (RADIUS.doubleOuter + RADIUS.board) / 2;
+
+  test("20 Zahlen, die 20 oben im bisherigen Abstand", () => {
+    const spots = numberSpots({ offset: 0, upright: false, boardRotation: 0 });
+    expect(spots).toHaveLength(20);
+    expect(spots[0].number).toBe(20);
+    expect(spots[0].x).toBeCloseTo(0, 6);
+    expect(spots[0].y).toBeCloseTo(-base, 6);
+  });
+
+  test("Abstand schiebt nach aussen", () => {
+    const spots = numberSpots({ offset: 10, upright: false, boardRotation: 0 });
+    expect(Math.hypot(spots[5].x, spots[5].y)).toBeCloseTo(base + 10, 6);
+  });
+
+  test("wie bisher: entlang des Rings, unten umgedreht", () => {
+    const turns = numberSpots({ offset: 0, upright: false, boardRotation: 30 }).map((s) => s.turn);
+    expect(turns[0]).toBe(0); // 20 oben
+    expect(turns[5]).toBe(90); // 6 rechts
+    expect(turns[10]).toBe(0); // 3 unten: 180 - 180
+    expect(turns[15]).toBe(270); // 11 links: wie bisher (nicht umgedreht)
+  });
+
+  test("gerade: alle aufrecht auf dem Bild, auch bei gedrehter Scheibe", () => {
+    const turns = numberSpots({ offset: 0, upright: true, boardRotation: 30 }).map((s) => s.turn);
+    expect(new Set(turns)).toEqual(new Set([-30]));
   });
 });

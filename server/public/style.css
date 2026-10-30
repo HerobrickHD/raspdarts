@@ -962,6 +962,31 @@ body {
   gap: 6px;
 }
 
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings .range {
+  flex: 1;
+  accent-color: var(--ad-blue);
+  cursor: pointer;
+}
+
+.settings .range:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.range-value {
+  min-width: 52px;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ad-muted);
+}
+
 .option-label {
   font-size: 12px;
   font-weight: 600;

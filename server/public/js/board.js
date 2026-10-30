@@ -12,6 +12,7 @@ import {
   coordsToPoint,
   fieldCenter,
   fieldPath,
+  numberSpots,
   pointAt,
 } from "./geometry.js";
 
@@ -49,24 +50,22 @@ function drawFields(group) {
   group.append(el("path", { d: fieldPath({ multiplier: 2, number: 25, ring: null }), class: "field-red" }));
 }
 
-function drawNumbers(group) {
-  const radius = (RADIUS.doubleOuter + RADIUS.board) / 2;
-  NUMBERS.forEach((number, index) => {
-    const angle = index * SEGMENT_DEG;
-    const { x, y } = pointAt(radius, angle);
-    // Unten stehende Zahlen nicht auf den Kopf stellen.
-    const turn = angle > 90 && angle < 270 ? angle - 180 : angle;
-    const text = el("text", {
-      x: x.toFixed(2),
-      y: y.toFixed(2),
-      class: "board-number",
-      "text-anchor": "middle",
-      "dominant-baseline": "central",
-      transform: `rotate(${turn} ${x.toFixed(2)} ${y.toFixed(2)})`,
-    });
-    text.textContent = String(number);
-    group.append(text);
-  });
+/* Ausrichtung und Abstand aus dem Profil; numberSpots rechnet die Lage. */
+function drawNumbers(group, options) {
+  group.replaceChildren(
+    ...numberSpots(options).map(({ number, x, y, turn }) => {
+      const text = el("text", {
+        x: x.toFixed(2),
+        y: y.toFixed(2),
+        class: "board-number",
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+        transform: `rotate(${turn} ${x.toFixed(2)} ${y.toFixed(2)})`,
+      });
+      text.textContent = String(number);
+      return text;
+    }),
+  );
 }
 
 function drawWires(group) {
@@ -102,11 +101,19 @@ export function createBoard(svg) {
   const highlights = el("g", { class: "board-highlights" });
   const darts = el("g", { class: "board-darts" });
   drawFields(fields);
-  drawNumbers(numbers);
+  let numbersKey = "";
   drawWires(wires);
   svg.append(fields, numbers, wires, highlights, darts);
 
   return {
+    /** Zahlen neu setzen - nur wenn sich Abstand, Ausrichtung oder (bei gerade) die Drehung aendert. */
+    setNumbers({ offset = 0, upright = false, boardRotation = 0 } = {}) {
+      const options = { offset, upright, boardRotation: upright ? boardRotation : 0 };
+      const key = JSON.stringify(options);
+      if (key === numbersKey) return;
+      numbersKey = key;
+      drawNumbers(numbers, options);
+    },
     render(state) {
       const playing = state.phase === "playing";
       highlights.replaceChildren(
