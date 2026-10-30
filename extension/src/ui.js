@@ -74,7 +74,8 @@
 
   // Schreibt nur, was sich aendert: jede Aenderung am DOM weckt die
   // MutationObserver, die wiederum diese Funktion aufrufen.
-  function setButton(wrap, { icon, iconName, title, disabled = false, muted = false }) {
+  // mutedBackground: false fuer runde Leistenknoepfe ohne eigenen Hintergrund.
+  function setButton(wrap, { icon, iconName, title, disabled = false, muted = false, mutedBackground = true }) {
     const btn = wrap.firstElementChild;
     if (btn.dataset.icon !== iconName) {
       btn.innerHTML = icon;
@@ -88,7 +89,7 @@
     if (btn.dataset.muted !== String(muted)) {
       btn.dataset.muted = String(muted);
       // Farben wie Autodarts' deaktivierte Knoepfe, aber klickbar.
-      btn.style.background = muted ? 'var(--color-black-70, #2b2f36)' : '';
+      btn.style.background = muted && mutedBackground ? 'var(--color-black-70, #2b2f36)' : '';
       btn.style.color = muted ? 'var(--color-black-30, #8b93a1)' : '';
     }
   }

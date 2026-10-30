@@ -1,14 +1,14 @@
 'use strict';
 
-// Viewer-Knopf auf der Karte des Raspdarts-Boards anstelle von Autodarts'
-// Board Manager (unter v2 ohne Funktion) und das Fenster dazu: Schalter fuer
+// Raspdarts-Knopf (Monitor) in der Navigationsleiste von Autodarts, links
+// neben dem Profilbild, auf allen Seiten; und das Fenster dazu: Schalter fuer
 // die Weitergabe der Spieldaten und die bisherige Raspdarts-Seite (page.js).
-// Siehe docs/superpowers/specs/2026-10-12-viewer-fenster-design.md.
+// Siehe docs/superpowers/specs/2026-10-30-zurueck-und-navigation-design.md.
 (function () {
   const { ACTIONS, buildView, errorMessage } = globalThis.raspdartsViewModel;
   const { viewerBlock, viewerButtonState } = globalThis.raspdartsViewerView;
   const { FORWARD_KEY, isForwardingOn } = globalThis.raspdartsForwarding;
-  const card = globalThis.raspdartsUi;
+  const ui = globalThis.raspdartsUi;
 
   const BUTTON_ID = 'raspdarts-viewer-btn';
   const STATUS_INTERVAL_MS = 10_000;
@@ -16,7 +16,6 @@
   // Letzte Spieldaten, die noch unterwegs sind, sollen den Reset nicht ueberholen.
   const RESET_DELAY_MS = 500;
 
-  let board = null;       // { boardId, cams } aus board-card.js
   let forwardOn = true;   // bis der gespeicherte Wert gelesen ist
   let status = null;      // letzte erfolgreiche Antwort von /api/status
   let reachable = null;   // null = noch keine Antwort
@@ -28,19 +27,39 @@
 
   // --- Knopf ---------------------------------------------------------------------
 
+  // Wie Autodarts' runde Symbol-Knoepfe in der Leiste (Freunde, Glocke).
+  const NAV_BUTTON_CLASS = 'relative size-8 flex items-center justify-center rounded-full text-mono-white hover:text-blue-30 transition-all';
+
+  // Aufbau der Leiste (Stand 31.10.2026): header > ... > Gruppe rechts mit
+  // dem Profilbild-Knopf (darin [data-slot="avatar"]) - so unabhaengig von
+  // der Sprache zu finden. Ohne Profilbild (abgemeldet) kein Knopf.
   function refreshButton() {
-    if (!board) return;
-    const parts = card.locateCard(board.boardId);
-    if (!parts) return;
-    // Board Manager ist der letzte Autodarts-Knopf der Gruppe; nur verstecken,
-    // nicht entfernen, damit Autodarts' eigene Darstellung heil bleibt. Mit
-    // weniger als drei Knoepfen stimmt der Aufbau nicht - dann nichts verstecken.
-    const buttons = parts.autodartsButtons;
-    const manager = buttons.length >= 3 ? buttons[buttons.length - 1] : null;
-    if (manager && manager.style.display !== 'none') manager.style.setProperty('display', 'none', 'important');
-    const wrap = card.ensureButton(parts, { id: BUTTON_ID, after: manager, onClick: openWindow });
-    const state = viewerButtonState(forwardOn, card.texts());
-    card.setButton(wrap, { icon: card.ICONS[state.icon], iconName: state.icon, title: state.title, muted: !state.on });
+    const avatar = document.querySelector('header button:has([data-slot="avatar"])');
+    if (!avatar) return;
+    let wrap = document.getElementById(BUTTON_ID);
+    if (!wrap) {
+      // Der Knopf steckt in einem <span>, das den Hinweis traegt.
+      wrap = document.createElement('span');
+      wrap.id = BUTTON_ID;
+      wrap.dataset.raspdarts = '1';
+      wrap.style.display = 'inline-flex';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = NAV_BUTTON_CLASS;
+      btn.style.cssText = 'width: 32px; height: 32px; padding: 6px;';
+      btn.addEventListener('click', openWindow);
+      wrap.append(btn);
+    }
+    // Autodarts baut die Leiste beim Seitenwechsel neu - dann wieder davor.
+    if (avatar.previousElementSibling !== wrap) avatar.before(wrap);
+    const state = viewerButtonState(forwardOn, ui.texts());
+    ui.setButton(wrap, {
+      icon: ui.ICONS[state.icon],
+      iconName: state.icon,
+      title: state.title,
+      muted: !state.on,
+      mutedBackground: false,
+    });
   }
 
   // --- Fenster -------------------------------------------------------------------
@@ -48,7 +67,7 @@
   function getPage() {
     if (!pagePromise) {
       pagePromise = globalThis.raspdartsPage
-        .create({ t: card.texts(), onAction: runAction, onActivityClosed: fetchStatus, onToggle: toggleForwarding })
+        .create({ t: ui.texts(), onAction: runAction, onActivityClosed: fetchStatus, onToggle: toggleForwarding })
         .then((created) => { page = created; return created; })
         .catch((error) => { pagePromise = null; throw error; });
     }
@@ -57,7 +76,7 @@
 
   function render() {
     if (!page) return;
-    const t = card.texts();
+    const t = ui.texts();
     page.render(buildView({ status, reachable, busy }, t), viewerBlock({ forwardOn, status, reachable, now: Date.now() }, t));
   }
 
@@ -72,10 +91,9 @@
       return;
     }
     if (overlay) return;
-    const t = card.texts();
-    const name = (board && card.locateCard(board.boardId)?.name) || 'Board';
-    overlay = card.openOverlay({
-      title: `${t.windowTitle} – ${name}`,
+    const t = ui.texts();
+    overlay = ui.openOverlay({
+      title: t.windowTitle,
       width: '1100px',
       closeLabel: t.close,
       canEscape: () => !created.isDialogOpen(),
@@ -96,7 +114,7 @@
   // --- Status --------------------------------------------------------------------
 
   async function fetchStatus() {
-    const result = await card.sendToBackground({ type: 'fetch', url: '/api/status' });
+    const result = await ui.sendToBackground({ type: 'fetch', url: '/api/status' });
     if (result?.ok) {
       status = result.data;
       reachable = true;
@@ -120,12 +138,12 @@
 
   async function toggleForwarding() {
     const next = !forwardOn;
-    await card.storageSet(FORWARD_KEY, next); // onChanged aktualisiert Knopf und Fenster
+    await ui.storageSet(FORWARD_KEY, next); // onChanged aktualisiert Knopf und Fenster
     if (!next) {
       // Wieder eingeschaltet (Doppelklick)? Dann kein Reset, sonst stuende der
       // Viewer mitten im Spiel leer bis zum naechsten Wurf.
       setTimeout(() => {
-        if (!forwardOn) card.sendToBackground({ type: 'fetch', url: '/api/ingest/reset', method: 'POST' });
+        if (!forwardOn) ui.sendToBackground({ type: 'fetch', url: '/api/ingest/reset', method: 'POST' });
       }, RESET_DELAY_MS);
     }
   }
@@ -146,7 +164,7 @@
 
     busy = true;
     render();
-    page.startActivity(card.texts().dialogs[key].title);
+    page.startActivity(ui.texts().dialogs[key].title);
     if (action.kind === 'stream') runStream(action);
     else runPower(action);
   }
@@ -158,7 +176,7 @@
   }
 
   function runStream(action) {
-    const t = card.texts();
+    const t = ui.texts();
     globalThis.raspdartsStream.runStream({
       connect: () => chrome.runtime.connect({ name: 'raspdarts-stream' }),
       url: action.url,
@@ -172,8 +190,8 @@
   }
 
   async function runPower(action) {
-    const t = card.texts();
-    const result = await card.sendToBackground({ type: 'fetch', url: action.url, method: 'POST' });
+    const t = ui.texts();
+    const result = await ui.sendToBackground({ type: 'fetch', url: action.url, method: 'POST' });
     if (result?.ok) {
       finishAction(true, t[action.doneText]);
       // Nicht schliessen, falls inzwischen schon die naechste Aktion laeuft.
@@ -190,14 +208,8 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && FORWARD_KEY in changes) applyForwarding(changes[FORWARD_KEY].newValue);
   });
-  card.storageGet(FORWARD_KEY).then(applyForwarding);
+  ui.storageGet(FORWARD_KEY).then(applyForwarding);
 
-  card.watchBoardsPage({
-    onEnter: () => card.boardForVisit().then((found) => { board = found; refreshButton(); }),
-    onChange: refreshButton,
-    onLeave: () => {
-      board = null;
-      overlay?.close();
-    },
-  });
+  refreshButton();
+  new MutationObserver(refreshButton).observe(document.body, { childList: true, subtree: true });
 })();
