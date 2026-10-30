@@ -83,7 +83,11 @@ export function createSettings({
       const { profile } = getView();
       sync.queue(id, { name, editing: editing() });
       sync.flush();
-      if (id === profile.id) undo.record(profile, { ...profile, name });
+      if (id !== profile.id) return;
+      // Sofort ins eigene Bild - sonst faende ein schnelles Strg+Z noch den alten Namen vor und taete nichts.
+      const next = { ...profile, name };
+      applyLocalProfile(next);
+      undo.record(profile, next);
     },
     onDelete(id) {
       sync.flush();

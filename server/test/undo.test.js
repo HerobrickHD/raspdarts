@@ -83,6 +83,15 @@ describe("createUndo", () => {
     expect(sync.queue).not.toHaveBeenCalled();
   });
 
+  test("Schritt eines anderen Profils (Wechsel waehrend Ziehen/Zuruecksetzen): verworfen", () => {
+    const { view, sync, undo } = setup();
+    const old = { ...view.profile, id: "alt" };
+    undo.record(old, { ...old, format: "16:9" });
+    expect(undo.canUndo()).toBe(false);
+    undo.undo();
+    expect(sync.queue).not.toHaveBeenCalled();
+  });
+
   test("onChange nach record, undo und clear", () => {
     const { view, onChange, undo } = setup();
     const before = view.profile;

@@ -23,6 +23,9 @@ export function undoKey(event) {
 
 export function createUndo({ getProfile, applyLocalProfile, sync, getEditing, onChange, history = createHistory() }) {
   function record(beforeProfile, afterProfile, key = null) {
+    // Inzwischen ist ein anderes Profil aktiv (Wechsel waehrend Ziehen oder
+    // Zuruecksetzen): Ein Zurueck schriebe den alten Stand ins neue Profil.
+    if (beforeProfile.id !== getProfile()?.id) return;
     history.record(snapshotOf(beforeProfile), snapshotOf(afterProfile), key);
     onChange();
   }
