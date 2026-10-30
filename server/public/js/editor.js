@@ -24,6 +24,15 @@ const PLUS_KEYS = ["+", "*", "="];
 const MINUS_KEYS = ["-", "_"];
 /* Bereichsgroesse per Tastatur (Hoehen-Prozent der Buehne): 1 fein, 10 mit Umschalt. */
 const AREA_STEP = 10;
+/* Feinschritt der Scheibe: 0,1 % sind am Beamer etwa 2 Pixel - zu grob, um
+   die Projektion auf die Draehte zu legen. Alles andere bleibt bei 0,1. */
+const BOARD_FINE_STEP = 0.01;
+const FINE_STEP = 0.1;
+
+/** Groessenschritt je Mausrad-Raste auf der Scheibe. */
+export function wheelStep(shiftKey) {
+  return shiftKey ? BOARD_FINE_STEP : 1;
+}
 
 /** Aenderung durch Ziehen an einem Block oder Griff; stage = Groesse der Buehne in px. */
 function drag(layout, id, handle, start, move, anchor, stage) {
@@ -71,8 +80,8 @@ export function isStageKey(event) {
 }
 
 /** Feinschritte per Tastatur; null, wenn die Taste nichts bedeutet. */
-function keyAction(event, selected) {
-  const step = event.shiftKey ? 1 : 0.1;
+export function keyAction(event, selected) {
+  const step = event.shiftKey ? 1 : selected === "scheibe" ? BOARD_FINE_STEP : FINE_STEP;
   const offset = {
     ArrowLeft: [-step, 0],
     ArrowRight: [step, 0],
@@ -227,7 +236,7 @@ export function createEditor({
       event.preventDefault();
       // Mit Umschalt melden manche Browser die Bewegung als deltaX.
       const direction = Math.sign(event.deltaY || event.deltaX);
-      const step = event.shiftKey ? 0.1 : 1;
+      const step = wheelStep(event.shiftKey);
       select("scheibe");
       change((layout) => {
         layout.board.diameter = clamp(layout.board.diameter - direction * step, 5, 400);
