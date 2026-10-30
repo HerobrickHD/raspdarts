@@ -18,6 +18,7 @@ import { createSync } from "./profile-sync.js";
 import { PREVIEW_MODE, previewState } from "./sample-state.js";
 import { createSettings } from "./settings.js";
 import { fitStage } from "./stage.js";
+import { createUndo } from "./undo.js";
 
 const viewer = document.getElementById("viewer");
 const boardSvg = document.getElementById("board-svg");
@@ -80,12 +81,22 @@ function applyLocalProfile(profile) {
   render();
 }
 
+/* Zurueck/Wiederholen: nur auf diesem Geraet, je Profil. */
+const undo = createUndo({
+  getProfile: () => view.profile,
+  applyLocalProfile,
+  sync,
+  getEditing: () => settings.editing(),
+  onChange: () => settings.refresh(),
+});
+
 const editor = createEditor({
   viewer,
   sync,
   getProfile: () => view.profile,
   getEditing: () => settings.editing(),
   applyLocalProfile,
+  record: undo.record,
 });
 
 const settings = createSettings({
@@ -94,6 +105,7 @@ const settings = createSettings({
   sync,
   getView: () => view,
   applyLocalProfile,
+  undo,
   onChange: () => render(),
   cameraUrl: (n) => camera.url(n),
   refreshCameras: () => camera.refresh([0, 1, 2]),
@@ -167,6 +179,8 @@ function onMessage(message) {
     // Solange eigene Aenderungen unterwegs sind, ist das Echo des Pi veraltet -
     // es wuerde neuere Klicks im eigenen Bild zuruecksetzen. Der Name gilt trotzdem.
     const same = message.profile.id === view.profile?.id;
+    // Anderes aktives Profil: der Verlauf gehoerte zum alten.
+    if (view.profile && !same) undo.clear();
     view.profile = same && sync.isBusy() ? { ...view.profile, name: message.profile.name } : message.profile;
     view.profiles = message.profiles;
     view.remoteEditing = message.editing;

@@ -140,11 +140,13 @@ export function createEditor({
   getProfile,
   getEditing,
   applyLocalProfile,
+  record,
 }) {
   let editing = false;
   let selected = "scheibe";
 
-  function change(mutate) {
+  /* key: Schritt fuer Zurueck (undo.js); ohne key - beim Ziehen - nimmt onUp den Schritt auf. */
+  function change(mutate, key) {
     const profile = getProfile();
     if (!profile) return;
     const before = profile.layout;
@@ -154,6 +156,7 @@ export function createEditor({
     if (Object.keys(patch).length === 0) return;
     applyLocalProfile(next);
     sync.queue(profile.id, { ...patch, editing: getEditing() });
+    if (typeof key === "string") record(profile, next, key);
   }
 
   function select(id) {
@@ -183,7 +186,8 @@ export function createEditor({
     if (!editing || event.button !== 0) return;
     const block = event.target.closest(".block[data-block]");
     if (!block) return;
-    const startLayout = getProfile()?.layout;
+    const startProfile = getProfile();
+    const startLayout = startProfile?.layout;
     if (!startLayout) return;
     event.preventDefault();
     // preventDefault laesst den Fokus in der Leiste - dann gingen die Pfeile
@@ -207,6 +211,8 @@ export function createEditor({
       block.removeEventListener("pointermove", onMove);
       block.removeEventListener("pointerup", onUp);
       block.removeEventListener("pointercancel", onUp);
+      // Einmal Ziehen ist ein Schritt - nicht jede Bewegung.
+      record(startProfile, getProfile(), null);
       sync.flush();
     };
     block.addEventListener("pointermove", onMove);
@@ -225,7 +231,7 @@ export function createEditor({
       select("scheibe");
       change((layout) => {
         layout.board.diameter = clamp(layout.board.diameter - direction * step, 5, 400);
-      });
+      }, "wheel:scheibe");
     },
     { passive: false },
   );
@@ -235,7 +241,7 @@ export function createEditor({
     const action = keyAction(event, selected);
     if (!action) return;
     event.preventDefault();
-    change(action);
+    change(action, `keys:${selected}`);
   });
 
   return {
