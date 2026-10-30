@@ -7,6 +7,7 @@
  */
 import { api } from "./profile-api.js";
 import { createPanel } from "./settings-panel.js";
+import { undoKey } from "./undo.js";
 
 /* Der Pi beendet editing nach 60 s ohne Meldung; solange eingestellt wird,
    haelt ein Lebenszeichen es an. */
@@ -20,6 +21,7 @@ export function createSettings({
   sync,
   getView,
   applyLocalProfile,
+  undo,
   onChange,
   cameraUrl,
   refreshCameras,
@@ -53,16 +55,20 @@ export function createSettings({
   function changeContent(content) {
     const { profile } = getView();
     if (JSON.stringify(content) === JSON.stringify(profile.content)) return;
-    applyLocalProfile({ ...profile, content });
+    const next = { ...profile, content };
+    applyLocalProfile(next);
     sync.queue(profile.id, { content, editing: editing() });
+    undo.record(profile, next);
   }
 
   const panel = createPanel(root, {
     onContent: changeContent,
     onFormat(format) {
       const { profile } = getView();
-      applyLocalProfile({ ...profile, format });
+      const next = { ...profile, format };
+      applyLocalProfile(next);
       sync.queue(profile.id, { format, editing: editing() });
+      undo.record(profile, next);
     },
     onPlayers: (count) => setPlayers(count),
     onSelect(id) {
@@ -74,8 +80,10 @@ export function createSettings({
       api("POST", "/api/profiles", { name }).then(afterSwitch).catch(report);
     },
     onRename(id, name) {
+      const { profile } = getView();
       sync.queue(id, { name, editing: editing() });
       sync.flush();
+      if (id === profile.id) undo.record(profile, { ...profile, name });
     },
     onDelete(id) {
       sync.flush();
@@ -83,8 +91,16 @@ export function createSettings({
     },
     onReset(id) {
       sync.flush();
-      api("POST", path(id, "/reset")).catch(report);
+      const before = getView().profile;
+      // Der Pi antwortet mit dem zurueckgesetzten Profil - das ist "nachher".
+      api("POST", path(id, "/reset"))
+        .then((after) => {
+          if (after && before?.id === id) undo.record(before, after);
+        })
+        .catch(report);
     },
+    onUndo: () => undo.undo(),
+    onRedo: () => undo.redo(),
     onClose: () => open(null),
   });
 
@@ -98,7 +114,15 @@ export function createSettings({
   function refresh() {
     const { catalog, profile, profiles } = getView();
     if (!catalog || !profile) return;
-    panel.render({ catalog, profile, profiles, players: preview.spieler, cameraUrl });
+    panel.render({
+      catalog,
+      profile,
+      profiles,
+      players: preview.spieler,
+      cameraUrl,
+      canUndo: undo.canUndo(),
+      canRedo: undo.canRedo(),
+    });
   }
 
   function open(next) {
@@ -135,6 +159,15 @@ export function createSettings({
   });
 
   button.addEventListener("click", () => open(step ? null : "inhalte"));
+
+  window.addEventListener("keydown", (event) => {
+    if (step !== "inhalte" || panel.isDialogOpen()) return;
+    const action = undoKey(event);
+    if (!action) return;
+    event.preventDefault();
+    if (action === "undo") undo.undo();
+    else undo.redo();
+  });
 
   window.addEventListener("keydown", (event) => {
     if (step !== "inhalte" || event.key !== "Escape") return;

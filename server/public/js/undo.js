@@ -6,6 +6,21 @@
  */
 import { createHistory, snapshotOf, snapshotPatch } from "./history.js";
 
+/**
+ * Strg+Z / Strg+Y / Strg+Umschalt+Z (Mac: Befehlstaste); null, wenn die Taste
+ * nichts bedeutet. event.key, nicht event.code: Auf deutschen Tastaturen
+ * liegt Z dort, wo code "KeyY" meldet. Im Textfeld bleibt das Zurueck des
+ * Browsers; AltGr (Strg+Alt) ist kein Kuerzel.
+ */
+export function undoKey(event) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
+  if (event.target?.closest?.('input[type="text"], textarea')) return null;
+  const key = event.key.toLowerCase();
+  if (key === "z") return event.shiftKey ? "redo" : "undo";
+  if (key === "y") return "redo";
+  return null;
+}
+
 export function createUndo({ getProfile, applyLocalProfile, sync, getEditing, onChange, history = createHistory() }) {
   function record(beforeProfile, afterProfile, key = null) {
     history.record(snapshotOf(beforeProfile), snapshotOf(afterProfile), key);

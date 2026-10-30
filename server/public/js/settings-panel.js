@@ -56,6 +56,8 @@ const SHORTCUTS = [
       ["+ / −", "Größe (Umschalt: grob)"],
       ["Q / E", "Scheibe drehen"],
       ["Strg + Pfeil", "Bereich breiter/schmaler, höher/niedriger"],
+      ["Strg + Z", "zurück"],
+      ["Strg + Y", "wiederholen"],
       ["Esc", "schließen"],
     ],
   ],
@@ -67,6 +69,8 @@ export function createPanel(root, handlers) {
   let profiles = [];
   let profilesKey = "";
   let players = 2;
+  let canUndo = false;
+  let canRedo = false;
   /* Objekt-URL des letzten Bilds einer Kamera (camera-feed.js) - fuer die Vorschaubilder. */
   let cameraUrl = () => null;
   /* Offener Dialog - er merkt sich das Profil, das er nennt: Wechselt
@@ -312,11 +316,22 @@ export function createPanel(root, handlers) {
   const status = node("p", { className: "toast" });
   status.setAttribute("role", "status");
 
+  /* Gesperrt statt versteckt - der Kopf springt nicht. */
+  const undoButton = button("↶", () => handlers.onUndo(), { className: "btn-icon", title: "Zurück (Strg+Z)", ariaLabel: "Zurück", disabled: true });
+  const redoButton = button("↷", () => handlers.onRedo(), {
+    className: "btn-icon",
+    title: "Wiederholen (Strg+Y)",
+    ariaLabel: "Wiederholen",
+    disabled: true,
+  });
+
   const field = (labelText, control) => node("label", { className: "field" }, [node("span", { textContent: labelText }), control]);
 
   root.replaceChildren(
     node("header", { className: "panel-head" }, [
       node("h1", { textContent: "Einstellungen" }),
+      undoButton,
+      redoButton,
       button("×", () => handlers.onClose(), { className: "btn-icon", title: "Schließen", ariaLabel: "Einstellungen schließen" }),
     ]),
     panelBody,
@@ -385,6 +400,8 @@ export function createPanel(root, handlers) {
     }
 
     for (const [index, b] of playerButtons.entries()) b.setAttribute("aria-pressed", String(index + 1 === players));
+    undoButton.disabled = !canUndo;
+    redoButton.disabled = !canRedo;
   }
 
   return {
@@ -395,6 +412,8 @@ export function createPanel(root, handlers) {
       profile = next.profile;
       profiles = next.profiles;
       players = next.players;
+      canUndo = next.canUndo ?? false;
+      canRedo = next.canRedo ?? false;
       cameraUrl = next.cameraUrl ?? cameraUrl;
       if (freshCatalog) {
         buildFormats();
@@ -411,5 +430,6 @@ export function createPanel(root, handlers) {
     setStatus(text) {
       status.textContent = text;
     },
+    isDialogOpen: () => dialogOpen,
   };
 }
