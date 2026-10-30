@@ -154,8 +154,15 @@
   // <html lang> taugt nicht: Autodarts setzt dort "en", auch wenn die
   // Oberflaeche deutsch ist. Die Beschriftung der Hauptnavigation folgt dagegen
   // der eingestellten Sprache.
-  function detectLanguage(navLabel) {
-    return navLabel === 'Hauptnavigation' ? 'de' : 'en';
+  // Deutsche Beschriftungen der Leiste ohne Navigation (Spielseite), Stand 31.10.2026.
+  const GERMAN_LABELS = ['Spielstatistik', 'Benutzermenü öffnen'];
+
+  // navLabel: aria-label der Hauptnavigation; otherLabels: weitere aria-labels
+  // der Leiste, falls es keine Navigation gibt.
+  function detectLanguage(navLabel, otherLabels = []) {
+    if (navLabel === 'Hauptnavigation') return 'de';
+    if (navLabel) return 'en';
+    return otherLabels.some((label) => GERMAN_LABELS.includes(label)) ? 'de' : 'en';
   }
 
   function getTexts(language) {

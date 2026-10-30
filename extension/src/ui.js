@@ -33,11 +33,15 @@
 
   let cachedTexts = null;
 
+  // Gemerkt wird erst, wenn die Navigation da ist - die Spielseite hat keine,
+  // dort entscheiden die anderen Beschriftungen der Leiste, jedes Mal neu.
   function texts() {
-    if (!cachedTexts) {
-      cachedTexts = getTexts(detectLanguage(document.querySelector('header nav')?.getAttribute('aria-label')));
-    }
-    return cachedTexts;
+    if (cachedTexts) return cachedTexts;
+    const navLabel = document.querySelector('header nav')?.getAttribute('aria-label');
+    const others = [...document.querySelectorAll('header [aria-label]')].map((el) => el.getAttribute('aria-label'));
+    const found = getTexts(detectLanguage(navLabel, others));
+    if (navLabel) cachedTexts = found;
+    return found;
   }
 
   // Nach einem Update der Extension ist der alte Kontext ungueltig und

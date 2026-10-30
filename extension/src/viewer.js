@@ -24,6 +24,7 @@
   let page = null;
   let overlay = null;
   let pollTimer = null;
+  let wrap = null;        // unser Knopf in der Leiste
 
   // --- Knopf ---------------------------------------------------------------------
 
@@ -54,8 +55,11 @@
   function refreshButton() {
     const place = findPlace();
     if (!place) return;
-    let wrap = document.getElementById(BUTTON_ID);
-    if (!wrap) {
+    // Nur den eigenen Knopf nehmen: Ein gleichnamiger stammt von einer
+    // frueheren Fassung der Extension (Firefox spielt sie nach einem Update
+    // neu ein) - sein Klick ginge ins Leere.
+    if (!wrap?.isConnected) {
+      document.getElementById(BUTTON_ID)?.remove();
       // Der Knopf steckt in einem <span>, das den Hinweis traegt.
       wrap = document.createElement('span');
       wrap.id = BUTTON_ID;

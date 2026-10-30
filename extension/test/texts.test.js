@@ -22,6 +22,14 @@ describe('detectLanguage', () => {
   ])('%s -> %s', (label, expected) => {
     expect(texts.detectLanguage(label)).toBe(expected);
   });
+
+  // Die Spielseite hat keine Navigation; <html lang> ist bei Autodarts immer "en".
+  test('ohne Navigation: deutsch an anderen Beschriftungen der Leiste erkannt', () => {
+    expect(texts.detectLanguage(undefined, ['Spielstatistik'])).toBe('de');
+    expect(texts.detectLanguage(null, ['Benutzermenü öffnen', 'x'])).toBe('de');
+    expect(texts.detectLanguage(undefined, ['Match statistics'])).toBe('en');
+    expect(texts.detectLanguage(undefined, [])).toBe('en');
+  });
 });
 
 describe('getTexts', () => {
