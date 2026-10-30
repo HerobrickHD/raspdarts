@@ -182,6 +182,10 @@ Darstellung der Scheibe auf „Linien“ stellen und danach zurück.
   (Platz 1, 3, 5 links; 2, 4, 6 rechts; je Bereich gleich groß), immer in der
   Reihenfolge, die Autodarts schickt. Mit den Spielerknöpfen 1–6 prüfen.
 - Spielinfo, Aufnahmeleiste: ziehen und an der Ecke skalieren.
+- **Zurück** (↶ oben in der Leiste oder Strg+Z) nimmt die letzte Änderung am
+  Profil zurück – Lage, Schalter, Format, Name, auch „Zurücksetzen“; ↷ bzw.
+  Strg+Y wiederholt. Einmal Ziehen oder eine Reihe Pfeiltasten/Mausrad ist ein
+  Schritt. Der Verlauf gilt nur auf diesem Gerät und beginnt beim Profilwechsel neu.
 - Esc oder × schließt (ein offenes Formular in der Leiste zuerst). Tasten
   wirken auf der Bühne erst, wenn man dort etwas angeklickt hat.
 
