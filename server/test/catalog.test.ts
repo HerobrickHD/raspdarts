@@ -35,7 +35,7 @@ describe("Vorgaben", () => {
   test("Vorgaben wie in der Spec", () => {
     const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, darts: true, letzterDart: true, beimWarten: false });
+    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, zahlenInvertiert: false, darts: true, letzterDart: true, beimWarten: false });
     expect(c["warten"]).toEqual({ on: true, felder: false, farbe: "#ffdc00" });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
@@ -181,6 +181,13 @@ describe("Darstellung der Scheibe", () => {
       darstellung: "kamera",
       kamera: "2",
     });
+  });
+});
+
+describe("Zahlenring invertieren", () => {
+  test("Schalter, Vorgabe aus, nur sichtbar bei Darstellung Gezeichnet", () => {
+    const option = CATALOG.parts.find((p) => p.id === "scheibe")!.options.find((o) => o.id === "zahlenInvertiert");
+    expect(option).toMatchObject({ type: "toggle", default: false, showIf: { option: "darstellung", value: "drawn" } });
   });
 });
 

@@ -12,6 +12,7 @@ import {
   coordsToPoint,
   fieldCenter,
   fieldPath,
+  numberRingOuter,
   numberSpots,
   pointAt,
 } from "./geometry.js";
@@ -51,8 +52,16 @@ function drawFields(group) {
 }
 
 /* Ausrichtung und Abstand aus dem Profil; numberSpots rechnet die Lage. */
+/** Kreisring von r1 bis r2 als Pfad (mit fill-rule evenodd). */
+function ringPath(r1, r2) {
+  const circle = (r) => `M ${r} 0 A ${r} ${r} 0 1 0 ${-r} 0 A ${r} ${r} 0 1 0 ${r} 0 Z`;
+  return `${circle(r2)} ${circle(r1)}`;
+}
+
 function drawNumbers(group, options) {
   group.replaceChildren(
+    // Grund fuer "Zahlenring invertieren" - nur dann sichtbar (style.css).
+    el("path", { d: ringPath(RADIUS.doubleOuter, numberRingOuter(options.offset)), class: "number-ring", "fill-rule": "evenodd" }),
     ...numberSpots(options).map(({ number, x, y, turn }) => {
       const text = el("text", {
         x: x.toFixed(2),

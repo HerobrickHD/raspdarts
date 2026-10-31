@@ -421,6 +421,20 @@ body {
   fill: #fff;
 }
 
+/* Zahlenring invertieren (nur Gezeichnet): weisser Ring, schwarze Zahlen; die Felder bleiben. */
+.number-ring {
+  display: none;
+}
+
+.viewer[data-scheibe-zahleninvertiert="on"] .board-svg[data-mode="drawn"] .number-ring {
+  display: inline;
+  fill: #fff;
+}
+
+.viewer[data-scheibe-zahleninvertiert="on"] .board-svg[data-mode="drawn"] .board-number {
+  fill: #000;
+}
+
 /* --- Inhalte (aus dem aktiven Profil, siehe content-view.js) -------------- */
 
 /* Hintergrund wie die Autodarts-Spielansicht, eigener Nachbau: dunkles Blau

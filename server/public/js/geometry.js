@@ -40,6 +40,15 @@ export function numberSpots({ offset, upright, boardRotation }) {
   });
 }
 
+/**
+ * Aussenkante des weissen Zahlenrings (invertiert): mindestens der
+ * Scheibenrand, stehen die Zahlen weiter aussen, ein Stueck um sie herum -
+ * sonst stuenden schwarze Zahlen auf Schwarz.
+ */
+export function numberRingOuter(offset) {
+  return Math.max(RADIUS.board, (RADIUS.doubleOuter + RADIUS.board) / 2 + offset + 12);
+}
+
 /** Autodarts-Koordinaten (1 = Aussenkante Double, y nach oben) → mm. */
 export function coordsToPoint(coords) {
   return { x: coords.x * RADIUS.doubleOuter, y: -coords.y * RADIUS.doubleOuter };

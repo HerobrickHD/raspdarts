@@ -22,6 +22,8 @@ export interface ToggleOption {
   default: boolean;
   /** Spielarten, in denen es die Option gibt; fehlt es, gibt es sie ueberall. */
   modes?: string[];
+  /** Nur sichtbar, wenn eine andere Option dieses Bausteins diesen Wert hat. */
+  showIf?: { option: string; value: string };
 }
 
 export interface ChoiceOption {
@@ -240,6 +242,11 @@ export const CATALOG: Catalog = {
           step: 0.5,
           unit: "mm",
           default: 0,
+        },
+        {
+          // Weisser Zahlenring mit schwarzen Zahlen - nur bei der gezeichneten Scheibe; die Felder bleiben.
+          ...toggle("zahlenInvertiert", "Zahlenring invertieren", false),
+          showIf: { option: "darstellung", value: "drawn" },
         },
         toggle("darts", "Darts einzeichnen"),
         toggle("letzterDart", "Letzten Dart leuchten"),

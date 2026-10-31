@@ -7,6 +7,7 @@ import {
   fieldAt,
   fieldCenter,
   fieldPath,
+  numberRingOuter,
   numberSpots,
 } from "../public/js/geometry.js";
 import { toField } from "../src/viewer/game-state.ts";
@@ -142,5 +143,12 @@ describe("numberSpots", () => {
   test("gerade: alle aufrecht auf dem Bild, auch bei gedrehter Scheibe", () => {
     const turns = numberSpots({ offset: 0, upright: true, boardRotation: 30 }).map((s) => s.turn);
     expect(new Set(turns)).toEqual(new Set([-30]));
+  });
+});
+
+describe("numberRingOuter", () => {
+  test("weisser Zahlenring: mindestens bis zum Scheibenrand (225 mm), bei weit aussen stehenden Zahlen um sie herum", () => {
+    expect(numberRingOuter(0)).toBe(225);
+    expect(numberRingOuter(40)).toBeCloseTo(197.5 + 40 + 12);
   });
 });
