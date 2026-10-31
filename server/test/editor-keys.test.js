@@ -22,7 +22,7 @@ describe("isStageKey", () => {
 /* Ein Profil-Layout mit Scheibe und einem Block. */
 const layoutWith = () => ({
   board: { cx: 50, cy: 50, diameter: 80, rotation: 0 },
-  blocks: { spielinfo: { x: 10, y: 10, scale: 1 } },
+  blocks: { spielinfo: { x: 10, y: 10, scale: 1 }, warten: { x: 50, y: 50, scale: 1 } },
 });
 const press = (key, props = {}) => ({ key, code: props.code ?? "", shiftKey: false, ctrlKey: false, ...props });
 const apply = (event, selected) => {
@@ -48,6 +48,13 @@ describe("keyAction: Feinschritte der Scheibe (am Beamer 10-mal feiner)", () => 
 
   test("andere Bausteine behalten 0,1", () => {
     expect(apply(press("ArrowRight"), "spielinfo").blocks.spielinfo.x).toBeCloseTo(10.1, 6);
+  });
+});
+
+describe("keyAction: Text beim Warten", () => {
+  test("Pfeil verschiebt die Mitte um 0,1, + vergroessert um 0,01", () => {
+    expect(apply(press("ArrowRight"), "warten").blocks.warten.x).toBeCloseTo(50.1, 6);
+    expect(apply(press("+"), "warten").blocks.warten.scale).toBeCloseTo(1.01, 6);
   });
 });
 

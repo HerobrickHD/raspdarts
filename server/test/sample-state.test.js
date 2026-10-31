@@ -38,6 +38,11 @@ describe("previewState", () => {
     expect(shown.mode).toBe("x01");
   });
 
+  test("Vorschau Warten zeigt den Warte-Bildschirm, Vorschau Spiel die Beispieldaten", () => {
+    expect(previewState(game, { schritt: "inhalte", spieler: 2, vorschau: "warten" })).toEqual({ phase: "idle" });
+    expect(previewState(game, { schritt: "inhalte", spieler: 2, vorschau: "spiel" }).mode).toBe("x01");
+  });
+
   test("ohne Einstellen das echte Spiel, ohne Spiel idle", () => {
     expect(previewState(game, null)).toBe(game);
     const idle = { phase: "idle" };

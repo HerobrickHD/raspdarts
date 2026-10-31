@@ -61,8 +61,10 @@ export const PREVIEW_MODE = "x01";
 /**
  * Was die Geraete zeigen: Beim Einstellen haben sie mit dem laufenden Spiel
  * nichts zu tun - immer Beispieldaten (X01) mit der gewaehlten Spielerzahl.
- * Nach "Fertig" wieder das echte Spiel.
+ * Mit Vorschau "Warten" den Bildschirm ohne Spiel. Nach "Fertig" wieder das echte Spiel.
  */
 export function previewState(state, editing) {
+  // Vorschau "Warten": der Warte-Bildschirm, wie ohne Spiel.
+  if (editing?.vorschau === "warten") return { phase: "idle" };
   return editing ? sampleState(PREVIEW_MODE, editing.spieler) : state;
 }

@@ -7,6 +7,9 @@
 /** Die SVG der Scheibe reicht bis zum Zahlenring (225 mm), das Layout misst den Double-Ring (170 mm). */
 export const BOARD_PER_DOUBLE = 225 / 170;
 
+/** Bloecke, deren x/y die Mitte ist (der Warte-Text) - sie wachsen um die Mitte. */
+export const CENTERED_BLOCKS = ["warten"];
+
 export function applyLayout(viewer, layout) {
   for (const el of viewer.querySelectorAll(".block[data-block]")) {
     const id = el.dataset.block;
@@ -29,6 +32,8 @@ export function applyLayout(viewer, layout) {
       el.style.width = `${block.w}cqh`;
       el.style.height = `${block.h}cqh`;
       el.style.transform = "none";
+    } else if (CENTERED_BLOCKS.includes(id)) {
+      el.style.transform = `translate(-50%, -50%) scale(${block.scale})`;
     } else {
       el.style.transform = `scale(${block.scale})`;
     }
