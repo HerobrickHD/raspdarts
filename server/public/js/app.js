@@ -20,6 +20,14 @@ import { createSettings } from "./settings.js";
 import { fitStage } from "./stage.js";
 import { createUndo } from "./undo.js";
 
+/* Feldfarbe (geometry.js fieldColor) → Option der Scheibe mit ihrer Leuchtfarbe. */
+const LEUCHTFARBEN = [
+  ["dark", "leuchtSchwarz"],
+  ["light", "leuchtWeiss"],
+  ["red", "leuchtRot"],
+  ["green", "leuchtGruen"],
+];
+
 const viewer = document.getElementById("viewer");
 const boardSvg = document.getElementById("board-svg");
 const headEl = viewer.querySelector('[data-block="spielinfo"] .head');
@@ -138,7 +146,9 @@ function render() {
     applyLayout(viewer, current.layout);
   }
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
-  viewer.style.setProperty("--warte-farbe", current?.content.warten?.farbe ?? "#ffdc00");
+  for (const [color, option] of LEUCHTFARBEN) {
+    viewer.style.setProperty(`--leucht-${color}`, current?.content.scheibe?.[option] ?? "#ffdc00");
+  }
   board.setNumbers({
     offset: Number(current?.content.scheibe?.zahlenAbstand ?? 0),
     upright: current?.content.scheibe?.zahlenAusrichtung === "gerade",

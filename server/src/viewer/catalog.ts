@@ -250,6 +250,11 @@ export const CATALOG: Catalog = {
         },
         toggle("darts", "Darts einzeichnen"),
         toggle("letzterDart", "Letzten Dart leuchten"),
+        // Leuchtfarbe je Feldfarbe der Scheibe - im Spiel (letzter Dart) und fuer die Warte-Felder.
+        { id: "leuchtSchwarz", label: "Leuchtfarbe schwarze Felder", type: "color", default: "#ffdc00" },
+        { id: "leuchtWeiss", label: "Leuchtfarbe weiße Felder", type: "color", default: "#ffdc00" },
+        { id: "leuchtRot", label: "Leuchtfarbe rote Felder", type: "color", default: "#ffdc00" },
+        { id: "leuchtGruen", label: "Leuchtfarbe grüne Felder", type: "color", default: "#ffdc00" },
         // Ohne Spiel dieselbe Scheibe (Lage aus dem Layout), nur ohne Darts.
         toggle("beimWarten", "Beim Warten zeigen", false),
       ],
@@ -262,8 +267,8 @@ export const CATALOG: Catalog = {
       options: [
         // Zum Pruefen der Ausrichtung: aeussere Einzelfelder der weissen 1 und der schwarzen 8.
         // Sie pulsieren - deshalb nur beim Warten, nie im Spiel (Autodarts saehe jeden Impuls als Wurf).
+        // Farbe: die Leuchtfarbe der Feldfarbe (Scheibe), 1 weiss, 8 schwarz.
         toggle("felder", "Felder 1 und 8 leuchten", false),
-        { id: "farbe", label: "Leuchtfarbe", type: "color", default: "#ffdc00" },
       ],
     },
     {

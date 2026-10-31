@@ -11,6 +11,7 @@ import {
   SEGMENT_DEG,
   coordsToPoint,
   fieldCenter,
+  fieldColor,
   fieldPath,
   numberRingOuter,
   numberSpots,
@@ -28,19 +29,17 @@ function el(name, attrs = {}) {
 
 function drawFields(group) {
   group.append(el("circle", { r: RADIUS.board, class: "field-surround" }));
-  NUMBERS.forEach((number, index) => {
-    const dark = index % 2 === 0; // die 20 ist schwarz mit roten Ringen
-    const single = dark ? "field-dark" : "field-light";
-    const ring = dark ? "field-red" : "field-green";
-    for (const [multiplier, part, cls] of [
-      [1, "inner", single],
-      [1, "outer", single],
-      [3, null, ring],
-      [2, null, ring],
+  for (const number of NUMBERS) {
+    for (const [multiplier, ring] of [
+      [1, "inner"],
+      [1, "outer"],
+      [3, null],
+      [2, null],
     ]) {
-      group.append(el("path", { d: fieldPath({ multiplier, number, ring: part }), class: cls }));
+      const field = { multiplier, number, ring };
+      group.append(el("path", { d: fieldPath(field), class: `field-${fieldColor(field)}` }));
     }
-  });
+  }
   group.append(
     el("path", {
       d: fieldPath({ multiplier: 1, number: 25, ring: null }),
@@ -142,6 +141,8 @@ export function createBoard(svg) {
           el("path", {
             d: fieldPath(highlight.field),
             class: `highlight highlight-${highlight.kind}`,
+            // Leuchtfarbe nach der Feldfarbe darunter (style.css, --leucht-*)
+            "data-farbe": fieldColor(highlight.field),
             "fill-rule": "evenodd",
           }),
         ),

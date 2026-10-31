@@ -72,8 +72,11 @@ describe("contentAttributes", () => {
       // Lage der Zahlen rechnet board.js (numberSpots)
       "data-scheibe-zahlenausrichtung",
       "data-scheibe-zahlenabstand",
-      // Leuchtfarbe setzt app.js als CSS-Variable
-      "data-warten-farbe",
+      // Leuchtfarben je Feldfarbe setzt app.js als CSS-Variablen
+      "data-scheibe-leuchtschwarz",
+      "data-scheibe-leuchtweiss",
+      "data-scheibe-leuchtrot",
+      "data-scheibe-leuchtgruen",
     ];
     for (const name of Object.keys(contentAttributes(CATALOG, defaultContent(), "x01"))) {
       if (handledInCode.includes(name)) continue;

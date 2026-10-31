@@ -35,8 +35,8 @@ describe("Vorgaben", () => {
   test("Vorgaben wie in der Spec", () => {
     const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, zahlenInvertiert: false, darts: true, letzterDart: true, beimWarten: false });
-    expect(c["warten"]).toEqual({ on: true, felder: false, farbe: "#ffdc00" });
+    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, zahlenInvertiert: false, darts: true, letzterDart: true, leuchtSchwarz: "#ffdc00", leuchtWeiss: "#ffdc00", leuchtRot: "#ffdc00", leuchtGruen: "#ffdc00", beimWarten: false });
+    expect(c["warten"]).toEqual({ on: true, felder: false });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
     expect(c["spieler"]).toEqual({
@@ -224,13 +224,13 @@ describe("Warte-Bildschirm", () => {
   test("altes Profil ohne Warten: Scheibe beim Warten aus, Text an", () => {
     const content = sanitizeContent({ scheibe: { on: true, darstellung: "drawn" } });
     expect(content["scheibe"]?.["beimWarten"]).toBe(false);
-    expect(content["warten"]).toEqual({ on: true, felder: false, farbe: "#ffdc00" });
+    expect(content["warten"]).toEqual({ on: true, felder: false });
   });
 
   test("Leuchtfarbe: nur #rrggbb, klein geschrieben; sonst bleibt die bisherige", () => {
-    expect(sanitizeContent({ warten: { farbe: "#FF00AA" } })["warten"]?.["farbe"]).toBe("#ff00aa");
+    expect(sanitizeContent({ scheibe: { leuchtRot: "#FF00AA" } })["scheibe"]?.["leuchtRot"]).toBe("#ff00aa");
     for (const bad of ["red", "#fff", "#12345g", 7, null]) {
-      expect(sanitizeContent({ warten: { farbe: bad } })["warten"]?.["farbe"], String(bad)).toBe("#ffdc00");
+      expect(sanitizeContent({ scheibe: { leuchtRot: bad } })["scheibe"]?.["leuchtRot"], String(bad)).toBe("#ffdc00");
     }
   });
 

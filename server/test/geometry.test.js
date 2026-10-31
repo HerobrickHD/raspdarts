@@ -6,6 +6,7 @@ import {
   coordsToPoint,
   fieldAt,
   fieldCenter,
+  fieldColor,
   fieldPath,
   numberRingOuter,
   numberSpots,
@@ -150,5 +151,20 @@ describe("numberRingOuter", () => {
   test("weisser Zahlenring: mindestens bis zum Scheibenrand (225 mm), bei weit aussen stehenden Zahlen um sie herum", () => {
     expect(numberRingOuter(0)).toBe(225);
     expect(numberRingOuter(40)).toBeCloseTo(197.5 + 40 + 12);
+  });
+});
+
+describe("fieldColor", () => {
+  test("Einzelfelder schwarz/weiss, Double und Triple rot/gruen - die 20 ist schwarz mit roten Ringen", () => {
+    expect(fieldColor({ multiplier: 1, number: 20, ring: "outer" })).toBe("dark");
+    expect(fieldColor({ multiplier: 1, number: 1, ring: "inner" })).toBe("light");
+    expect(fieldColor({ multiplier: 1, number: 8, ring: null })).toBe("dark");
+    expect(fieldColor({ multiplier: 3, number: 20, ring: null })).toBe("red");
+    expect(fieldColor({ multiplier: 2, number: 1, ring: null })).toBe("green");
+  });
+
+  test("Bull: aussen gruen, Mitte rot", () => {
+    expect(fieldColor({ multiplier: 1, number: 25, ring: null })).toBe("green");
+    expect(fieldColor({ multiplier: 2, number: 25, ring: null })).toBe("red");
   });
 });

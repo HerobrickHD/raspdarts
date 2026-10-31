@@ -49,6 +49,18 @@ export function numberRingOuter(offset) {
   return Math.max(RADIUS.board, (RADIUS.doubleOuter + RADIUS.board) / 2 + offset + 12);
 }
 
+/**
+ * Farbe eines Felds auf der Scheibe: Einzelfelder schwarz (dark) oder weiss
+ * (light), Double und Triple rot oder gruen - die 20 ist schwarz mit roten
+ * Ringen. Bull: aussen gruen, Mitte rot.
+ */
+export function fieldColor(field) {
+  if (field.number === 25) return field.multiplier === 2 ? "red" : "green";
+  const dark = NUMBERS.indexOf(field.number) % 2 === 0;
+  if (field.multiplier === 1) return dark ? "dark" : "light";
+  return dark ? "red" : "green";
+}
+
 /** Autodarts-Koordinaten (1 = Aussenkante Double, y nach oben) → mm. */
 export function coordsToPoint(coords) {
   return { x: coords.x * RADIUS.doubleOuter, y: -coords.y * RADIUS.doubleOuter };
