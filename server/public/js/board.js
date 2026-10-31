@@ -101,11 +101,17 @@ function dartMarker(dart) {
   return el("circle", { cx: point.x.toFixed(2), cy: point.y.toFixed(2), r: DART_RADIUS, class: "dart" });
 }
 
-/* Beim Warten: aeussere Einzelfelder der weissen 1 und der schwarzen 8 - zum Pruefen der Ausrichtung. */
-const WAIT_FIELDS = [1, 8].map((number) => ({ field: { multiplier: 1, number, ring: "outer" }, kind: "warten" }));
+/* Beim Warten je Feldfarbe ein Testfeld - zum Pruefen von Ausrichtung und Leuchtfarben:
+   1 aussen (weiss), 8 aussen (schwarz), Triple 20 (rot), Triple 19 (gruen). */
+const WAIT_FIELDS = [
+  { multiplier: 1, number: 1, ring: "outer" },
+  { multiplier: 1, number: 8, ring: "outer" },
+  { multiplier: 3, number: 20, ring: null },
+  { multiplier: 3, number: 19, ring: null },
+].map((field) => ({ field, kind: "warten" }));
 
 /**
- * Was leuchtet: im Spiel, was der Pi schickt; beim Warten die beiden Felder
+ * Was leuchtet: im Spiel, was der Pi schickt; beim Warten die Testfelder
  * (ob sie zu sehen sind, entscheidet style.css). Im Spiel nie die Warte-Felder -
  * sie pulsieren, und Autodarts saehe jeden Impuls als Wurf.
  */

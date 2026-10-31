@@ -265,10 +265,10 @@ export const CATALOG: Catalog = {
       label: "Warten",
       default: true,
       options: [
-        // Zum Pruefen der Ausrichtung: aeussere Einzelfelder der weissen 1 und der schwarzen 8.
+        // Zum Pruefen von Ausrichtung und Leuchtfarben: je Feldfarbe ein Feld (board.js WAIT_FIELDS).
         // Sie pulsieren - deshalb nur beim Warten, nie im Spiel (Autodarts saehe jeden Impuls als Wurf).
-        // Farbe: die Leuchtfarbe der Feldfarbe (Scheibe), 1 weiss, 8 schwarz.
-        toggle("felder", "Felder 1 und 8 leuchten", false),
+        // Farbe: die Leuchtfarbe der Feldfarbe (Scheibe).
+        toggle("felder", "Testfelder leuchten", false),
       ],
     },
     {

@@ -373,7 +373,7 @@ body {
   fill-opacity: 0.65;
 }
 
-/* Warte-Felder 1 und 8: pulsieren in der Leuchtfarbe ihrer Feldfarbe.
+/* Testfelder beim Warten: pulsieren in der Leuchtfarbe ihrer Feldfarbe.
    Nur ohne Spiel - board.js zeichnet sie im Spiel nie. */
 .highlight-warten {
   animation: dart-segment-blink 0.8s ease infinite;
