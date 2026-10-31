@@ -251,10 +251,10 @@ export const CATALOG: Catalog = {
         toggle("darts", "Darts einzeichnen"),
         toggle("letzterDart", "Letzten Dart leuchten"),
         // Leuchtfarbe je Feldfarbe der Scheibe - im Spiel (letzter Dart) und fuer die Warte-Felder.
-        { id: "leuchtSchwarz", label: "Leuchtfarbe schwarze Felder", type: "color", default: "#ffdc00" },
-        { id: "leuchtWeiss", label: "Leuchtfarbe weiße Felder", type: "color", default: "#ffdc00" },
-        { id: "leuchtRot", label: "Leuchtfarbe rote Felder", type: "color", default: "#ffdc00" },
-        { id: "leuchtGruen", label: "Leuchtfarbe grüne Felder", type: "color", default: "#ffdc00" },
+        { id: "leuchtSchwarz", label: "Leuchtfarbe schwarze Felder", type: "color", default: "#ffffff" },
+        { id: "leuchtWeiss", label: "Leuchtfarbe weiße Felder", type: "color", default: "#ffffff" },
+        { id: "leuchtRot", label: "Leuchtfarbe rote Felder", type: "color", default: "#ffffff" },
+        { id: "leuchtGruen", label: "Leuchtfarbe grüne Felder", type: "color", default: "#ffffff" },
         // Ohne Spiel dieselbe Scheibe (Lage aus dem Layout), nur ohne Darts.
         toggle("beimWarten", "Beim Warten zeigen", false),
       ],

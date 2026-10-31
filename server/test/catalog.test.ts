@@ -35,7 +35,7 @@ describe("Vorgaben", () => {
   test("Vorgaben wie in der Spec", () => {
     const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, zahlenInvertiert: false, darts: true, letzterDart: true, leuchtSchwarz: "#ffdc00", leuchtWeiss: "#ffdc00", leuchtRot: "#ffdc00", leuchtGruen: "#ffdc00", beimWarten: false });
+    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, zahlenInvertiert: false, darts: true, letzterDart: true, leuchtSchwarz: "#ffffff", leuchtWeiss: "#ffffff", leuchtRot: "#ffffff", leuchtGruen: "#ffffff", beimWarten: false });
     expect(c["warten"]).toEqual({ on: true, felder: false });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
@@ -230,7 +230,7 @@ describe("Warte-Bildschirm", () => {
   test("Leuchtfarbe: nur #rrggbb, klein geschrieben; sonst bleibt die bisherige", () => {
     expect(sanitizeContent({ scheibe: { leuchtRot: "#FF00AA" } })["scheibe"]?.["leuchtRot"]).toBe("#ff00aa");
     for (const bad of ["red", "#fff", "#12345g", 7, null]) {
-      expect(sanitizeContent({ scheibe: { leuchtRot: bad } })["scheibe"]?.["leuchtRot"], String(bad)).toBe("#ffdc00");
+      expect(sanitizeContent({ scheibe: { leuchtRot: bad } })["scheibe"]?.["leuchtRot"], String(bad)).toBe("#ffffff");
     }
   });
 

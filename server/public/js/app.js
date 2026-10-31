@@ -147,7 +147,7 @@ function render() {
   }
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
   for (const [color, option] of LEUCHTFARBEN) {
-    viewer.style.setProperty(`--leucht-${color}`, current?.content.scheibe?.[option] ?? "#ffdc00");
+    viewer.style.setProperty(`--leucht-${color}`, current?.content.scheibe?.[option] ?? "#ffffff");
   }
   board.setNumbers({
     offset: Number(current?.content.scheibe?.zahlenAbstand ?? 0),

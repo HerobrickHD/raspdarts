@@ -356,16 +356,16 @@ body {
 
 /* Leuchtfarbe nach der Feldfarbe darunter; app.js setzt --leucht-* aus dem Profil. */
 .highlight[data-farbe="dark"] {
-  fill: var(--leucht-dark, #ffdc00);
+  fill: var(--leucht-dark, #ffffff);
 }
 .highlight[data-farbe="light"] {
-  fill: var(--leucht-light, #ffdc00);
+  fill: var(--leucht-light, #ffffff);
 }
 .highlight[data-farbe="red"] {
-  fill: var(--leucht-red, #ffdc00);
+  fill: var(--leucht-red, #ffffff);
 }
 .highlight[data-farbe="green"] {
-  fill: var(--leucht-green, #ffdc00);
+  fill: var(--leucht-green, #ffffff);
 }
 
 /* Im Spiel ruhig, ohne Blinken: Autodarts saehe jeden Lichtimpuls als Wurf. */
