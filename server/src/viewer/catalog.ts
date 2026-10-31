@@ -238,7 +238,7 @@ export const CATALOG: Catalog = {
           label: "Zahlen-Abstand",
           type: "range",
           min: 0,
-          max: 40,
+          max: 60,
           step: 0.5,
           unit: "mm",
           default: 0,

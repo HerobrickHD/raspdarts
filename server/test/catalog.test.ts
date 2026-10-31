@@ -198,11 +198,11 @@ describe("Zahlenring: Ausrichtung und Abstand", () => {
     expect(scheibe["zahlenAbstand"]).toBe(0);
   });
 
-  test("Abstand ist eine Zahl von 0 bis 40 in Schritten von 0,5", () => {
+  test("Abstand ist eine Zahl von 0 bis 60 in Schritten von 0,5", () => {
     const abstand = (raw: unknown) => sanitizeContent({ scheibe: { zahlenAbstand: raw } })["scheibe"]!["zahlenAbstand"];
     expect(abstand(12)).toBe(12);
     expect(abstand(12.3)).toBe(12.5);
-    expect(abstand(99)).toBe(40);
+    expect(abstand(99)).toBe(60);
     expect(abstand(-3)).toBe(0);
     expect(abstand("10")).toBe(0);
     expect(abstand(Number.NaN)).toBe(0);
