@@ -359,6 +359,18 @@ body {
   animation: dart-segment-blink 0.8s ease infinite;
 }
 
+/* Warte-Felder 1 und 8: pulsieren in der Leuchtfarbe (app.js setzt --warte-farbe).
+   Nur ohne Spiel - board.js zeichnet sie im Spiel nie. */
+.highlight-warten {
+  fill: var(--warte-farbe, #ffdc00);
+  animation: dart-segment-blink 0.8s ease infinite;
+}
+
+.viewer[data-warten="off"] .highlight-warten,
+.viewer[data-warten-felder="off"] .highlight-warten {
+  display: none;
+}
+
 @keyframes dart-segment-blink {
   0%,
   100% {
@@ -440,7 +452,7 @@ body {
 }
 
 .viewer[data-scheibe-darts="off"] .board-darts,
-.viewer[data-scheibe-letzterdart="off"] .board-highlights {
+.viewer[data-scheibe-letzterdart="off"] .highlight-last-dart {
   display: none;
 }
 
@@ -849,6 +861,32 @@ body {
 .dialog :is(button, input, select):focus-visible {
   outline: 2px solid var(--ad-blue-hover);
   outline-offset: 2px;
+}
+
+/* Farbwaehler (Leuchtfarbe): ein Farbfeld in der Zeile, wie der Schalter rechts. */
+.settings input.color {
+  flex: none;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--ad-line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.settings input.color::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.settings input.color::-webkit-color-swatch {
+  border: 0;
+  border-radius: 6px;
+}
+
+.settings input.color:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* Segmente: Spielerzahl und Auswahl-Optionen (Darstellung, Verteilung). */

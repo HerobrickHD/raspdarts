@@ -49,7 +49,16 @@ export interface RangeOption {
   modes?: string[];
 }
 
-export type Option = ToggleOption | ChoiceOption | RangeOption;
+/** Farbwaehler; der Wert ist "#rrggbb" (klein geschrieben). */
+export interface ColorOption {
+  id: string;
+  label: string;
+  type: "color";
+  default: string;
+  modes?: string[];
+}
+
+export type Option = ToggleOption | ChoiceOption | RangeOption | ColorOption;
 
 export interface Part {
   id: string;
@@ -243,7 +252,12 @@ export const CATALOG: Catalog = {
       id: "warten",
       label: "Warten",
       default: true,
-      options: [],
+      options: [
+        // Zum Pruefen der Ausrichtung: aeussere Einzelfelder der weissen 1 und der schwarzen 8.
+        // Sie pulsieren - deshalb nur beim Warten, nie im Spiel (Autodarts saehe jeden Impuls als Wurf).
+        toggle("felder", "Felder 1 und 8 leuchten", false),
+        { id: "farbe", label: "Leuchtfarbe", type: "color", default: "#ffdc00" },
+      ],
     },
     {
       id: "aufnahme",
@@ -304,6 +318,7 @@ function partDefaults(part: Part): PartContent {
 function isValid(option: Option, raw: unknown): raw is boolean | string | number {
   if (option.type === "toggle") return typeof raw === "boolean";
   if (option.type === "range") return typeof raw === "number" && Number.isFinite(raw);
+  if (option.type === "color") return typeof raw === "string" && /^#[0-9a-f]{6}$/i.test(raw);
   return typeof raw === "string" && option.choices.some((choice) => choice.id === raw);
 }
 
@@ -331,8 +346,13 @@ export function sanitizeContent(stored: unknown, fallback: Content = {}): Conten
     for (const option of part.options) {
       const raw = given[option.id];
       const valid = isValid(option, raw);
-      value[option.id] =
-        valid && option.type === "range" ? toRange(option, raw as number) : valid ? raw : (base[option.id] ?? option.default);
+      value[option.id] = !valid
+        ? (base[option.id] ?? option.default)
+        : option.type === "range"
+          ? toRange(option, raw as number)
+          : option.type === "color"
+            ? (raw as string).toLowerCase()
+            : raw;
     }
     content[part.id] = value;
   }

@@ -36,7 +36,7 @@ describe("Vorgaben", () => {
     const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
     expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, darts: true, letzterDart: true, beimWarten: false });
-    expect(c["warten"]).toEqual({ on: true });
+    expect(c["warten"]).toEqual({ on: true, felder: false, farbe: "#ffdc00" });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
     expect(c["spieler"]).toEqual({
@@ -217,12 +217,19 @@ describe("Warte-Bildschirm", () => {
   test("altes Profil ohne Warten: Scheibe beim Warten aus, Text an", () => {
     const content = sanitizeContent({ scheibe: { on: true, darstellung: "drawn" } });
     expect(content["scheibe"]?.["beimWarten"]).toBe(false);
-    expect(content["warten"]).toEqual({ on: true });
+    expect(content["warten"]).toEqual({ on: true, felder: false, farbe: "#ffdc00" });
+  });
+
+  test("Leuchtfarbe: nur #rrggbb, klein geschrieben; sonst bleibt die bisherige", () => {
+    expect(sanitizeContent({ warten: { farbe: "#FF00AA" } })["warten"]?.["farbe"]).toBe("#ff00aa");
+    for (const bad of ["red", "#fff", "#12345g", 7, null]) {
+      expect(sanitizeContent({ warten: { farbe: bad } })["warten"]?.["farbe"], String(bad)).toBe("#ffdc00");
+    }
   });
 
   test("beimWarten und Warten aus werden angenommen", () => {
     const content = sanitizeContent({ scheibe: { beimWarten: true }, warten: { on: false } });
     expect(content["scheibe"]?.["beimWarten"]).toBe(true);
-    expect(content["warten"]).toEqual({ on: false });
+    expect(content["warten"]).toMatchObject({ on: false });
   });
 });

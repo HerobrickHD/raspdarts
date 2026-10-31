@@ -93,6 +93,18 @@ function dartMarker(dart) {
   return el("circle", { cx: point.x.toFixed(2), cy: point.y.toFixed(2), r: DART_RADIUS, class: "dart" });
 }
 
+/* Beim Warten: aeussere Einzelfelder der weissen 1 und der schwarzen 8 - zum Pruefen der Ausrichtung. */
+const WAIT_FIELDS = [1, 8].map((number) => ({ field: { multiplier: 1, number, ring: "outer" }, kind: "warten" }));
+
+/**
+ * Was leuchtet: im Spiel, was der Pi schickt; beim Warten die beiden Felder
+ * (ob sie zu sehen sind, entscheidet style.css). Im Spiel nie die Warte-Felder -
+ * sie pulsieren, und Autodarts saehe jeden Impuls als Wurf.
+ */
+export function boardHighlights(state) {
+  return state.phase === "playing" ? state.highlights : WAIT_FIELDS.map((h) => ({ ...h, field: { ...h.field } }));
+}
+
 export function createBoard(svg) {
   svg.setAttribute("viewBox", `${-RADIUS.board} ${-RADIUS.board} ${2 * RADIUS.board} ${2 * RADIUS.board}`);
   const fields = el("g", { class: "board-fields" });
@@ -117,7 +129,7 @@ export function createBoard(svg) {
     render(state) {
       const playing = state.phase === "playing";
       highlights.replaceChildren(
-        ...(playing ? state.highlights : []).map((highlight) =>
+        ...boardHighlights(state).map((highlight) =>
           el("path", {
             d: fieldPath(highlight.field),
             class: `highlight highlight-${highlight.kind}`,

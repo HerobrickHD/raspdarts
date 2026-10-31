@@ -138,6 +138,7 @@ function render() {
     applyLayout(viewer, current.layout);
   }
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
+  viewer.style.setProperty("--warte-farbe", current?.content.warten?.farbe ?? "#ffdc00");
   board.setNumbers({
     offset: Number(current?.content.scheibe?.zahlenAbstand ?? 0),
     upright: current?.content.scheibe?.zahlenAusrichtung === "gerade",

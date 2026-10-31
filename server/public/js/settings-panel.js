@@ -296,6 +296,12 @@ export function createPanel(root, handlers) {
         node("div", { className: "range-row" }, [input, node("span", { className: "range-value" })]),
       ]);
     }
+    if (option.type === "color") {
+      const input = node("input", { type: "color", className: "color" });
+      Object.assign(input.dataset, { part: part.id, option: option.id });
+      input.setAttribute("aria-label", option.label);
+      return node("label", { className: "option-row" }, [node("span", {}, [option.label, ...onlyIn(option)]), input]);
+    }
     if (option.type === "toggle") {
       return node("label", { className: "option-row" }, [
         node("span", {}, [option.label, ...onlyIn(option)]),
@@ -334,6 +340,7 @@ export function createPanel(root, handlers) {
     const content = structuredClone(profile.content);
     if (!option) content[part].on = input.checked;
     else if (input.type === "range") content[part][option] = Number(input.value);
+    else if (input.type === "color") content[part][option] = input.value;
     else content[part][option] = input.type === "radio" ? input.value : input.checked;
     return content;
   }
@@ -343,11 +350,11 @@ export function createPanel(root, handlers) {
     handlers.onContent(contentFrom(event.target));
   });
 
-  /* Schieberegler wirken schon beim Ziehen; ein Zug ist ein Schritt fuer Zurueck. */
+  /* Schieberegler und Farbwaehler wirken schon beim Ziehen; ein Zug ist ein Schritt fuer Zurueck. */
   partList.addEventListener("input", (event) => {
     const input = event.target;
-    if (input.type !== "range" || !input.dataset.part || !profile) return;
-    handlers.onContent(contentFrom(input), `range:${input.dataset.part}.${input.dataset.option}`);
+    if ((input.type !== "range" && input.type !== "color") || !input.dataset.part || !profile) return;
+    handlers.onContent(contentFrom(input), `${input.type}:${input.dataset.part}.${input.dataset.option}`);
   });
 
   /* --- Aufbau ------------------------------------------------------------- */
@@ -424,6 +431,8 @@ export function createPanel(root, handlers) {
         input.value = String(value[option]);
         const shown = `${String(value[option]).replace(".", ",")} ${input.dataset.unit}`;
         input.nextElementSibling.textContent = shown;
+      } else if (input.type === "color") {
+        if (input.value !== value[option]) input.value = value[option];
       } else if (input.type === "radio") input.checked = value[option] === input.value;
       else input.checked = value[option] === true;
     }
