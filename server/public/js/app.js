@@ -22,7 +22,6 @@ import { createUndo } from "./undo.js";
 
 const viewer = document.getElementById("viewer");
 const boardSvg = document.getElementById("board-svg");
-const messageEl = document.getElementById("message");
 const headEl = viewer.querySelector('[data-block="spielinfo"] .head');
 const turnEl = viewer.querySelector('[data-block="aufnahme"] .turn');
 const areaEls = {
@@ -138,7 +137,6 @@ function render() {
     applyContent(viewer, view.catalog, current.content, mode);
     applyLayout(viewer, current.layout);
   }
-  messageEl.textContent = shown.phase === "idle" ? "Warte auf ein Spiel" : "";
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
   board.setNumbers({
     offset: Number(current?.content.scheibe?.zahlenAbstand ?? 0),

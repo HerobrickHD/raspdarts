@@ -1,7 +1,7 @@
 /*
  * Seitenleiste im Stil von Autodarts: Profil mit Format und Zuruecksetzen,
  * darunter die Bausteine als Kaesten mit Schaltern (bei den Spielerkarten
- * oben die Vorschau mit 1-6 Spielern). Ein Profil gilt fuer alle Spielarten;
+ * oben die Vorschau mit 1-6 Spielern), darueber fest die Vorschau Spiel | Warten. Ein Profil gilt fuer alle Spielarten;
  * was es nur in einigen gibt, traegt den Hinweis "nur ...". Die Liste entsteht
  * aus dem Katalog vom Pi - eine neue Option im Katalog erscheint hier ohne
  * Aenderung an dieser Datei.
@@ -69,6 +69,7 @@ export function createPanel(root, handlers) {
   let profiles = [];
   let profilesKey = "";
   let players = 2;
+  let vorschau = "spiel";
   let canUndo = false;
   let canRedo = false;
   /* Objekt-URL des letzten Bilds einer Kamera (camera-feed.js) - fuer die Vorschaubilder. */
@@ -243,6 +244,23 @@ export function createPanel(root, handlers) {
     node("div", { className: "segments" }, playerButtons),
   ]);
 
+  /* Spiel oder Warte-Bildschirm: steht fest ueber den Kaesten, rollt nicht mit. */
+  const VORSCHAU = [
+    ["spiel", "Spiel"],
+    ["warten", "Warten"],
+  ];
+  const vorschauButtons = VORSCHAU.map(([id, label]) => {
+    const b = button(label, () => handlers.onVorschau(id), { className: "segment" });
+    b.dataset.vorschau = id;
+    return b;
+  });
+  const vorschauField = node("div", { className: "panel-preview" }, [
+    node("div", { className: "field" }, [
+      node("span", { textContent: "Vorschau" }),
+      node("div", { className: "segments" }, vorschauButtons),
+    ]),
+  ]);
+
   /* --- Bausteine ---------------------------------------------------------- */
 
   const partList = node("div", { className: "parts" });
@@ -354,6 +372,7 @@ export function createPanel(root, handlers) {
       redoButton,
       button("×", () => handlers.onClose(), { className: "btn-icon", title: "Schließen", ariaLabel: "Einstellungen schließen" }),
     ]),
+    vorschauField,
     panelBody,
     node("footer", { className: "panel-foot" }, [
       node("span", { textContent: "Auf der Bühne anklicken und ziehen." }),
@@ -424,6 +443,7 @@ export function createPanel(root, handlers) {
     }
 
     for (const [index, b] of playerButtons.entries()) b.setAttribute("aria-pressed", String(index + 1 === players));
+    for (const b of vorschauButtons) b.setAttribute("aria-pressed", String(b.dataset.vorschau === vorschau));
     undoButton.disabled = !canUndo;
     redoButton.disabled = !canRedo;
   }
@@ -436,6 +456,7 @@ export function createPanel(root, handlers) {
       profile = next.profile;
       profiles = next.profiles;
       players = next.players;
+      vorschau = next.vorschau ?? "spiel";
       canUndo = next.canUndo ?? false;
       canRedo = next.canRedo ?? false;
       cameraUrl = next.cameraUrl ?? cameraUrl;

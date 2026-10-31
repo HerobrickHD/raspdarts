@@ -433,7 +433,9 @@ body {
 .viewer[data-scheibe="off"] .board-block,
 .viewer[data-aufnahme="off"] [data-block="aufnahme"],
 .viewer[data-spielinfo="off"] [data-block="spielinfo"],
-.viewer[data-spieler="off"] .area-block {
+.viewer[data-spieler="off"] .area-block,
+.viewer[data-warten="off"] [data-block="warten"],
+.viewer[data-phase="playing"] [data-block="warten"] {
   display: none;
 }
 
@@ -501,17 +503,15 @@ body {
 
 /* --- Hinweise ------------------------------------------------------------- */
 
-.message {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--hint);
-  font-size: 2.4cqh;
+/* Lage und Groesse setzt layout-view.js (Mitte auf x/y); waechst um die Mitte. */
+.message-block {
+  transform-origin: center;
 }
 
-.viewer[data-phase="playing"] .message {
-  display: none;
+.message {
+  margin: 0;
+  color: var(--hint);
+  font-size: 2.4cqh;
 }
 
 .offline {
@@ -669,6 +669,12 @@ body {
   flex-direction: column;
   gap: 12px;
   padding: 12px 6px 12px 12px;
+}
+
+/* Vorschau Spiel | Warten: fest zwischen Kopf und Kaesten. */
+.panel-preview {
+  flex: none;
+  padding: 12px 12px 0;
 }
 
 /* Scrollbar der Leiste und der Dialoge: schmal, Griff in der Kantenfarbe. */

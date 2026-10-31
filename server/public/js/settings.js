@@ -30,14 +30,14 @@ export function createSettings({
   const root = viewer.querySelector("#settings");
   let step = null;
   /* Was die Leiste gerade einstellt und zeigt. */
-  const preview = { spieler: 2 };
+  const preview = { spieler: 2, vorschau: "spiel" };
   let keepalive = null;
   let hideTimer = null;
 
   const profileId = () => getView().profile?.id;
   const path = (id, suffix = "") => `/api/profiles/${encodeURIComponent(id)}${suffix}`;
   const report = (error) => panel.setStatus(`Fehlgeschlagen: ${error.message}`);
-  const editing = () => (step ? { schritt: step, spieler: preview.spieler } : null);
+  const editing = () => (step ? { schritt: step, spieler: preview.spieler, vorschau: preview.vorschau } : null);
 
   function announce() {
     sync.queue(profileId(), { editing: editing() });
@@ -72,6 +72,7 @@ export function createSettings({
       undo.record(profile, next);
     },
     onPlayers: (count) => setPlayers(count),
+    onVorschau: (vorschau) => setVorschau(vorschau),
     onSelect(id) {
       sync.flush();
       api("PUT", "/api/active-profile", { id }).then(afterSwitch).catch(report);
@@ -116,6 +117,15 @@ export function createSettings({
     onChange();
   }
 
+  /* Spiel oder Warte-Bildschirm - kein Schritt fuer Zurueck, gehoert nicht zum Profil. */
+  function setVorschau(vorschau) {
+    preview.vorschau = vorschau;
+    announce();
+    refresh();
+    onChange();
+    editor.reselect();
+  }
+
   function refresh() {
     const { catalog, profile, profiles } = getView();
     if (!catalog || !profile) return;
@@ -124,6 +134,7 @@ export function createSettings({
       profile,
       profiles,
       players: preview.spieler,
+      vorschau: preview.vorschau,
       cameraUrl,
       canUndo: undo.canUndo(),
       canRedo: undo.canRedo(),
@@ -133,7 +144,10 @@ export function createSettings({
   function open(next) {
     if (!getView().profile) return; // noch kein Profil vom Pi
     // Frische Vorschaubilder fuer die Kamera-Wahl - einmal je Oeffnen.
-    if (next && !step) refreshCameras();
+    if (next && !step) {
+      refreshCameras();
+      preview.vorschau = "spiel"; // beim Oeffnen immer das Spiel, wie bisher
+    }
     step = next;
     root.hidden = step !== "inhalte";
     if (step !== "inhalte") panel.cancelAsk(); // keine alte Rueckfrage beim naechsten Oeffnen

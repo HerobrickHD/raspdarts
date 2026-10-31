@@ -11,6 +11,7 @@
  * Knopf, Seitenleiste, Esc und Lebenszeichen gehoeren zu settings.js.
  */
 import { layoutChange } from "./editor-changes.js";
+import { CENTERED_BLOCKS } from "./layout-view.js";
 import { snapRotation } from "./rotation.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -176,10 +177,11 @@ export function createEditor({
   }
 
   /* Ausgeschaltete Bausteine sind unsichtbar - die Auswahl springt auf einen
-     sichtbaren, sonst schoebe die Tastatur etwas, das man nicht sieht. */
+     sichtbaren, sonst schoebe die Tastatur etwas, das man nicht sieht. Beim
+     Warte-Bildschirm sind Bloecke nur unsichtbar (visibility), nicht weg. */
   function selectVisible() {
     const shown = [...viewer.querySelectorAll(".block[data-block]")].filter(
-      (block) => block.getClientRects().length > 0,
+      (block) => block.getClientRects().length > 0 && getComputedStyle(block).visibility !== "hidden",
     );
     const current = shown.find((block) => block.dataset.block === selected);
     select(current ? selected : (shown[0]?.dataset.block ?? selected));
@@ -210,7 +212,7 @@ export function createEditor({
     const rect = block.getBoundingClientRect();
     const stage = viewer.querySelector("#stage").getBoundingClientRect();
     const anchor =
-      id === "scheibe"
+      id === "scheibe" || CENTERED_BLOCKS.includes(id)
         ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
         : { x: rect.left, y: rect.top };
 
@@ -255,6 +257,10 @@ export function createEditor({
 
   return {
     setActive,
+    /** Nach einem Wechsel der Vorschau: Auswahl auf einen sichtbaren Block. */
+    reselect: () => {
+      if (editing) selectVisible();
+    },
     isEditing: () => editing,
   };
 }
