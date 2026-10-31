@@ -354,9 +354,9 @@ body {
   filter: drop-shadow(0 0 1.3px rgba(0, 0, 0, 0.7));
 }
 
+/* Im Spiel ruhig, ohne Blinken: Autodarts saehe jeden Lichtimpuls als Wurf. */
 .highlight-last-dart {
   fill: rgba(255, 220, 0, 0.65);
-  animation: dart-segment-blink 0.8s ease infinite;
 }
 
 /* Warte-Felder 1 und 8: pulsieren in der Leuchtfarbe (app.js setzt --warte-farbe).
