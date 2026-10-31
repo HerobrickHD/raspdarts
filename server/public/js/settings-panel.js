@@ -1,7 +1,8 @@
 /*
  * Seitenleiste im Stil von Autodarts: Profil mit Format und Zuruecksetzen,
  * darunter die Bausteine als Kaesten mit Schaltern (bei den Spielerkarten
- * oben die Vorschau mit 1-6 Spielern), darueber fest die Vorschau Spiel | Warten. Ein Profil gilt fuer alle Spielarten;
+ * oben die Vorschau mit 1-6 Spielern), darueber fest die Vorschau
+ * Spiel | Warten. Ein Profil gilt fuer alle Spielarten;
  * was es nur in einigen gibt, traegt den Hinweis "nur ...". Die Liste entsteht
  * aus dem Katalog vom Pi - eine neue Option im Katalog erscheint hier ohne
  * Aenderung an dieser Datei.
