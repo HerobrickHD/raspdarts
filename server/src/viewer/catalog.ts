@@ -234,7 +234,16 @@ export const CATALOG: Catalog = {
         },
         toggle("darts", "Darts einzeichnen"),
         toggle("letzterDart", "Letzten Dart leuchten"),
+        // Ohne Spiel dieselbe Scheibe (Lage aus dem Layout), nur ohne Darts.
+        toggle("beimWarten", "Beim Warten zeigen", false),
       ],
+    },
+    {
+      // Der Text „Warte auf ein Spiel“ ohne Spiel - fester Wortlaut, verschieb- und skalierbar.
+      id: "warten",
+      label: "Warten",
+      default: true,
+      options: [],
     },
     {
       id: "aufnahme",

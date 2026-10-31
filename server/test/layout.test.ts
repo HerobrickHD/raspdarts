@@ -69,6 +69,12 @@ describe("sanitizeLayout", () => {
     });
   });
 
+  test("Text beim Warten: Standard in der Mitte, begrenzt wie die Bloecke, fehlt er, gilt der Standard", () => {
+    expect(DEFAULT_LAYOUT.blocks.warten).toEqual({ x: 50, y: 50, scale: 1 });
+    expect(sanitizeLayout({ blocks: { warten: { x: 120, y: -1, scale: 9 } } }).blocks.warten).toEqual({ x: 100, y: 0, scale: 4 });
+    expect(sanitizeLayout({ blocks: { spielinfo: { x: 1, y: 1, scale: 1 } } }).blocks.warten).toEqual({ x: 50, y: 50, scale: 1 });
+  });
+
   test("liefert jedes Mal eine eigene Kopie", () => {
     const a = sanitizeLayout(null);
     a.blocks.spielinfo.x = 77;
@@ -109,7 +115,7 @@ describe("splitLegacyLayout (Layout aus Profil-Version 3)", () => {
     expect(layout.blocks["bereich-links"]).toEqual({ x: 1, y: 10, w: CARD.w * 0.8, h: 88 });
     expect(layout.blocks["bereich-rechts"]).toMatchObject({ y: 10, w: DEFAULT_AREA_W, h: 88 });
     expect(layout.blocks["bereich-rechts"].x).toBeCloseTo(70 + ((CARD.w * 1.1 - DEFAULT_AREA_W) * 9) / 16);
-    expect(Object.keys(layout.blocks).sort()).toEqual(["aufnahme", "bereich-links", "bereich-rechts", "spielinfo"]);
+    expect(Object.keys(layout.blocks).sort()).toEqual(["aufnahme", "bereich-links", "bereich-rechts", "spielinfo", "warten"]);
   });
 
   test("ohne Karten gelten die Standardbereiche", () => {

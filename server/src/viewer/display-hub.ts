@@ -25,10 +25,14 @@ export interface ProfileSource {
   list(): ProfileSummary[];
 }
 
-/** Wer gerade einstellt: Schritt und Spielerzahl der Vorschau (Beispieldaten X01). */
+/**
+ * Wer gerade einstellt: Schritt, Spielerzahl der Vorschau (Beispieldaten X01)
+ * und ob die Vorschau das Spiel oder den Warte-Bildschirm zeigt.
+ */
 export interface Editing {
   schritt: "inhalte" | "layout";
   spieler: number;
+  vorschau: "spiel" | "warten";
 }
 
 export type ViewerMessage =
@@ -51,6 +55,7 @@ export function parseEditing(raw: unknown): Editing | null {
   return {
     schritt,
     spieler: typeof spieler === "number" && Number.isInteger(spieler) && spieler >= 1 && spieler <= 6 ? spieler : 2,
+    vorschau: source["vorschau"] === "warten" ? "warten" : "spiel",
   };
 }
 

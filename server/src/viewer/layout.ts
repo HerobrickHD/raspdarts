@@ -42,6 +42,8 @@ export interface Area {
 export interface LayoutBlocks {
   spielinfo: BlockLayout;
   aufnahme: BlockLayout;
+  /** Text „Warte auf ein Spiel“: x/y sind seine Mitte (layout-view.js), nicht die linke obere Ecke. */
+  warten: BlockLayout;
   "bereich-links": Area;
   "bereich-rechts": Area;
 }
@@ -100,6 +102,7 @@ export const DEFAULT_LAYOUT: Layout = {
   blocks: {
     spielinfo: { x: 2, y: 3, scale: 1 },
     aufnahme: { x: 32.5, y: 3.8, scale: 1 },
+    warten: { x: 50, y: 50, scale: 1 },
     "bereich-links": { x: 1.4, y: AREA_SPAN.y, w: DEFAULT_AREA_W, h: AREA_SPAN.h },
     // Rechte Kante wie frueher bei 71 % mit 49 breit (16:9) - die Karten stehen wie vorher.
     "bereich-rechts": { x: 71 + (CARD.w - DEFAULT_AREA_W) / STAGE_ASPECT["16:9"], y: AREA_SPAN.y, w: DEFAULT_AREA_W, h: AREA_SPAN.h },
@@ -177,6 +180,7 @@ export function sanitizeLayout(stored: unknown, fallback: Layout = DEFAULT_LAYOU
     blocks: {
       spielinfo: sanitizeBlock(blocks["spielinfo"], fallback.blocks.spielinfo),
       aufnahme: sanitizeBlock(blocks["aufnahme"], fallback.blocks.aufnahme),
+      warten: sanitizeBlock(blocks["warten"], fallback.blocks.warten),
       "bereich-links": sanitizeArea(blocks["bereich-links"], fallback.blocks["bereich-links"]),
       "bereich-rechts": sanitizeArea(blocks["bereich-rechts"], fallback.blocks["bereich-rechts"]),
     },

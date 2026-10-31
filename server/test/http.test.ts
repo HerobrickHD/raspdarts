@@ -184,13 +184,13 @@ describe("Profil-API", () => {
     expect(profile.content.hintergrund.darstellung).toBe("autodarts");
     expect(profile.content.aufnahme.on).toBe(false);
     expect(profile.layout.board).toEqual({ cx: 40, cy: 45, diameter: 80, rotation: 1.5 });
-    expect(deps.hub.editing).toEqual({ schritt: "inhalte", spieler: 3 });
+    expect(deps.hub.editing).toEqual({ schritt: "inhalte", spieler: 3, vorschau: "spiel" });
   });
 
   test("ein PUT ohne editing laesst den Schritt stehen, editing null beendet ihn", async () => {
     const deps = testDeps();
     app = await buildApp(deps);
-    const layout = { schritt: "layout", spieler: 2 };
+    const layout = { schritt: "layout", spieler: 2, vorschau: "spiel" };
     await call("PUT", "/api/profiles/standard", { editing: layout });
 
     await call("PUT", "/api/profiles/standard", { name: "Beamer" });

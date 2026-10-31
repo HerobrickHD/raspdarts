@@ -13,7 +13,7 @@ describe("Katalog", () => {
   });
 
   test("Hintergrund ist immer da, mit Darstellung und Rahmen", () => {
-    expect(CATALOG.parts.map((p) => p.id)).toEqual(["hintergrund", "scheibe", "aufnahme", "spielinfo", "spieler"]);
+    expect(CATALOG.parts.map((p) => p.id)).toEqual(["hintergrund", "scheibe", "warten", "aufnahme", "spielinfo", "spieler"]);
     for (const part of CATALOG.parts) expect(part, part.id).not.toHaveProperty("scope");
     const hintergrund = CATALOG.parts[0]!;
     expect(hintergrund.fixed).toBe(true);
@@ -35,7 +35,8 @@ describe("Vorgaben", () => {
   test("Vorgaben wie in der Spec", () => {
     const c = contentDefaults();
     expect(c["hintergrund"]).toEqual({ on: true, darstellung: "schwarz", rahmen: false });
-    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, darts: true, letzterDart: true });
+    expect(c["scheibe"]).toEqual({ on: true, darstellung: "light", kamera: "0", zahlenring: true, zahlenAusrichtung: "ring", zahlenAbstand: 0, darts: true, letzterDart: true, beimWarten: false });
+    expect(c["warten"]).toEqual({ on: true });
     expect(c["aufnahme"]).toEqual({ on: true, darts: true, summe: true });
     expect(c["spielinfo"]).toEqual({ on: true, spielart: true, punktzahl: true, legs: true, modus: true });
     expect(c["spieler"]).toEqual({
@@ -209,5 +210,19 @@ describe("Zahlenring: Ausrichtung und Abstand", () => {
   test("ein ungueltiger Abstand behaelt den bisherigen Wert", () => {
     const before = sanitizeContent({ scheibe: { zahlenAbstand: 20 } });
     expect(sanitizeContent({ scheibe: { zahlenAbstand: "x" } }, before)["scheibe"]!["zahlenAbstand"]).toBe(20);
+  });
+});
+
+describe("Warte-Bildschirm", () => {
+  test("altes Profil ohne Warten: Scheibe beim Warten aus, Text an", () => {
+    const content = sanitizeContent({ scheibe: { on: true, darstellung: "drawn" } });
+    expect(content["scheibe"]?.["beimWarten"]).toBe(false);
+    expect(content["warten"]).toEqual({ on: true });
+  });
+
+  test("beimWarten und Warten aus werden angenommen", () => {
+    const content = sanitizeContent({ scheibe: { beimWarten: true }, warten: { on: false } });
+    expect(content["scheibe"]?.["beimWarten"]).toBe(true);
+    expect(content["warten"]).toEqual({ on: false });
   });
 });

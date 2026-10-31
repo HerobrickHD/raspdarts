@@ -92,9 +92,15 @@ body {
   display: none;
 }
 
-/* Ohne Spiel ist alles schwarz - beim Einstellen zeigt app.js Beispieldaten. */
+/* Ohne Spiel ist alles schwarz - beim Einstellen zeigt app.js Beispieldaten.
+   Ausnahmen: die Scheibe, wenn sie beim Warten gezeigt werden soll, und der Warte-Text. */
 .viewer:not([data-phase="playing"]) .block {
   visibility: hidden;
+}
+
+.viewer[data-phase="idle"][data-scheibe="on"][data-scheibe-beimwarten="on"] .block[data-block="scheibe"],
+.viewer[data-phase="idle"][data-warten="on"] .block[data-block="warten"] {
+  visibility: visible;
 }
 
 /* --- Kopf ----------------------------------------------------------------- */
