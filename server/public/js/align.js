@@ -9,12 +9,29 @@
  * der Scheibe im Layout. Siehe docs/superpowers/specs/2026-11-01-auto-ausrichten-design.md.
  */
 
-/** Mitte und 8 Punkte auf 130 mm - innerhalb des Double-Rings, also sicher auf der Scheibenebene. */
+/**
+ * Mitte und 8 Punkte zwischen 86 und 132 mm (innerhalb des Double-Rings, also
+ * sicher auf der Scheibenebene) - absichtlich unregelmaessig: Abstand und
+ * Winkel sind alle verschieden. Ein gleichmaessiger Kreis saehe um 45 Grad
+ * gedreht genauso aus, und eine stark verdrehte Scheibe ergaebe einen sicheren,
+ * aber falschen Erfolg. Per Suche gefunden (Test "jeder Drehfehler").
+ * [Abstand mm, Winkel Grad im Uhrzeigersinn von oben]
+ */
+const DOTS_POLAR = [
+  [132, 354],
+  [99, 31],
+  [115, 93],
+  [97, 148],
+  [89, 173],
+  [112, 224],
+  [126, 258],
+  [86, 317],
+];
 export const ALIGN_DOTS = [
   [0, 0],
-  ...Array.from({ length: 8 }, (_, k) => {
-    const rad = ((9 + 45 * k) * Math.PI) / 180;
-    return [130 * Math.sin(rad), -130 * Math.cos(rad)];
+  ...DOTS_POLAR.map(([r, deg]) => {
+    const rad = (deg * Math.PI) / 180;
+    return [r * Math.sin(rad), -r * Math.cos(rad)];
   }),
 ];
 export const ALIGN_DOT_RADIUS = 6;
@@ -29,7 +46,8 @@ const MAX_AREA_SHARE = 0.02;
 export const MATCH_MAX_MM = 45;
 export const OUTLIER_MM = 5;
 const MIN_PAIRS = 4;
-const MAX_MEAN_MM = 60;
+/** Schwerpunkt der gefundenen Soll-Punkte weiter als das von der Mitte: nur eine Seite gesehen (Haelften >= 47, ein Punkt fehlt <= 20). */
+const MAX_MEAN_MM = 40;
 const MAX_RMS_MM = 3;
 
 const luminance = (d, i) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];

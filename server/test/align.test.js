@@ -61,10 +61,12 @@ function expectBoard(actual, expected, digits) {
 /* --- Tests -------------------------------------------------------------- */
 
 describe("ALIGN_DOTS", () => {
-  test("Mitte und 8 Punkte auf 130 mm", () => {
+  test("Mitte und 8 Punkte innerhalb des Double-Rings, alle Abstaende verschieden", () => {
     expect(ALIGN_DOTS).toHaveLength(9);
     expect(ALIGN_DOTS[0]).toEqual([0, 0]);
-    for (const [x, y] of ALIGN_DOTS.slice(1)) expect(Math.hypot(x, y)).toBeCloseTo(130, 9);
+    const radii = ALIGN_DOTS.slice(1).map(([x, y]) => Math.round(Math.hypot(x, y)));
+    for (const r of radii) expect(r).toBeGreaterThanOrEqual(80), expect(r).toBeLessThanOrEqual(150);
+    expect(new Set(radii).size).toBe(8);
   });
 });
 
@@ -246,5 +248,30 @@ describe("measureBoard", () => {
   test("nur eine Haelfte -> one-sided", () => {
     const half = ALIGN_DOTS.filter(([x]) => x >= 0).slice(0, 5);
     expect(measureBoard([capture(half)], today, 16 / 9)).toEqual({ ok: false, reason: "one-sided" });
+  });
+});
+
+describe("measureBoard bei grossem Drehfehler", () => {
+  const matrix = [1 / 450, 0, 0, 0, 1 / 450, 0, 0, 0, 1];
+  const today = { cx: 50, cy: 50, diameter: 60, rotation: 0 };
+
+  /* Ein symmetrisches Muster kann einen falschen Erfolg melden (z. B. 45 Grad daneben, Restfehler 0). */
+  test("jeder Drehfehler: entweder richtig oder abgebrochen - nie sicher falsch", () => {
+    const wrong = [];
+    for (let off = -180; off < 180; off += 3) {
+      const truth = { ...today, rotation: off };
+      const black = image(450, 450);
+      const lit = image(450, 450);
+      for (const { q } of pairsFor(today, truth, 16 / 9)) {
+        const x = Math.round(q[0] + 225);
+        const y = Math.round(q[1] + 225);
+        if (x > 3 && y > 3 && x < 446 && y < 446) square(lit, x, y);
+      }
+      const result = measureBoard([{ matrix, black, dots: lit }], today, 16 / 9);
+      if (!result.ok) continue;
+      const diff = Math.abs(((result.board.rotation - off + 540) % 360) - 180);
+      if (diff > 0.5) wrong.push(`${off}: ${result.board.rotation.toFixed(1)}`);
+    }
+    expect(wrong).toEqual([]);
   });
 });
