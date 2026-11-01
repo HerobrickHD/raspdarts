@@ -35,13 +35,19 @@ export interface Editing {
   vorschau: "spiel" | "warten";
 }
 
+/** Pruefbild zum Ausrichten (align.ts): ganze Buehne schwarz, oder schwarz mit hellen Punkten auf der Scheibe. */
+export type Pattern = "black" | "dots";
+
 export type ViewerMessage =
   | { type: "catalog"; catalog: ViewerCatalog }
   | { type: "state"; state: ViewerState }
   | { type: "profile"; profile: ProfileWithId; profiles: ProfileSummary[]; editing: Editing | null }
-  | { type: "camera"; cam: number; version: number };
+  | { type: "camera"; cam: number; version: number }
+  | { type: "pattern"; pattern: Pattern | null };
 
 export const EDIT_TIMEOUT_MS = 60_000;
+/** Laenger bleibt kein Pruefbild stehen - auch wenn der ausloesende Browser wegbricht. */
+export const PATTERN_MAX_MS = 10_000;
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
@@ -64,12 +70,15 @@ export class DisplayHub {
   #state: ViewerState = IDLE;
   #editing: Editing | null = null;
   #editTimer: NodeJS.Timeout | null = null;
+  #pattern: Pattern | null = null;
+  #patternTimer: NodeJS.Timeout | null = null;
   /** Das aktive Profil beim letzten Verteilen - ein Wechsel beendet das Einstellen. */
   #shownActive: string;
 
   constructor(
     private readonly profiles: ProfileSource,
     private readonly editTimeoutMs = EDIT_TIMEOUT_MS,
+    private readonly patternMaxMs = PATTERN_MAX_MS,
   ) {
     this.#shownActive = profiles.activeId;
   }
@@ -80,12 +89,31 @@ export class DisplayHub {
     this.#send(socket, { type: "catalog", catalog: viewerCatalog() });
     this.#send(socket, { type: "state", state: this.#state });
     this.#send(socket, this.#profileMessage());
+    if (this.#pattern) this.#send(socket, { type: "pattern", pattern: this.#pattern });
   }
 
   /** Setzt den Stand und schiebt ihn an alle Viewer. */
   broadcast(state: ViewerState): void {
     this.#state = state;
     for (const socket of [...this.#clients]) this.#send(socket, { type: "state", state });
+    // Im Spiel nie Licht auf der Scheibe, das als Wurf zaehlen koennte.
+    if (state.phase === "playing" && this.#pattern) this.setPattern(null);
+  }
+
+  /** Pruefbild an alle Viewer; endet spaetestens nach patternMaxMs von selbst. */
+  setPattern(pattern: Pattern | null): void {
+    if (this.#patternTimer) clearTimeout(this.#patternTimer);
+    this.#patternTimer = null;
+    this.#pattern = pattern;
+    if (pattern) {
+      this.#patternTimer = setTimeout(() => this.setPattern(null), this.patternMaxMs);
+      this.#patternTimer.unref?.();
+    }
+    for (const socket of [...this.#clients]) this.#send(socket, { type: "pattern", pattern });
+  }
+
+  get pattern(): Pattern | null {
+    return this.#pattern;
   }
 
   /** Wer gerade einstellt. Jede Meldung verlaengert; ohne Meldung endet es nach dem Zeitlimit. */
@@ -125,6 +153,8 @@ export class DisplayHub {
   close(): void {
     if (this.#editTimer) clearTimeout(this.#editTimer);
     this.#editTimer = null;
+    if (this.#patternTimer) clearTimeout(this.#patternTimer);
+    this.#patternTimer = null;
   }
 
   get state(): ViewerState {

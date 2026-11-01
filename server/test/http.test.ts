@@ -443,3 +443,23 @@ describe("Beenden", () => {
     socket.destroy();
   });
 });
+
+describe("Ausrichten", () => {
+  test("POST /api/align/capture braucht den Header", async () => {
+    app = await buildApp(testDeps());
+
+    const response = await app.inject({ method: "POST", url: "/api/align/capture" });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  test("POST /api/align/capture liefert das Ergebnis des Aligners", async () => {
+    const result = { ok: true as const, cams: [{ n: 0, matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1], black: "YQ==", dots: "Yg==" }] };
+    app = await buildApp(testDeps({ aligner: { capture: async () => result } }));
+
+    const response = await app.inject({ method: "POST", url: "/api/align/capture", headers: { "x-raspdarts": "1" } });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(result);
+  });
+});

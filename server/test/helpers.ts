@@ -37,6 +37,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
       throw new Error("In Tests werden keine echten Skripte gestartet");
     }),
     boardCamera: { info: async () => ({ cams: [] }), latest: () => null, refresh: () => {} },
+    aligner: { capture: async () => ({ ok: false, reason: "unavailable" }) },
     ...overrides,
   };
 }

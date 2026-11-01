@@ -12,6 +12,7 @@ import type { AppDeps } from "./http.js";
 import { autodartsHttp, createCams } from "./system/cams.js";
 import { BoardCamera, wantedCamera } from "./viewer/board-camera.js";
 import { JobRunner } from "./system/jobs.js";
+import { Aligner } from "./viewer/align.js";
 import { createStatusReader } from "./system/status.js";
 
 export interface Runtime extends AppDeps {
@@ -40,5 +41,6 @@ export function createDeps(options: { record: boolean }): Runtime {
     status: createStatusReader(),
     jobs: new JobRunner(),
     boardCamera,
+    aligner: new Aligner({ cams, hub }),
   };
 }

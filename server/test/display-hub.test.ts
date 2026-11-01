@@ -154,6 +154,65 @@ describe("Kamera-Bilder", () => {
   });
 });
 
+describe("Prüfbild", () => {
+  test("geht an alle Viewer", () => {
+    hub = new DisplayHub(store());
+    const a = fakeSocket();
+    const b = fakeSocket();
+    hub.attach(a.socket);
+    hub.attach(b.socket);
+
+    hub.setPattern("dots");
+
+    for (const viewer of [a, b]) expect(viewer.sent.at(-1)).toEqual({ type: "pattern", pattern: "dots" });
+    expect(hub.pattern).toBe("dots");
+  });
+
+  test("ein spaeter verbundener Viewer bekommt das laufende Pruefbild", () => {
+    hub = new DisplayHub(store());
+    hub.setPattern("dots");
+    const late = fakeSocket();
+
+    hub.attach(late.socket);
+
+    expect(late.sent.at(-1)).toEqual({ type: "pattern", pattern: "dots" });
+  });
+
+  test("ohne Pruefbild schickt attach keine pattern-Nachricht", () => {
+    hub = new DisplayHub(store());
+    const viewer = fakeSocket();
+
+    hub.attach(viewer.socket);
+
+    expect(viewer.sent.some((m) => m.type === "pattern")).toBe(false);
+  });
+
+  test("endet nach der Hoechstdauer von selbst", () => {
+    vi.useFakeTimers();
+    hub = new DisplayHub(store(), undefined, 50);
+    const viewer = fakeSocket();
+    hub.attach(viewer.socket);
+
+    hub.setPattern("black");
+    vi.advanceTimersByTime(50);
+
+    expect(viewer.sent.at(-1)).toEqual({ type: "pattern", pattern: null });
+    expect(hub.pattern).toBeNull();
+  });
+
+  test("ein Spielstart beendet es sofort", () => {
+    hub = new DisplayHub(store());
+    const viewer = fakeSocket();
+    hub.attach(viewer.socket);
+    hub.setPattern("dots");
+
+    hub.broadcast(PLAYING);
+
+    expect(viewer.sent).toContainEqual({ type: "pattern", pattern: null });
+    expect(hub.pattern).toBeNull();
+  });
+});
+
 describe("parseEditing", () => {
   test("Schritt und Spielerzahl (eine Spielart von alten Fenstern zaehlt nicht); sonst wird nicht eingestellt", () => {
     expect(parseEditing({ schritt: "layout", spielart: "cricket", spieler: 4 })).toEqual({ schritt: "layout", spieler: 4, vorschau: "spiel" });

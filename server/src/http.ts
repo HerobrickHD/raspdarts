@@ -22,6 +22,7 @@ import { IDLE } from "./viewer/game-state.js";
 import { isExtensionOrigin, type Ingest } from "./viewer/ingest.js";
 import { ProfileError, type ProfileErrorCode, type ProfileStore } from "./viewer/profile-store.js";
 import type { BoardCamera } from "./viewer/board-camera.js";
+import type { Aligner } from "./viewer/align.js";
 import type { JobRunner } from "./system/jobs.js";
 import type { SystemStatus } from "./system/status.js";
 
@@ -48,6 +49,7 @@ export interface AppDeps {
   status: () => Promise<SystemStatus>;
   jobs: JobRunner;
   boardCamera: Pick<BoardCamera, "info" | "latest" | "refresh">;
+  aligner: Pick<Aligner, "capture">;
 }
 
 /** Langlaeufer: Ausgabe wird zeilenweise als Server-Sent Events gestreamt. */
@@ -211,6 +213,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     deps.boardCamera.refresh(cams);
     return { ok: true };
   });
+
+  // Scheibe automatisch ausrichten: Pruefbild zeigen und Kamerabilder holen (align.ts).
+  // Fehler stehen in reason - die Leiste zeigt sie als Hinweis.
+  app.post("/api/align/capture", async () => deps.aligner.capture());
 
   for (const [path, script] of Object.entries(JOB_ROUTES)) {
     app.post(path, (_request, reply) => {
