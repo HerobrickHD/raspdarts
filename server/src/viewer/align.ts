@@ -46,12 +46,17 @@ export class Aligner {
     if (this.#playing()) return { ok: false, reason: "playing" };
     this.#busy = true;
     try {
-      const matrices = cameraMatrices(await this.deps.cams.calibration());
+      const matrices = cameraMatrices(await this.deps.cams.calibration({ fresh: true }));
       const cams = Object.keys(matrices)
         .map(Number)
         .filter((n) => Number.isInteger(n) && n >= 0)
         .sort((a, b) => a - b);
-      if (cams.length === 0) return { ok: false, reason: "no-calibration" };
+      if (cams.length === 0) {
+        // Im Standby hat Autodarts die Kameras zu und liefert auch keine Kalibrierung -
+        // cams.image fragt dann nur den Zustand ab, kein Bild.
+        const probe = await this.deps.cams.image(0);
+        return { ok: false, reason: !probe.ok && probe.reason === "board-stopped" ? "board-stopped" : "no-calibration" };
+      }
       try {
         const black = await this.#shoot("black", cams);
         const dots = await this.#shoot("dots", cams);

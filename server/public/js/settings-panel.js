@@ -73,6 +73,8 @@ export function createPanel(root, handlers) {
   let vorschau = "spiel";
   let canUndo = false;
   let canRedo = false;
+  /* Automatisch ausrichten: laeuft gerade / warum gesperrt (align-run.js). */
+  let align = { busy: false, blocked: null };
   /* Objekt-URL des letzten Bilds einer Kamera (camera-feed.js) - fuer die Vorschaubilder. */
   let cameraUrl = () => null;
   /* Offener Dialog - er merkt sich das Profil, das er nennt: Wechselt
@@ -262,6 +264,9 @@ export function createPanel(root, handlers) {
     ]),
   ]);
 
+  /* Steht am Ende des Kastens Scheibe (buildPart). */
+  const alignButton = button("Automatisch ausrichten", () => handlers.onAlign(), { className: "btn" });
+
   /* --- Bausteine ---------------------------------------------------------- */
 
   const partList = node("div", { className: "parts" });
@@ -322,6 +327,7 @@ export function createPanel(root, handlers) {
   function buildPart(part) {
     const children = part.options.map((option) => buildOption(part, option));
     if (part.id === "spieler") children.unshift(playersField);
+    if (part.id === "scheibe") children.push(node("div", { className: "btn-row" }, [alignButton]));
     // Feste Bausteine (Hintergrund) haben keinen eigenen Schalter.
     const section = card(part.id, part.label, children, {
       extra: [...onlyIn(part), ...(part.fixed ? [] : [switchInput({ part: part.id }, part.label)])],
@@ -454,6 +460,9 @@ export function createPanel(root, handlers) {
 
     for (const [index, b] of playerButtons.entries()) b.setAttribute("aria-pressed", String(index + 1 === players));
     for (const b of vorschauButtons) b.setAttribute("aria-pressed", String(b.dataset.vorschau === vorschau));
+    alignButton.textContent = align.busy ? "Richte aus …" : "Automatisch ausrichten";
+    alignButton.disabled = align.busy || align.blocked !== null;
+    alignButton.title = align.blocked ?? "";
     undoButton.disabled = !canUndo;
     redoButton.disabled = !canRedo;
   }
@@ -469,6 +478,7 @@ export function createPanel(root, handlers) {
       vorschau = next.vorschau ?? "spiel";
       canUndo = next.canUndo ?? false;
       canRedo = next.canRedo ?? false;
+      align = next.align ?? { busy: false, blocked: null };
       cameraUrl = next.cameraUrl ?? cameraUrl;
       if (freshCatalog) {
         buildFormats();

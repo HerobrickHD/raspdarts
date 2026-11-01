@@ -154,6 +154,8 @@ export function createEditor({
 }) {
   let editing = false;
   let selected = "scheibe";
+  /* Jede automatische Ausrichtung ist ein eigener Schritt fuer Zurueck. */
+  let alignCount = 0;
 
   /* key: Schritt fuer Zurueck (undo.js); ohne key - beim Ziehen - nimmt onUp den Schritt auf. */
   function change(mutate, key) {
@@ -257,6 +259,12 @@ export function createEditor({
 
   return {
     setActive,
+    /** Neue Lage der Scheibe aus dem automatischen Ausrichten: gespeichert und verteilt wie eine Tastenaenderung. */
+    setBoard(board) {
+      change((layout) => {
+        layout.board = { ...board };
+      }, `align:${++alignCount}`);
+    },
     /** Nach einem Wechsel der Vorschau: Auswahl auf einen sichtbaren Block. */
     reselect: () => {
       if (editing) selectVisible();

@@ -128,6 +128,7 @@ const settings = createSettings({
   onChange: () => render(),
   cameraUrl: (n) => camera.url(n),
   refreshCameras: () => camera.refresh([0, 1, 2]),
+  getPhase: () => state.phase,
 });
 
 /**

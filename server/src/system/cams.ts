@@ -30,8 +30,11 @@ export type CamImage = { ok: true; jpeg: Buffer } | { ok: false; reason: CamFail
 export interface Cams {
   /** fresh: neues Bild holen, auch wenn das gemerkte juenger als eine Sekunde ist (Kamera-Ansicht nach einem Wurf). */
   image(n: number, options?: { fresh?: boolean }): Promise<CamImage>;
-  /** Ringpunkte der Kalibrierung je Kamera (Autodarts: /api/config/calibration/ellipses); null, wenn nicht lesbar. */
-  calibration(): Promise<unknown>;
+  /**
+   * Ringpunkte der Kalibrierung je Kamera (Autodarts: /api/config/calibration/ellipses); null, wenn nicht lesbar.
+   * fresh: neu lesen - im Standby liefert Autodarts {}, nach dem Start erst die Punkte (Ausrichten, align.ts).
+   */
+  calibration(options?: { fresh?: boolean }): Promise<unknown>;
 }
 
 const TIMEOUT_MS = 2000;
@@ -136,7 +139,8 @@ export function createCams(deps: CamsDeps): Cams {
   }
 
   return {
-    calibration: () => calibration(),
+    // fresh liest neu und ersetzt den gemerkten Wert - auch fuer die Kamera-Ansicht.
+    calibration: (options = {}) => (options.fresh ? calibrationOk(true).catch(() => null) : calibration()),
     async image(n, options = {}) {
       let cams: number;
       try {

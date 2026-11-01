@@ -5,6 +5,7 @@
  * Beispieldaten (X01), auch wenn ein Spiel laeuft. Nach dem Schliessen
  * wieder das Spiel.
  */
+import { alignBlocked, alignMessage, decodeJpeg, runAlign } from "./align-run.js";
 import { api } from "./profile-api.js";
 import { createPanel } from "./settings-panel.js";
 import { undoKey } from "./undo.js";
@@ -25,6 +26,7 @@ export function createSettings({
   onChange,
   cameraUrl,
   refreshCameras,
+  getPhase,
 }) {
   const button = viewer.querySelector("#settings-toggle");
   const root = viewer.querySelector("#settings");
@@ -33,6 +35,8 @@ export function createSettings({
   const preview = { spieler: 2, vorschau: "spiel" };
   let keepalive = null;
   let hideTimer = null;
+  /* Automatisch ausrichten laeuft gerade. */
+  let aligning = false;
 
   const profileId = () => getView().profile?.id;
   const path = (id, suffix = "") => `/api/profiles/${encodeURIComponent(id)}${suffix}`;
@@ -105,6 +109,31 @@ export function createSettings({
         })
         .catch(report);
     },
+    onAlign() {
+      const { profile } = getView();
+      if (aligning || !profile) return;
+      const blocked = alignBlocked({ phase: getPhase(), format: profile.format });
+      if (blocked) {
+        panel.setStatus(blocked);
+        return;
+      }
+      aligning = true;
+      refresh();
+      // Der Beamer zeichnet die Punkte nach dem Profil auf dem Pi - eigene Aenderungen zuerst hin.
+      sync.flush();
+      runAlign({
+        capture: () => api("POST", "/api/align/capture"),
+        decode: decodeJpeg,
+        getProfile: () => getView().profile,
+        setBoard: (board) => editor.setBoard(board),
+      })
+        .then((result) => panel.setStatus(alignMessage(result)))
+        .catch(report)
+        .finally(() => {
+          aligning = false;
+          refresh();
+        });
+    },
     onUndo: () => undo.undo(),
     onRedo: () => undo.redo(),
     onClose: () => open(null),
@@ -138,6 +167,7 @@ export function createSettings({
       cameraUrl,
       canUndo: undo.canUndo(),
       canRedo: undo.canRedo(),
+      align: { busy: aligning, blocked: alignBlocked({ phase: getPhase(), format: profile.format }) },
     });
   }
 

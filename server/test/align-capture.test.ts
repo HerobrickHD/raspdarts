@@ -32,7 +32,10 @@ function setup(options: { image?: (n: number) => CamImage; calibration?: unknown
       log.push(`image ${n}${opts?.fresh ? " fresh" : ""}`);
       return options.image?.(n) ?? { ok: true, jpeg: Buffer.from(`jpeg-${n}-${log.length}`) };
     },
-    calibration: async () => (options.calibration === undefined ? CALIBRATION : options.calibration),
+    calibration: async (opts?: { fresh?: boolean }) => {
+      log.push(`calibration${opts?.fresh ? " fresh" : ""}`);
+      return options.calibration === undefined ? CALIBRATION : options.calibration;
+    },
   };
   const aligner = new Aligner({
     cams,
@@ -54,6 +57,7 @@ describe("Aligner.capture", () => {
     const result = await aligner.capture();
 
     expect(log).toEqual([
+      "calibration fresh",
       "black",
       `sleep ${PATTERN_SETTLE_MS}`,
       "image 0 fresh",
@@ -68,8 +72,8 @@ describe("Aligner.capture", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.cams.map((c) => c.n)).toEqual([0, 2]);
-    expect(Buffer.from(result.cams[0]!.black, "base64").toString()).toBe("jpeg-0-3");
-    expect(Buffer.from(result.cams[1]!.dots, "base64").toString()).toBe("jpeg-2-8");
+    expect(Buffer.from(result.cams[0]!.black, "base64").toString()).toBe("jpeg-0-4");
+    expect(Buffer.from(result.cams[1]!.dots, "base64").toString()).toBe("jpeg-2-9");
     expect(result.cams[0]!.matrix).toEqual(cameraMatrices(CALIBRATION)["0"]);
   });
 
@@ -78,7 +82,7 @@ describe("Aligner.capture", () => {
     hub.state = PLAYING;
 
     expect(await aligner.capture()).toEqual({ ok: false, reason: "playing" });
-    expect(log).toEqual([]);
+    expect(log).not.toContain("black");
   });
 
   test("Spiel startet waehrend der Messung: Abbruch, Pruefbild aus", async () => {
@@ -102,11 +106,18 @@ describe("Aligner.capture", () => {
     expect(await aligner.capture()).toEqual({ ok: false, reason: "unavailable" });
   });
 
+  test("Board im Standby: Autodarts liefert dann auch keine Kalibrierung", async () => {
+    const { aligner, log } = setup({ calibration: {}, image: () => ({ ok: false, reason: "board-stopped" }) });
+
+    expect(await aligner.capture()).toEqual({ ok: false, reason: "board-stopped" });
+    expect(log).not.toContain("black");
+  });
+
   test("ohne Kalibrierung", async () => {
     const { aligner, log } = setup({ calibration: null });
 
     expect(await aligner.capture()).toEqual({ ok: false, reason: "no-calibration" });
-    expect(log).toEqual([]);
+    expect(log).not.toContain("black");
   });
 
   test("zweite Messung waehrend der ersten: busy, das Pruefbild der ersten bleibt", async () => {

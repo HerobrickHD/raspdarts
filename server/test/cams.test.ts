@@ -289,6 +289,16 @@ describe("frische Bilder und Kalibrierung (Kamera-Ansicht)", () => {
     expect(fake.count("/api/config/calibration/ellipses")).toBe(2);
   });
 
+  test("calibration fresh liest neu - nach dem Start des Boards ist sie erst dann da", async () => {
+    const { fake, cams } = setup();
+    fake.ellipses = {};
+    expect(await cams.calibration()).toEqual({});
+    fake.ellipses = { "0": { bull: [1, 2] } };
+
+    expect(await cams.calibration({ fresh: true })).toEqual({ "0": { bull: [1, 2] } });
+    expect(fake.count("/api/config/calibration/ellipses")).toBe(2);
+  });
+
   test("calibration: Fehler ergibt null, neuer Versuch nach einer Sekunde", async () => {
     const { fake, clock, cams } = setup();
     fake.ellipses = new Error("weg");
