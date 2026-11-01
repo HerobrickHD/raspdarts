@@ -250,11 +250,11 @@ sichern, wie üblich. Pushen erst nach Arnolds „ja“.
 
 - **Punktmuster unregelmäßig** statt 8 Punkte auf einem Kreis: Mitte plus 8
   Punkte zwischen 86 und 132 mm, alle Abstände und Winkel verschieden
-  ( in ). Der gleichmäßige Kreis ergab bei
+  (`ALIGN_DOTS` in `public/js/align.js`). Der gleichmäßige Kreis ergab bei
   einer um ~27–45° verdrehten Scheibe einen sicheren, aber falschen Erfolg
   (Restfehler 0). Ein Test geht jetzt alle Drehfehler durch: entweder richtig
   oder Abbruch. Grenze „nur eine Seite“ dafür 40 mm statt 60.
-- **Standby:** Autodarts liefert im Standby auch keine Kalibrierung ().
+- **Standby:** Autodarts liefert im Standby auch keine Kalibrierung (`{}`).
   Der Pi fragt dann den Board-Zustand ab und meldet „Board ist im Standby“.
   Die Kalibrierung wird fürs Ausrichten frisch gelesen (sonst 60 s alt).
 - **Viewer** bekommen beim Verbinden immer den Prüfbild-Stand (auch „keins“)
