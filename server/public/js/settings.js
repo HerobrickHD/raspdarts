@@ -15,6 +15,8 @@ import { undoKey } from "./undo.js";
 const KEEPALIVE_MS = 30_000;
 /* Der Knopf wuerde sonst an die Wand projiziert: nur bei Mausbewegung zeigen. */
 const BUTTON_HIDE_MS = 3000;
+/* Ausrichten dauert beim Pi bis etwa 12 s im schlimmsten Fall (align.ts). */
+const ALIGN_TIMEOUT_MS = 20_000;
 
 export function createSettings({
   viewer,
@@ -122,7 +124,8 @@ export function createSettings({
       // Der Beamer zeichnet die Punkte nach dem Profil auf dem Pi - eigene Aenderungen zuerst hin.
       sync.flush();
       runAlign({
-        capture: () => api("POST", "/api/align/capture"),
+        // Zwei Pruefbilder mit je 1 s Wartezeit plus Kamerabilder (je bis 2 s) - und 1-2 MB Antwort im WLAN.
+        capture: () => api("POST", "/api/align/capture", undefined, { timeoutMs: ALIGN_TIMEOUT_MS }),
         decode: decodeJpeg,
         getProfile: () => getView().profile,
         setBoard: (board) => editor.setBoard(board),

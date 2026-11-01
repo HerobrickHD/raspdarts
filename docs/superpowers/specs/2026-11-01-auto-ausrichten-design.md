@@ -245,3 +245,22 @@ sichern, wie üblich. Pushen erst nach Arnolds „ja“.
 - Genauer Zuschnitt von Server-Route und WebSocket-Nachricht.
 - Ob die Kamera-Kalibrierung von Autodarts beim Messen frisch geholt wird oder
   aus dem Zwischenspeicher (60 s) kommt.
+
+## Nachtrag 01.11.2026 (Umsetzung)
+
+- **Punktmuster unregelmäßig** statt 8 Punkte auf einem Kreis: Mitte plus 8
+  Punkte zwischen 86 und 132 mm, alle Abstände und Winkel verschieden
+  ( in ). Der gleichmäßige Kreis ergab bei
+  einer um ~27–45° verdrehten Scheibe einen sicheren, aber falschen Erfolg
+  (Restfehler 0). Ein Test geht jetzt alle Drehfehler durch: entweder richtig
+  oder Abbruch. Grenze „nur eine Seite“ dafür 40 mm statt 60.
+- **Standby:** Autodarts liefert im Standby auch keine Kalibrierung ().
+  Der Pi fragt dann den Board-Zustand ab und meldet „Board ist im Standby“.
+  Die Kalibrierung wird fürs Ausrichten frisch gelesen (sonst 60 s alt).
+- **Viewer** bekommen beim Verbinden immer den Prüfbild-Stand (auch „keins“)
+  und verlassen das Prüfbild, wenn die Verbindung abreißt – sonst bliebe ein
+  Viewer, der das Ende verpasst, schwarz.
+- **Zeitlimit** der Anfrage im Browser 20 s statt 5 s (Antwort 1–2 MB, Pi
+  braucht im schlimmsten Fall ~12 s).
+- Noch offen für den Test am Beamer: Wartezeit, Schwellen, Auflösung der
+  Kalibrier-Pixel gegenüber dem Kamerabild (Config: 1280×720).

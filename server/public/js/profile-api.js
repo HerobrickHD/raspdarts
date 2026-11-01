@@ -7,9 +7,10 @@
    Aenderungen blockieren - profile-sync.js sendet der Reihe nach. */
 const REQUEST_TIMEOUT_MS = 5000;
 
-export async function api(method, path, body) {
+/** timeoutMs: laenger fuer Anfragen, die beim Pi dauern (Ausrichten: Pruefbild + Kamerabilder). */
+export async function api(method, path, body, { timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const init = { method, headers: { "X-Raspdarts": "1" }, signal: controller.signal };
   // Content-Type nur mit Inhalt - sonst lehnt der Pi die Anfrage ab.
   if (body !== undefined) {
