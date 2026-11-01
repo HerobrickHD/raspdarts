@@ -43,6 +43,7 @@ describe("DisplayHub", () => {
       { type: "catalog", catalog: viewerCatalog() },
       { type: "state", state: IDLE },
       { type: "profile", profile: profiles.active(), profiles: profiles.list(), editing: null },
+      { type: "pattern", pattern: null },
     ]);
   });
 
@@ -87,7 +88,7 @@ describe("DisplayHub", () => {
 
     hub.attach(late.socket);
 
-    expect(late.sent.at(-1)).toMatchObject({ type: "profile", editing: LAYOUT });
+    expect(late.sent.find((m) => m.type === "profile")).toMatchObject({ type: "profile", editing: LAYOUT });
   });
 
   test("Einstellen endet von selbst nach dem Zeitlimit", () => {
@@ -178,13 +179,13 @@ describe("Prüfbild", () => {
     expect(late.sent.at(-1)).toEqual({ type: "pattern", pattern: "dots" });
   });
 
-  test("ohne Pruefbild schickt attach keine pattern-Nachricht", () => {
+  test("ohne Pruefbild schickt attach pattern null - ein Viewer, der das Ende verpasst hat, wird wieder normal", () => {
     hub = new DisplayHub(store());
     const viewer = fakeSocket();
 
     hub.attach(viewer.socket);
 
-    expect(viewer.sent.some((m) => m.type === "pattern")).toBe(false);
+    expect(viewer.sent.at(-1)).toEqual({ type: "pattern", pattern: null });
   });
 
   test("endet nach der Hoechstdauer von selbst", () => {

@@ -94,8 +94,8 @@ describe("/ws", () => {
     const viewer = connect(`ws://${host}/ws?display=beamer`);
     await viewer.opened;
 
-    await vi.waitFor(() => expect(viewer.messages).toHaveLength(3));
-    expect(viewer.messages.map((m) => JSON.parse(m).type)).toEqual(["catalog", "state", "profile"]);
+    await vi.waitFor(() => expect(viewer.messages).toHaveLength(4));
+    expect(viewer.messages.map((m) => JSON.parse(m).type)).toEqual(["catalog", "state", "profile", "pattern"]);
     expect(profileMessages(viewer.messages)[0]).toMatchObject({ profile: { id: "standard" }, editing: null });
   });
 

@@ -89,7 +89,8 @@ export class DisplayHub {
     this.#send(socket, { type: "catalog", catalog: viewerCatalog() });
     this.#send(socket, { type: "state", state: this.#state });
     this.#send(socket, this.#profileMessage());
-    if (this.#pattern) this.#send(socket, { type: "pattern", pattern: this.#pattern });
+    // Immer, auch null: ein Viewer, der waehrend des Pruefbilds die Verbindung verlor, haengt sonst schwarz.
+    this.#send(socket, { type: "pattern", pattern: this.#pattern });
   }
 
   /** Setzt den Stand und schiebt ihn an alle Viewer. */

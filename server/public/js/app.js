@@ -247,6 +247,11 @@ function connect() {
   // Der letzte Stand bleibt stehen; nur ein kleiner Hinweis in der Ecke.
   socket.addEventListener("close", () => {
     viewer.classList.add("is-offline");
+    // Das Ende des Pruefbilds kaeme nicht mehr an - nicht schwarz haengen bleiben.
+    if (pattern) {
+      pattern = null;
+      render();
+    }
     setTimeout(connect, retryDelay);
     retryDelay = Math.min(retryDelay * 2, 10000);
   });
