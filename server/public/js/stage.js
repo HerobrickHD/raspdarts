@@ -8,7 +8,16 @@
  * Beamer) merken davon nichts.
  */
 
-const RATIOS = { "16:9": 16 / 9, "16:10": 16 / 10, "4:3": 4 / 3 };
+export const RATIOS = { "16:9": 16 / 9, "16:10": 16 / 10, "4:3": 4 / 3 };
+
+/**
+ * Platz, den die offene Leiste rechts braucht. Waehrend des Pruefbilds zum
+ * Ausrichten keiner: dieses Geraet koennte selbst der Beamer sein, und
+ * gemessen wird gegen die ganze Buehne.
+ */
+export function placeReserve({ panelLeft, panelWidth, windowWidth, editing, aligning }) {
+  return { right: editing && !aligning && panelWidth > 0 ? windowWidth - panelLeft : 0, bottom: 0 };
+}
 
 /** win: { width, height } in px; reserve: { right, bottom } - frei zu haltender Platz in px. */
 export function fitStage(win, format, reserve = { right: 0, bottom: 0 }) {

@@ -1283,3 +1283,32 @@ body {
 .panel-body [hidden] {
   display: none;
 }
+
+/* --- Pruefbild zum Ausrichten (align.js) ----------------------------------
+   Solange der Pi es zeigt, ist das ganze Fenster schwarz - auf jedem Geraet,
+   auch dem mit der Leiste (es koennte der Beamer sein). Bei "dots" leuchten
+   nur die Punkte auf der Scheibe. visibility statt display: nichts verschiebt sich. */
+.align-svg {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+
+.viewer[data-pattern] .stage {
+  background: #000;
+}
+
+.viewer[data-pattern] .stage::after {
+  display: none;
+}
+
+.viewer[data-pattern] .stage > *,
+.viewer[data-pattern] .settings,
+.viewer[data-pattern] .settings-toggle {
+  visibility: hidden !important;
+}
+
+.viewer[data-pattern="dots"] .stage > .align-svg {
+  display: block;
+  visibility: visible !important;
+}

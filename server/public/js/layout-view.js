@@ -10,17 +10,17 @@ export const BOARD_PER_DOUBLE = 225 / 170;
 /** Bloecke, deren x/y die Mitte ist (der Warte-Text) - sie wachsen um die Mitte. */
 export const CENTERED_BLOCKS = ["warten"];
 
+/** Lage der Scheibe auf der Buehne als CSS - fuer die Scheibe und das Pruefbild zum Ausrichten. */
+export function boardPlacement({ cx, cy, diameter, rotation }) {
+  const size = `${diameter * BOARD_PER_DOUBLE}cqh`;
+  return { left: `${cx}%`, top: `${cy}%`, width: size, height: size, transform: `translate(-50%, -50%) rotate(${rotation}deg)` };
+}
+
 export function applyLayout(viewer, layout) {
   for (const el of viewer.querySelectorAll(".block[data-block]")) {
     const id = el.dataset.block;
     if (id === "scheibe") {
-      const { cx, cy, diameter, rotation } = layout.board;
-      const size = diameter * BOARD_PER_DOUBLE;
-      el.style.left = `${cx}%`;
-      el.style.top = `${cy}%`;
-      el.style.width = `${size}cqh`;
-      el.style.height = `${size}cqh`;
-      el.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+      Object.assign(el.style, boardPlacement(layout.board));
       continue;
     }
     const block = layout.blocks[id];

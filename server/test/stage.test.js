@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fitStage } from "../public/js/stage.js";
+import { fitStage, placeReserve } from "../public/js/stage.js";
 
 const WIN = { width: 1600, height: 900 };
 
@@ -37,5 +37,21 @@ describe("fitStage", () => {
     const stage = fitStage({ width: 300, height: 200 }, "4:3", { right: 380, bottom: 0 });
     expect(stage.width).toBeGreaterThan(0);
     expect(stage.height).toBeGreaterThan(0);
+  });
+});
+
+describe("placeReserve", () => {
+  const panel = { panelLeft: 1500, panelWidth: 420, windowWidth: 1920 };
+
+  test("offene Leiste haelt rechts Platz frei", () => {
+    expect(placeReserve({ ...panel, editing: true, aligning: false })).toEqual({ right: 420, bottom: 0 });
+  });
+
+  test("waehrend des Pruefbilds die ganze Buehne - dieses Geraet koennte der Beamer sein", () => {
+    expect(placeReserve({ ...panel, editing: true, aligning: true })).toEqual({ right: 0, bottom: 0 });
+  });
+
+  test("ohne Leiste kein Platz", () => {
+    expect(placeReserve({ ...panel, editing: false, aligning: false })).toEqual({ right: 0, bottom: 0 });
   });
 });

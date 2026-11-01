@@ -13,11 +13,12 @@ import { createCameraFeed } from "./camera-feed.js";
 import { cameraMatrix3d, scaleHomography } from "./camera-view.js";
 import { applyContent } from "./content-view.js";
 import { createEditor } from "./editor.js";
-import { applyLayout } from "./layout-view.js";
+import { ALIGN_DOT_RADIUS, ALIGN_DOTS } from "./align.js";
+import { applyLayout, boardPlacement } from "./layout-view.js";
 import { createSync } from "./profile-sync.js";
 import { PREVIEW_MODE, previewState } from "./sample-state.js";
 import { createSettings } from "./settings.js";
-import { fitStage } from "./stage.js";
+import { fitStage, placeReserve } from "./stage.js";
 import { createUndo } from "./undo.js";
 
 /* Feldfarbe (geometry.js fieldColor) → Option der Scheibe mit ihrer Leuchtfarbe. */
@@ -42,6 +43,15 @@ const panelEl = viewer.querySelector("#settings");
 
 const boardBlock = viewer.querySelector('[data-block="scheibe"]');
 const cameraImg = document.getElementById("board-camera-img");
+const alignSvg = document.getElementById("align-svg");
+
+/* Pruefbild zum Ausrichten: helle Punkte an festen Stellen der Scheibe (mm, wie board-svg). */
+alignSvg.setAttribute("viewBox", "-225 -225 450 450");
+for (const [x, y] of ALIGN_DOTS) {
+  const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  Object.entries({ cx: x, cy: y, r: ALIGN_DOT_RADIUS, fill: "#fff" }).forEach(([k, v]) => dot.setAttribute(k, String(v)));
+  alignSvg.append(dot);
+}
 
 const board = createBoard(boardSvg);
 const camera = createCameraFeed({
@@ -54,6 +64,8 @@ const camera = createCameraFeed({
 const cameraAsked = new Set();
 
 let state = { phase: "idle" };
+/* Pruefbild vom Pi: "black" | "dots" | null. */
+let pattern = null;
 /* Spielart des letzten Spiels (null = unbekannt) - bleibt nach dem Spiel stehen; vor dem ersten X01. */
 let lastMode = PREVIEW_MODE;
 /* Vom Pi: Katalog, aktives Profil, Profilliste und wer gerade einstellt. */
@@ -125,10 +137,13 @@ const settings = createSettings({
  */
 function placeStage() {
   const panel = panelEl.getBoundingClientRect();
-  const reserve = {
-    right: settings.editing() && panel.width > 0 ? window.innerWidth - panel.left : 0,
-    bottom: 0,
-  };
+  const reserve = placeReserve({
+    panelLeft: panel.left,
+    panelWidth: panel.width,
+    windowWidth: window.innerWidth,
+    editing: Boolean(settings.editing()),
+    aligning: pattern !== null,
+  });
   const format = view.profile?.format ?? "fenster";
   const { left, top, width, height } = fitStage({ width: window.innerWidth, height: window.innerHeight }, format, reserve);
   Object.assign(stageEl.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
@@ -141,9 +156,12 @@ function render() {
   const current = view.catalog ? view.profile : null;
   viewer.dataset.phase = shown.phase;
   viewer.dataset.spielart = mode ?? "unbekannt";
+  if (pattern) viewer.dataset.pattern = pattern;
+  else delete viewer.dataset.pattern;
   if (current) {
     applyContent(viewer, view.catalog, current.content, mode);
     applyLayout(viewer, current.layout);
+    Object.assign(alignSvg.style, boardPlacement(current.layout.board));
   }
   boardSvg.dataset.mode = current?.content.scheibe?.darstellung ?? "light";
   for (const [color, option] of LEUCHTFARBEN) {
@@ -184,6 +202,7 @@ function renderCamera(current) {
 
 function onMessage(message) {
   if (message.type === "camera") camera.update(message.cam, message.version);
+  if (message.type === "pattern") pattern = message.pattern;
   if (message.type === "state") {
     state = message.state;
     if (state.phase === "playing") lastMode = state.mode;
